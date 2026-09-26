@@ -50,3 +50,26 @@ Environment verified 2026-09-26: Node 22.22.2, pnpm 10.33.0.
 - **Plan 01-02 (Wave 2): Core Kernel.** RNG/hash/serialize, types, reducer with handlers (sample + decision/commit/timeout), `createGame`, replay, and determinism property tests.
 - **Plan 01-03 (Wave 2): Content Pipeline.** zod schemas, sample data, `validateContent`/`loadContentDir`, the validate CLI build gate, and fixture/subprocess tests.
 - **Plan 01-04 (Wave 3): Views, Sim & Client Shells.** `viewFor`/`redactEvent`/`eventsFor` with leak properties, the `pnpm sim replay` CLI with a fixture, the Vite text client, and a final full-pipeline run.
+
+## Plan Critique (2026-09-26)
+Two read-only reviewers ran: a pre-mortem (testing-qa-verification-specialist) with verdict REWORK, and assumption hunting (product-sprint-prioritizer) with verdict CAUTION. The pre-mortem independently recomputed all golden vectors and fixture expectations with node and found them correct. The user chose **Revise plans**, with **scoped commands (parallel OK)** for wave 2. Applied changes:
+
+**Ownership and process**
+- Each plan's own `SUMMARY.md` is added to its `files_modified`. 01-01 now forbids only `.planning/specs/`, `PROJECT.md` and `ROADMAP.md`.
+- Wave-2 isolation: 01-02 and 01-03 use only package-scoped `tsc -b`, `eslint` and `prettier` commands and a package-scoped git-status check. The full-repo pipeline runs in 01-04.
+- Every plan ends with a commit step on `dev`, checking that no `.tsbuild`, `dist` or `node_modules` files are committed. 01-04 pushes and must prove a green GitHub Actions run (ROADMAP criterion 1).
+
+**Lint and toolchain (01-01)**
+- `restrict-template-expressions` allows numbers.
+- `vitest.config.ts` is linted without type checking.
+- The core import boundary also blocks relative `**/content|sim|client/**` imports.
+- `onlyBuiltDependencies: [esbuild]` is added.
+- The Node-types fallback now covers the client as well as core.
+
+**Tests and checks**
+- The negative content gate asserts exit code exactly 1 via direct tsx. The `index.ts` grep is narrowed to `from "./load"`.
+- Subprocess tests resolve `tsx/cli` with `cwd` set to the repo root.
+- Expectations for zod 4 `unrecognized_keys` paths are stated, along with a note that the invalid fixture doesn't exercise the duplicate check.
+- `viewFor` uses `?? null`. One documented handler-lookup cast is allowed in the reducer. The arbitraries are exported by fixed names.
+
+**Forward compatibility (spec Open Question 5):** content injection via `reduce(state, action, rules)`, a generalized `PendingDecision`, deleting the sample module in Phase 2, and a separate RNG for the CPU AI. All four must be decided at Phase 2 planning.

@@ -435,6 +435,7 @@ export function loadContentDir(dir: string | URL): ContentEntry[];  // in src/lo
 | 2 | Should CI also deploy client previews to GitHub Pages now? | Non-blocking | No; deploy is Phase 7 scope | Use the default |
 | 3 | GitHub Action major versions (`actions/checkout`, `actions/setup-node`, `pnpm/action-setup`) | Non-blocking | `@v4` for all three: long-supported majors that work on Node 22 runners. Newer majors may exist; bumping is safe later | Use the default |
 | 4 | Branch protection on `main` requiring CI | Non-blocking | Not configured by the plan (repo settings are the user's action); documented in the README | Use the default |
+| 5 | Forward compatibility for Phase 2+ (from the plan critique) | Non-blocking for Phase 1 | Phase 1 code stays as specified. **Must be decided at Phase 2 planning:** (a) content injection: recommended `reduce(state, action, rules: Rules)`, where core defines the `Rules` type, content satisfies it, and rules are not serialized into state or saves; (b) `PendingDecision` generalizes to `kind` plus per-player `options`/`default` and can be opened by handlers internally, not only by `system` actions; (c) the `sample/*` module and the `counter`/`lastRoll` fields are deleted in Phase 2, with a `SCHEMA_VERSION` bump; the kernel (rng, serialize, reject precedence, views, replay) persists; (d) the CPU AI (Phase 3) uses its own seeded RNG outside `reduce`, and its choices enter the game only as recorded actions | Record in Phase 2 CONTEXT |
 
 ## Complexity Assessment
 
