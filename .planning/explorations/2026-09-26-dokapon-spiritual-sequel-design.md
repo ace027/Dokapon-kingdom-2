@@ -63,7 +63,7 @@ This is essential for the indie-release goal.
 - [ ] **Gear & items:** weapon, shield, accessory slots, ~30 items, ~12 battle spells, ~8 field spells.
 - [ ] **Towns & assets:** 8–10 towns held by monsters. Liberate to own, invest gold to raise value, pay tax income each week. Rivals can seize them via PvP or a field spell.
 - [ ] **PvP griefing:** on a PvP win, choose Steal Gold / Steal Item / Seize Town / Humiliate (rename, cosmetic "hairdo" debuff, face paint).
-- [ ] **Villain mechanic ("fresh twist" slot, name TBD):** the last-place or KO'd player may be possessed by a villain spirit for a few turns, gaining board-wide sabotage powers. This is the main comeback engine.
+- [ ] **Villain mechanic, the Cursed Crown:** a sentient crown possesses the trailing player for a few turns, granting sabotage powers with risk/reward stakes. This is the main comeback engine; see *Cursed Crown Spec* below.
 - [ ] **Victory:** turn limit (e.g. 4 weeks) or defeating the region boss; winner = highest Assets. Final-week bonus events keep races tight.
 - [ ] **Players:** 1–4 humans in hot-seat plus CPU fill (Easy/Normal/Hard).
 - [ ] **Presentation:** 2D pixel art (placeholder/licensed packs first), basic SFX/music, keyboard/mouse plus gamepad basics.
@@ -77,6 +77,26 @@ This is essential for the indie-release goal.
 - [ ] Deeper cosmetics/customization, emotes, replays (event log is already replayable)
 - [ ] Steam build (Electron/Tauri wrapper), achievements, controller polish, localization
 - [ ] Mod/content-pack support via the data-driven `content` package
+
+### Cursed Crown Spec (comeback/villain mechanic)
+Original replacement for the Darkling. Design goal: the crown gives the trailing player real power, but most of the value is **at risk** until they survive, so the crown is never a free win and always creates a hunt.
+
+- **Trigger:** checked at the start of each week. If the last-place player's Assets are below **40% of the leader's**, the Crown claims them.
+  - At most one Crown per week.
+  - The **same player can be claimed in consecutive weeks** (per the user's decision; no repeat restriction).
+  - Ties for last place go to the lowest Assets, then random.
+- **Duration:** **3 of the wearer's turns**. It ends early if any player defeats the wearer in PvP.
+- **Hoard:** everything the Crown takes (gold from Tyrant's Tax, winnings from Crown Warp battles) goes into a separate **Crown Hoard**, not the wearer's purse.
+  - **Survive** all 3 turns: the wearer keeps the entire hoard.
+  - **Defeated in PvP:** the victor claims the hoard as a **bounty**, plus the normal PvP reward. The wearer keeps nothing from the hoard.
+- **Powers (MVP kit, one per turn in place of a normal action unless noted):**
+  1. **Tyrant's Tax (passive, every wearer turn):** take X% (tuning start: 10%) of each other player's gold into the hoard.
+  2. **Blight:** curse one town. It pays no income and loses value each turn until the Crown leaves.
+  3. **Summon:** place a Crown monster on a board space. The next player to land there must fight it; a loss sends a penalty to the hoard.
+  4. **Crown Warp:** teleport to any player and force PvP with a large stat buff. A win sends that PvP's spoils to the hoard.
+- **While crowned:** the wearer is visibly transformed, can't enter towns or shops, and the other players see a bounty marker with the current hoard size.
+- **Tuning knobs (sim-driven):** gap threshold (40%), duration (3), tax % (10), wearer stat buff, Blight value loss/turn, Summon monster strength.
+- **Design risks:** repeat crowning of the same player could feel oppressive to others. Monitor via the balance sim (crown frequency per player, win rate of crowned players, target ≈ 15–25%).
 
 ## Experience / Workflow
 1. **Title** → New Game → pick the number of players (1–4), each human/CPU, name, class and color → choose game length.
@@ -105,7 +125,8 @@ This is essential for the indie-release goal.
 - **Constraints:** original IP only; asset licenses must allow commercial use; 60 fps on mid-range laptops; bundle < 15 MB for MVP.
 
 ## Open Questions
-- **Final game title, setting and villain-mechanic name** (must be original, not "Dokapon"). Resolve during `/legion:start` brand pass before any public build.
+- **Cursed Crown numbers** (threshold, tax %, buff size). Tune via the balance simulator; the starting values are listed in the spec.
+- **Final game title and setting** (must be original, not "Dokapon"). Resolve during `/legion:start` brand pass before any public build.
 - **Exact number of combat commands and magic balance.** Resolve by prototyping plus the balance simulator.
 - **Hot-seat secrecy UX** (pass-the-device vs simultaneous split input). Prototype both in the first combat milestone.
 - **Art sourcing** (commissioned vs licensed packs). Placeholder packs first; decide before the vertical slice.
@@ -119,7 +140,7 @@ Web-based (TypeScript, Phaser 3) spiritual sequel to Dokapon Kingdom as original
 - Attack/Strike/Counter/Magic/Defend hidden-choice combat with 4 classes and gear
 - Town liberation/investment with asset-based victory
 - PvP griefing (steal gold/items/towns, humiliation)
-- An original villain-possession comeback mechanic
+- The **Cursed Crown**, an original comeback mechanic: it claims the trailing player (<40% of the leader's Assets at week start) for 3 turns and grants Tyrant's Tax, Blight, Summon and Crown Warp. Spoils go to a hoard the wearer keeps only by surviving; defeating the wearer claims it as a bounty.
 
 **Architecture:** pnpm monorepo with a pure deterministic headless rules engine (`core`, fully unit-tested, drives CPU AI and a balance simulator), a Phaser client (`client`) and data-driven content (`content`).
 
