@@ -1,0 +1,19 @@
+{
+  "settings": { "v": 1, "seed": "fixture", "players": ["p1", "p2"] },
+  "actions": [
+    { "v": 1, "type": "sample/roll", "playerId": "p1" },
+    { "v": 1, "type": "sample/increment", "playerId": "p2", "amount": 3 },
+    { "v": 1, "type": "sample/roll", "playerId": "p1" },
+    { "v": 1, "type": "sample/roll", "playerId": "p2" },
+    { "v": 1, "type": "sample/setSecret", "playerId": "p1", "note": "hi" },
+    {
+      "v": 1,
+      "type": "decision/open",
+      "playerId": "system",
+      "required": ["p1", "p2"],
+      "defaultChoice": "A"
+    },
+    { "v": 1, "type": "decision/commit", "playerId": "p1", "decisionId": "d1", "choice": "B" },
+    { "v": 1, "type": "timeout", "playerId": "system", "decisionId": "d1" }
+  ]
+}

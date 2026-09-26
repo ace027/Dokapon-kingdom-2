@@ -28,3 +28,5 @@ export type { GameEvent, Visibility } from "./events";
 export { isAction, reduce, type ReduceResult, type Reject, type RejectCode } from "./reducer";
 export { createGame, SettingsError } from "./game";
 export { replay, type ReplayResult } from "./replay";
+export { viewFor, redactEvent, eventsFor } from "./views";
+export type { Viewer, PlayerView } from "./views";

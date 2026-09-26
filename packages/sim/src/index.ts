@@ -1,1 +1,1 @@
-export const PACKAGE_NAME = "@usurpia/sim" as const;
+export { replayFile, ReplayFileError } from "./replay-file";
