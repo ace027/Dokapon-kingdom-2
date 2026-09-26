@@ -65,7 +65,7 @@ This is essential for the indie-release goal.
 ## Feature Scope
 ### MVP
 - [ ] **Board:** one region map as an **open web** graph of 60–90 spaces with many branches; see *Map & Economy Spec*. Space types: Battle, Item, Loot, Gold, Town, Castle (home/quest giver), Shop, Temple (heal/revive), Event/Chance.
-- [ ] **Turn flow:** spinner (1–6, modifiable by items/magic), movement with path choice, space resolution, end turn. Weekly cycle (every N rounds) with a quest from the Castle.
+- [ ] **Turn flow:** spinner (1–6, modifiable by items/magic), movement with path choice, space resolution, end turn. Weekly cycle (every N rounds) with a public Royal Decree race plus a private Personal Errand per player; Event spaces draw Kingdom Gazette cards. See *Events & Weekly Quests Spec*.
 - [ ] **Classes:** 4 base classes (Warrior, Thief, Mage, Cleric) plus 2 hybrids (Spellblade, Shadowpriest). Character level combined with per-class mastery; see *Classes & Combat Spec*.
 - [ ] **Combat:** asymmetric attacker/defender exchanges. Attacker picks Attack / Strike / Spell; defender picks Guard / Counter / Ward. Monsters use a weighted AI. The same system is used for PvP; see *Classes & Combat Spec*.
 - [ ] **Gear & items:** weapon, shield and accessory slots; class-sized bag; ~12 consumables, 5 joke items, ~15 gear pieces, 8 battle + 4 ward spells, 8 field spells. See *Items & Spells Spec*.
@@ -342,6 +342,67 @@ Each town also has a town-flavored name and title, e.g. "Knight of Foreclosure o
 - **Sourcing:** licensed or royalty-free packs for the MVP (tracked in `CREDITS.md`); commission the main theme and Crown/boss themes before release.
 - **Tech:** Phaser sound with OGG + M4A fallbacks, music ducking during stingers, separate music/SFX volume sliders.
 
+### Events & Weekly Quests Spec
+**Weekly structure (shared + personal):** at each week start (after tax and the Crown check), the monarch issues:
+1. **Royal Decree (public race):** one objective all players race for.
+   - The first player to complete it wins the full reward (tuning start: 1,500 G + a rare item), and the decree closes.
+   - If nobody finishes by week end, the monarch is "disappointed" and the leader pays a 5% "disappointment tax" split among the others (a mild anti-snowball).
+2. **Personal Errand (private side-quest):** each player privately gets one smaller objective.
+   - Reward: ~500 G, a consumable or field scroll, or +1 class mastery progress.
+   - Errands are hidden from rivals until completed; in hot-seat they're shown behind the pass-the-device interstitial.
+   - CPUs only know their own.
+   - You can reroll your errand once per week at the Castle for a fee.
+
+**Royal Decree pool (~10; no repeat within a game):**
+| Decree | Objective |
+|--------|-----------|
+| Liberate the Town | Liberate a specific named town |
+| Wanted Poster | Defeat a specific monster type |
+| Royal Delivery | Bring a specific item to the Castle |
+| Tax Season | Be first to collect X gold in tax this week |
+| Monster Census | Win 3 monster battles this week |
+| Crown Hunt | Defeat the current Crown wearer (only when one exists) |
+| Treasure Survey | Visit a specific far-off space |
+| Invest in Usurpia | Invest X gold into your towns this week |
+| Duel of Honor | Win a PvP battle |
+| Royal Portrait | Be at the Castle with ≥ Y gold at week end |
+
+**Personal Errand pool (~12):** tuned so any class can do them in 1–2 weeks.
+- Slay two Forest monsters
+- Buy anything from a Coast shop
+- Use two consumables
+- Land on a Gold space
+- Win a battle using only Strikes
+- Visit a Temple
+- Cast a field spell on a rival
+- Pass through three towns
+- Survive a PvP battle
+- Sell an item
+- Humiliate a rival
+- End a turn on a Warp gate
+
+**Kingdom Gazette (Event/Chance spaces):** drawing a card shows a satirical newspaper headline with an effect.
+- ~24 cards: ~60% mild/personal, ~30% board-wide, ~10% wild.
+- Deck-based: shuffle, draw without replacement, reshuffle when empty.
+- Samples:
+  | Headline | Effect |
+  |----------|--------|
+  | "MONARCH DECLARES TAX HOLIDAY" | No tax is collected next week start (board-wide) |
+  | "GOBLIN UNION STRIKES!" | All shops closed for 1 round |
+  | "BARD WRITES BALLAD ABOUT YOU" | Lander gets +20% ATK for 2 battles |
+  | "BARD WRITES *MEAN* BALLAD ABOUT YOU" | Lander gets −20% DEF for 2 battles |
+  | "LOST WALLET RETURNED" | Lander gains 300 G |
+  | "WALLET NOT RETURNED" | Lander loses 10% gold (to the Crown Hoard if a Crown is active, else to the bank) |
+  | "HOUSING BOOM IN {TOWN}" | A random town gains +20% value |
+  | "SLIME INFESTATION IN {TOWN}" | A random owned town loses 15% value |
+  | "ROYAL PARADE!" | All players warp to the Castle (wild) |
+  | "MARKET CRASH" | Everyone loses 15% gold, including the lander (wild) |
+  | "ROYAL GIVEAWAY" | Lowest-asset player gains 1,000 G |
+  | "DOPPELGANGER SPOTTED" | Lander swaps positions with a random player |
+- Wild cards can't trigger in the first week.
+
+**Data:** decrees, errands and Gazette cards live as data in `packages/content` with typed effect definitions (`{trigger, condition, effect}`). The `core` rules engine resolves them deterministically. The balance sim reports decree completion rate (target 70–85%) and each card's impact on asset variance.
+
 ### Cursed Crown Spec (comeback/villain mechanic)
 Original replacement for the Darkling. Design goal: the crown gives the trailing player real power, but most of the value is **at risk** until they survive, so the crown is never a free win and always creates a hunt.
 
@@ -372,7 +433,7 @@ Original replacement for the Darkling. Design goal: the crown gives the trailing
    - Each side secretly picks a command (hot-seat hides the screen via a "pass the device" interstitial).
    - Resolve the triangle → damage/effects → repeat until KO or flee.
    - Show the rewards/griefing menu.
-4. **Weekly cycle:** a Castle announcement names the quest (e.g. "liberate X", "defeat monster Y"), towns pay income and the leaderboard updates.
+4. **Weekly cycle:** towns pay tax, the Cursed Crown check runs, and the monarch announces the public Royal Decree. Each player privately views their Personal Errand behind a pass-the-device screen, and the leaderboard updates.
 5. **Endgame:** after the final week or boss defeat, an Asset tally with dramatic reveal → results → rematch.
 
 ## Technical Direction
@@ -415,6 +476,10 @@ Web-based (TypeScript, Phaser 3) spiritual sequel to Dokapon Kingdom as original
 - The **Cursed Crown**, an original comeback mechanic: it claims the trailing player (<40% of the leader's Assets at week start) for 3 turns and grants Tyrant's Tax, Blight, Summon and Crown Warp. Spoils go to a hoard the wearer keeps only by surviving; defeating the wearer claims it as a bounty.
 
 **Architecture:** pnpm monorepo with a pure deterministic headless rules engine (`core`, fully unit-tested, drives CPU AI and a balance simulator), a Phaser client (`client`) and data-driven content (`content`).
+
+**Events & quests:**
+- Each week brings one public Royal Decree race (~10 in the pool; the first to complete it wins a big reward) plus a private Personal Errand per player (~12 in the pool, rerollable once per week).
+- Event spaces draw satirical Kingdom Gazette cards (~24; mostly mild, a few board-wide wild cards).
 
 **Art & audio:**
 - 640×360 internal resolution, 32px tiles, integer scaling.
