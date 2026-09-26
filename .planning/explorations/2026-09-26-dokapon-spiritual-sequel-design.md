@@ -80,7 +80,7 @@ This is essential for the indie-release goal.
 - [ ] **Quality:** Vitest rules suite, headless balance simulator CLI, static web deploy.
 
 ### Later
-- [ ] Online multiplayer (server-authoritative `core` on Node/Colyseus, room codes, reconnection)
+- [ ] Online multiplayer: server-authoritative `core` on Colyseus, private room codes, reconnect with CPU takeover, mixed local + online seats. See *Online Multiplayer Plan*.
 - [ ] Additional regions, full campaign mode, region bosses, story
 - [ ] Remaining 4 hybrids (Paladin, Rogue-Mage, Duelist, Oracle), more monsters/spells
 - [ ] Deeper cosmetics/customization, emotes, replays (event log is already replayable)
@@ -517,6 +517,47 @@ Original replacement for the Darkling. Design goal: the crown gives the trailing
 - **Branching:** `main` (release) and `dev` (integration); feature branches merge into `dev`.
 - **Constraints:** original IP only; asset licenses must allow commercial use; 60 fps on mid-range laptops; bundle < 15 MB for MVP.
 
+## Online Multiplayer Plan (post-MVP, constraints enforced now)
+**Model: server-authoritative rooms.**
+- A Node server runs the **same `packages/core` reducer** as the client.
+- Clients send `Action`s (with `playerId`); the server validates them against the legal-move generator, applies them, and broadcasts **per-player redacted events and state views**.
+- Hidden combat choices, errands and RNG never leave the server until revealed, so peeking or cheating isn't possible.
+
+**Stack:**
+- **Colyseus** (TypeScript) rooms: one room per game, with room codes/links from Colyseus' matchmaker.
+- Self-host on Fly.io/Render (or Colyseus Cloud).
+- `packages/server` wraps `core`. Colyseus schema sync is used only for lobby metadata; game state goes through our own event stream so `core` stays framework-agnostic.
+
+**Launch features:**
+- **Private room codes:** the host creates a room (game settings, week count) and shares a code/link. Empty seats can be filled with CPUs (persona and difficulty picked by the host). No public matchmaking or accounts at launch; players pick a display name per session.
+- **Reconnect & CPU takeover:**
+  - On disconnect, a CPU (the player's chosen persona, Normal) plays their turns.
+  - Rejoining the same seat via a session token restores control at the next decision point.
+  - Rooms persist while ≥ 1 human is connected, plus a grace timeout (e.g. 10 minutes).
+- **Mixed local + online:**
+  - One browser can hold multiple seats (couch players), each with its own `playerId`.
+  - Hidden choices for co-located seats use the existing pass-the-device interstitial.
+  - The server treats each seat independently.
+- Deferred: public matchmaking, accounts, friends lists, moderation, ranked play, spectators, async play.
+
+**Online-readiness constraints (enforced in MVP code from M0, with tests):**
+1. **Pure, serializable core:** `GameState`, `Action` and `GameEvent` are plain JSON with no classes, functions or cycles, and are versioned. A round-trip serialization test runs in CI.
+2. **Actor on every action:** each `Action` carries `playerId`; the reducer rejects actions from the wrong actor or phase.
+3. **Server-side RNG only:** RNG state lives in `GameState` and advances only inside the reducer. The client never supplies random values; the spinner result is an event, not an input.
+4. **Per-player views:**
+   - `viewFor(state, playerId)` and `redactEvent(event, playerId)` hide rivals' pending combat choices, errands, RNG state and the Gazette deck order.
+   - Hot-seat and the client already render from views, not raw state.
+   - A test asserts no hidden field leaks.
+5. **Simultaneous-choice protocol:** hidden choices are `commit` actions resolved when all required commits arrive, the same flow for hot-seat, CPU and online.
+6. **Timeouts as actions:** a `timeout` action with a deterministic default (e.g. Guard / end turn) lets online turn timers and CPU takeover reuse the reducer.
+7. **Deterministic replay:** a game is fully reproducible from `(seed, settings, actions[])`. This powers desync checks, bug reports and replays.
+
+**Rough online milestone (after M6):**
+- M8a: `packages/server` + Colyseus room + room codes.
+- M8b: redacted views over the wire + commit/reveal.
+- M8c: reconnect/CPU takeover + mixed local seats.
+- M8d: load test (≥ 100 concurrent rooms on a small instance) + closed online beta.
+
 ## Milestone Plan
 Rules-first: the headless `core` and balance sim come before visuals. Human playtests start at M3 (first fully playable graybox game) and continue every milestone after; before M3, validation comes from unit tests and the all-CPU sim.
 
@@ -542,7 +583,7 @@ Rules-first: the headless `core` and balance sim come before visuals. Human play
 - **Open-web map readability.** Validate with a first playtest; fall back to fewer junctions if players feel lost.
 - **Item/spell prices and drop tables.** Set during content authoring; validate with the sim and playtests. Watch the Usurp field spell and Royal Summons for frustration.
 - **Commission budget and artists.** Decided: licensed packs for the MVP, commission signature characters, Crown, boss, key art and main themes before release. Pick artists and composer and set a budget at the vertical-slice milestone.
-- **Online stack choice** (Colyseus vs custom WebSocket). Deferred to post-MVP; the core design keeps it open.
+- **Online hosting and cost.** Decided: Colyseus, server-authoritative. Still open: Fly.io vs Render vs Colyseus Cloud and monthly budget. Decide at M8a after a load test.
 
 ## Start Input
 Web-based (TypeScript, Phaser 3) spiritual sequel to Dokapon Kingdom as original IP aimed at an eventual indie release. It's a 45–60 minute board-game/JRPG hybrid for 1–4 local hot-seat players plus CPU opponents on a single-region pixel-art map.
@@ -600,7 +641,18 @@ Web-based (TypeScript, Phaser 3) spiritual sequel to Dokapon Kingdom as original
 **Setting:** a satirical fairy-tale kingdom. A vain, bankrupt monarch will name as heir whoever brings in the most wealth by the deadline (the "Heir Auction"). The Cursed Crown is the monarch's pawned, sentient old crown. Working title: **Usurpia** (also the kingdom's name), pending trademark clearance; `Dokapon-kingdom-2` is only an internal codename.
 
 **Milestones (rules-first):**
-- M0 foundations → M1 combat core → M2 board core → M3 graybox client (first human playtest) → M4 griefing & Crown → M5 vertical slice → M6 MVP complete (itch.io) → M7 release prep.
+- M0 foundations → M1 combat core → M2 board core → M3 graybox client (first human playtest) → M4 griefing & Crown → M5 vertical slice → M6 MVP complete (itch.io) → M7 release prep → M8 online (Colyseus).
+
+**Online readiness (enforced in `core` from M0 with tests):**
+- JSON-serializable, versioned state/actions/events.
+- `playerId` on every action.
+- RNG only inside the reducer.
+- Per-player redacted views and events.
+- Commit/reveal for hidden choices.
+- Timeouts as actions.
+- Deterministic replay from `(seed, settings, actions)`.
+
+The post-MVP online plan uses server-authoritative Colyseus rooms with private codes, reconnect with CPU takeover, and mixed local + online seats.
 - Validation before M3 comes from unit tests and the headless balance sim.
 
 **Process:** work on `dev` and release from `main`. No fixed timeline. Online multiplayer, multi-region campaign and Steam packaging are post-MVP.
