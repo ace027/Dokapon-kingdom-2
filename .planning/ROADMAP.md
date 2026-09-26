@@ -119,7 +119,7 @@
 
 | Phase | Plans | Completed | Status |
 |-------|-------|-----------|--------|
-| 1. Foundations & Deterministic Engine | 4 | 0 | Not started |
+| 1. Foundations & Deterministic Engine | 4 | 1 | In progress |
 | 2. Combat Core & Balance Sim | 5 | 0 | Not started |
 | 3. Board, Economy & CPU AI Core | 6 | 0 | Not started |
 | 4. Graybox Client & Hot-Seat Play | 5 | 0 | Not started |
