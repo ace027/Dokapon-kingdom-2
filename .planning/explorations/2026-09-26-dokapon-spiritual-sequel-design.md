@@ -1,4 +1,4 @@
-# Design Exploration — Dokapon-Style Spiritual Sequel (working title "Dokapon Kingdom 2")
+# Design Exploration — Usurpia (Dokapon-Style Spiritual Sequel)
 
 ## Initial Ask
 Build a **spiritual sequel** to Dokapon Kingdom: a friendship-ruining party game that fuses a board game with a JRPG. Keep the familiar core loop, add fresh twists, and ship as original IP with the goal of an eventual indie release.
@@ -32,12 +32,12 @@ Build a **spiritual sequel** to Dokapon Kingdom: a friendship-ruining party game
   - Any original-game assets, names or text
 
 ## Setting & Premise
-- **World:** a satirical fairy-tale kingdom. Bright storybook visuals and absurdist humor: pompous nobles, bureaucratic goblins, monsters with day jobs.
+- **World:** the Kingdom of **Usurpia**, a satirical fairy-tale kingdom. Bright storybook visuals and absurdist humor: pompous nobles, bureaucratic goblins, monsters with day jobs.
 - **Premise (Heir Auction):** the vain, bankrupt monarch announces that whoever brings the kingdom the most wealth by the deadline will be named heir. This directly justifies the asset race, the weekly "royal decree" quests, and why the monarch doesn't care how you got the money.
 - **Cursed Crown lore:** the monarch's old crown, pawned long ago and now sentient, jealous and greedy. It possesses the "least worthy" (poorest) contender to prove it can pick a better heir. Its hoard is literally the crown trying to buy the throne back.
 - **Griefing flavor:** humiliations are royal-court themed, e.g. forced jester haircut, an embarrassing noble title as the rename ("Sir Soggybottom"), and "court portrait" face paint.
 - **Tone guardrails:** mean-spirited *toward characters*, never toward real groups; PG, cartoon violence.
-- **Title:** **undecided**, see Open Questions. The repo name `Dokapon-kingdom-2` stays as an internal codename only and must not appear in any public build.
+- **Title:** **Usurpia** (working title; it doubles as the kingdom's name). A formal trademark clearance is still pending; see Open Questions. The repo name `Dokapon-kingdom-2` stays as an internal codename only and must not appear in any public build.
 
 ## Recommended Approach
 **B. Balanced: a headless TypeScript rules engine plus a Phaser 3 renderer in a monorepo.**
@@ -246,7 +246,9 @@ Original replacement for the Darkling. Design goal: the crown gives the trailing
 
 ## Open Questions
 - **Cursed Crown numbers** (threshold, tax %, buff size). Tune via the balance simulator; the starting values are listed in the spec.
-- **Final game title** (must be original, not "Dokapon"). The user wants more brainstorming. Current candidates: *Heir Apparently*, *Kingdom for Sale*, *Crown & Calamity*, *Throne Grabbers*. Resolve with a naming session plus a trademark/Steam/itch search before any public build; rename the repo at that point.
+- **Title clearance for "Usurpia".** An informal web search (2026-09-26) found no exact-match game; the nearest are *Usurper*-named titles. Before any public build, do a formal trademark search (USPTO/EUIPO), check Steam/itch/domain/social handles, then rename the repo.
+  - Rejected: *Crownfall* is heavily used (Steam, Switch, board game, mobile, Dota 2 event).
+  - Backups: *Crownmongers*, *Kingsnatch*, *Heirloot*.
 - **Combat matrix multipliers, damage constants and LUCK caps.** Starting values are in the spec; tune with the balance simulator.
 - **Hybrid unlock threshold** (mastery rank 3 in two classes). Validate in playtests that hybrids are reachable within a 45–60 minute game.
 - **Economy numbers** (town base values, investment cap, 10% tax, boss bonus, award value, turns per week). Tune with the balance sim toward 45–60 minute games and a last-week comeback rate of ~30%.
@@ -275,6 +277,6 @@ Web-based (TypeScript, Phaser 3) spiritual sequel to Dokapon Kingdom as original
 - Deadline of 3/4/5 weeks, with an optional final-week region boss that ends the game with a big asset bonus.
 - Royal Bonus Awards revealed before the tally.
 
-**Setting:** a satirical fairy-tale kingdom. A vain, bankrupt monarch will name as heir whoever brings in the most wealth by the deadline (the "Heir Auction"). The Cursed Crown is the monarch's pawned, sentient old crown. The title is still undecided; `Dokapon-kingdom-2` is only an internal codename.
+**Setting:** a satirical fairy-tale kingdom. A vain, bankrupt monarch will name as heir whoever brings in the most wealth by the deadline (the "Heir Auction"). The Cursed Crown is the monarch's pawned, sentient old crown. Working title: **Usurpia** (also the kingdom's name), pending trademark clearance; `Dokapon-kingdom-2` is only an internal codename.
 
 **Process:** work on `dev` and release from `main`. No fixed timeline. Online multiplayer, multi-region campaign and Steam packaging are post-MVP.
