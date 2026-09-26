@@ -17,3 +17,16 @@ Use the GitHub MCP tools (`mcp__github__*`) for all GitHub operations:
 The `gh` CLI is not available in this environment. When a Legion step says to check `gh auth status`, treat GitHub as **available** through MCP, and never skip a GitHub step because `gh` is missing. Labels that don't exist yet are auto-created when passed to `issue_write` on create.
 
 ---
+
+## PRF-002: Review-override — accept when only test-guard gaps remain
+- **Date**: 2026-09-26
+- **Type**: preference
+- **Tags**: review-override, accepted-with-issues, foundations-deterministic-engine
+- **Phase**: Phase 1
+- **Signal**: corrective
+
+Phase 1 review escalated after 3 cycles with 1 test-only WARNING. Production code was correct, and the finding was a vacuous negative test. The user accepted as-is and moved on to planning the next phase. The one-line fix was applied at acceptance.
+
+Implication: once production code is verified correct, residual test-assertion gaps should not block phase completion.
+
+---

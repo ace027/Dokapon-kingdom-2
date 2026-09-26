@@ -468,7 +468,14 @@ describe("deserialize exact keys and counter bounds (review cycle 2)", () => {
 
   it.each<[string, (d: Draft) => void]>([
     ["duplicate lastReveal.timedOut", (d) => void (lastRevealOf(d).timedOut = ["p1", "p1"])],
-    ["duplicate pending.committed", (d) => void (pendingOf(d).committed = ["p1", "p1"])],
+    [
+      "duplicate pending.committed",
+      (d) => {
+        // choices has two keys so only the uniqueness check (not the length check) can reject
+        pendingOf(d).committed = ["p1", "p1"];
+        decisionOf(d).choices = { p1: "A", p2: "B" };
+      },
+    ],
   ])("throws TypeError for %s", (_label, patch) => {
     expect(() => deserialize(patchDecision(patch))).toThrow(TypeError);
   });
