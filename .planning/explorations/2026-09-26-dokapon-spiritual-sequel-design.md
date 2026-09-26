@@ -517,6 +517,20 @@ Original replacement for the Darkling. Design goal: the crown gives the trailing
 - **Branching:** `main` (release) and `dev` (integration); feature branches merge into `dev`.
 - **Constraints:** original IP only; asset licenses must allow commercial use; 60 fps on mid-range laptops; bundle < 15 MB for MVP.
 
+## Milestone Plan
+Rules-first: the headless `core` and balance sim come before visuals. Human playtests start at M3 (first fully playable graybox game) and continue every milestone after; before M3, validation comes from unit tests and the all-CPU sim.
+
+| # | Milestone | Scope | Exit criteria |
+|---|-----------|-------|---------------|
+| M0 | **Foundations** | pnpm monorepo (`core`, `content`, `client`, `sim`), TS strict, Vite, Vitest, ESLint/Prettier, GitHub Actions CI on `dev`/`main`, seeded RNG, `reduce(state, action)` + event skeleton, zod content schemas | CI green; example action round-trips with deterministic replay test |
+| M1 | **Combat core** | 6 stats, Attack/Strike/Spell vs Guard/Counter/Ward matrix, 4 base classes + mastery, gear/spell slots, monster AI tables, combat CPU (all difficulties) | Full combat unit suite; sim CLI runs 10k duels and reports class/matchup win rates; debug text duel for dev use |
+| M2 | **Board core** | Graph map from Tiled JSON, spin/movement/reachable-set, all space types, towns (liberate/invest/tax/seize), weeks, decrees/errands, Gazette deck, victory/tally, board utility AI + personalities | Headless all-CPU full games complete; sim reports game length, asset variance, decree completion rate |
+| M3 | **Graybox client** | Phaser board + battle scenes with placeholder art, path preview, pass-the-device hot-seat, save/load/autosave, basic menus/setup | **First human playtest:** 2–4 people finish a full game in a browser; feedback log started |
+| M4 | **Griefing & Crown** | PvP rewards/humiliations with layered cosmetics, joke items, field spells, Cursed Crown (trigger, powers, hoard), Crown's Body boss, hybrids, persona barks | Playtest #2; sim health checks (crowned win rate 15–25%, no persona > 35%, Hard ≥ 60% vs Normal) |
+| M5 | **Vertical slice** | Licensed art + audio pass, guided first week, contextual tips, full accessibility set, Gazette/decree content complete, balance tuning | Playtest #3 with new players who learn via the tutorial; 45–60 min median game |
+| M6 | **MVP complete** | All MVP content, polish, performance (60 fps, < 15 MB), `CREDITS.md`, itch.io HTML5 build | Unlisted itch release → friends-and-family playtest → public demo |
+| M7 | **Release prep** | Title/trademark clearance + repo rename, commissions (characters, Crown, boss, key art, themes), Steam page, online multiplayer technical spike | Go/no-go decision for Steam Next Fest / Early Access |
+
 ## Open Questions
 - **Cursed Crown numbers** (threshold, tax %, buff size). Tune via the balance simulator; the starting values are listed in the spec.
 - **Title clearance for "Usurpia".** An informal web search (2026-09-26) found no exact-match game; the nearest are *Usurper*-named titles. Before any public build, do a formal trademark search (USPTO/EUIPO), check Steam/itch/domain/social handles, then rename the repo.
@@ -584,5 +598,9 @@ Web-based (TypeScript, Phaser 3) spiritual sequel to Dokapon Kingdom as original
 - Royal Bonus Awards revealed before the tally.
 
 **Setting:** a satirical fairy-tale kingdom. A vain, bankrupt monarch will name as heir whoever brings in the most wealth by the deadline (the "Heir Auction"). The Cursed Crown is the monarch's pawned, sentient old crown. Working title: **Usurpia** (also the kingdom's name), pending trademark clearance; `Dokapon-kingdom-2` is only an internal codename.
+
+**Milestones (rules-first):**
+- M0 foundations → M1 combat core → M2 board core → M3 graybox client (first human playtest) → M4 griefing & Crown → M5 vertical slice → M6 MVP complete (itch.io) → M7 release prep.
+- Validation before M3 comes from unit tests and the headless balance sim.
 
 **Process:** work on `dev` and release from `main`. No fixed timeline. Online multiplayer, multi-region campaign and Steam packaging are post-MVP.
