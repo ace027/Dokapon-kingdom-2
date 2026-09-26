@@ -183,10 +183,10 @@ Resolution matrix (damage to defender unless noted; starting values for the sim)
 
 **Victory & endgame.**
 - **Deadline:** 3, 4 or 5 weeks (a week is one round-robin cycle × N turns, tuned for 45–60 minutes at 4 weeks with 4 players).
-- **Region boss:**
+- **Region boss: The Crown's Body** (see *Monster Roster Spec*):
   - The Boss Lair unlocks at the start of the final week.
-  - Any player may challenge it (a solo fight, rematches allowed on later visits).
-  - The victor gets a large asset bonus (tuning start: 25% of the leader's assets, minimum 3,000 G), and the game ends immediately after that turn.
+  - Any player may challenge it (a solo fight, rematches allowed on later visits). Its HP persists between challengers.
+  - Whoever lands the KO gets a large asset bonus (tuning start: 25% of the leader's assets, minimum 3,000 G) plus the boss's hoard, and the game ends immediately after that turn.
 - **Royal Bonus Awards:** before the final tally, the monarch reveals 3 random awards from a pool, each worth a fixed asset bonus (tuning start: 1,000 G). The pool:
   - Most Monsters Slain
   - Most Humiliated
@@ -277,6 +277,45 @@ Resolution matrix (damage to defender unless noted; starting values for the sim)
 
 **Balance notes:** item and spell data live in `packages/content` with zod schemas. The balance sim reports pick/win rates per item and spell; flag anything above a 60% win-rate delta.
 
+### Monster Roster Spec
+**Tone:** "monsters with day jobs." Every monster is a satirical worker of Usurpia's collapsing bureaucracy or economy. Battle flavor text is part of the joke (e.g. the Slime Intern's Counter is "Asks a clarifying question").
+
+**Tiers:** each zone is a difficulty tier by distance from the Castle. Palette-swapped "Senior" variants appear in the final week, +1 tier.
+
+| Zone (tier) | Monsters (4 each) |
+|---|---|
+| **Enchanted Forest** (T1) | Slime Intern (weak, tutorial-friendly); Mushroom Mail Carrier (poison); Squirrel Pickpocket (steals gold, flees fast); Treant Groundskeeper (tanky, slow) |
+| **Soggy Coast** (T2) | Crab Customs Officer (high DEF, Counter-heavy); Seagull Debt Collector (steals items); Mermaid Lifeguard (heals self); Pirate Accountant (Pickpocket Bolt caster) |
+| **Goblin Mines** (T3) | Goblin Tax Auditor (fines gold on hit); Golem Foreman (Strike-heavy); Bat Night-Shift (high SPD, drains); Mimic Vault Clerk (disguised as a Loot space, big drop) |
+| **Bureaucrat Bog** (T4) | Swamp Witch Notary (Hex); Bog Troll Bouncer (huge HP); Wisp Paperwork Spirit (Ward-heavy, magic-only damage); Ogre Middle Manager (buffs allies, strong all-rounder) |
+
+**Town guardians (3 archetypes, scaled per town tier):**
+| Guardian | Style |
+|----------|-------|
+| Landlord Lich | Magic |
+| Tollbridge Troll | Physical |
+| Knight of Foreclosure | Balanced |
+
+Each town also has a town-flavored name and title, e.g. "Knight of Foreclosure of Mudwick".
+
+**Cursed Crown summon (Summon power):** the **Crown Enforcer**, a floating gilded helmet with arms. Its stats scale with the wearer's level, and it Strikes often. A victim who loses pays a gold penalty into the Crown Hoard.
+
+**Region boss: The Crown's Body.**
+- **Awakening:** at the start of the final week, the Cursed Crown abandons any current wearer and forges a colossal golem body from the kingdom's melted treasury in the Boss Lair.
+  - A current wearer is treated as having *survived*, so they keep their hoard.
+  - The Crown no longer possesses players for the rest of the game.
+- **Fight:**
+  - Solo challenge, up to 5 rounds (a longer fight than standard battles).
+  - Boss HP persists between challengers: damage from failed attempts sticks, so late challengers can snipe the kill. This creates a tense race.
+  - Phases:
+    1. **Gilded Guard** (heavy Guard/Counter).
+    2. **Tax Frenzy** (steals gold on every hit into its own hoard).
+    3. **Last Decree** (Royal Decree spell, all-out).
+- **Reward:** whoever lands the KO gets the boss asset bonus (see Victory) **plus the boss's accumulated hoard**, and the game ends immediately after that turn.
+- **Failure:** challengers who lose are KO'd to the Temple, and their stolen gold stays in the boss's hoard.
+
+**AI notes:** each monster has a weighted command table (e.g. the Crab's Counter weight is high) plus 1–2 signature abilities. All definitions live in `packages/content` with tier stat curves so palette-swap variants are data-only.
+
 ### Cursed Crown Spec (comeback/villain mechanic)
 Original replacement for the Darkling. Design goal: the crown gives the trailing player real power, but most of the value is **at risk** until they survive, so the crown is never a free win and always creates a hunt.
 
@@ -350,6 +389,11 @@ Web-based (TypeScript, Phaser 3) spiritual sequel to Dokapon Kingdom as original
 - The **Cursed Crown**, an original comeback mechanic: it claims the trailing player (<40% of the leader's Assets at week start) for 3 turns and grants Tyrant's Tax, Blight, Summon and Crown Warp. Spoils go to a hoard the wearer keeps only by surviving; defeating the wearer claims it as a bounty.
 
 **Architecture:** pnpm monorepo with a pure deterministic headless rules engine (`core`, fully unit-tested, drives CPU AI and a balance simulator), a Phaser client (`client`) and data-driven content (`content`).
+
+**Monsters:**
+- ~20 satirical "monsters with day jobs", 4 per zone across 4 tiers (Forest → Coast → Mines → Bog).
+- 3 town-guardian archetypes and a Crown Enforcer summon.
+- Final boss **The Crown's Body**: the Cursed Crown's golem form. It awakens in the final week, ends all possession, keeps persistent HP across challengers and pays its hoard to whoever lands the KO.
 
 **Items & spells:**
 - Gear slots: Weapon/Shield/Accessory.
