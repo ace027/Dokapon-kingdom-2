@@ -6,6 +6,10 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "scripts": {
+    "validate": "tsx scripts/validate.ts",
+    "build": "tsx scripts/validate.ts"
+  },
   "dependencies": {
     "zod": "^4.6.5"
   }

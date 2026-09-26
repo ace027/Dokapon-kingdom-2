@@ -1,0 +1,19 @@
+{
+  "v": 1,
+  "items": [
+    {
+      "id": "herb",
+      "name": "Herb",
+      "kind": "consumable",
+      "price": 20,
+      "description": "Heals 30% HP."
+    },
+    {
+      "id": "rubber-chicken",
+      "name": "Rubber Chicken",
+      "kind": "joke",
+      "price": 0,
+      "description": "Squeaks."
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "v": 1,
+  "items": [
+    {
+      "id": "herb",
+      "name": "Herb",
+      "kind": "consumable",
+      "price": 20,
+      "description": "Heals 30% HP."
+    },
+    {
+      "id": "big-herb",
+      "name": "Big Herb",
+      "kind": "consumable",
+      "price": 60,
+      "description": "Heals 60% HP."
+    },
+    {
+      "id": "royal-elixir",
+      "name": "Royal Elixir",
+      "kind": "consumable",
+      "price": 200,
+      "description": "Fully restores HP."
+    },
+    {
+      "id": "swift-boots",
+      "name": "Swift Boots",
+      "kind": "consumable",
+      "price": 80,
+      "description": "Your next spin gets +3."
+    },
+    {
+      "id": "smoke-bomb",
+      "name": "Smoke Bomb",
+      "kind": "consumable",
+      "price": 50,
+      "description": "Guarantees escape from battle."
+    }
+  ]
+}

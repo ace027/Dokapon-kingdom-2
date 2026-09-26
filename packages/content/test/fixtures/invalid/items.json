@@ -1,0 +1,15 @@
+{
+  "v": 1,
+  "items": [
+    {
+      "id": "Bad Id",
+      "name": "",
+      "kind": "weapon",
+      "price": -1,
+      "description": "x",
+      "extra": true
+    },
+    { "id": "dup", "name": "A", "kind": "joke", "price": 1, "description": "a" },
+    { "id": "dup", "name": "B", "kind": "joke", "price": 1.5, "description": "b" }
+  ]
+}
