@@ -69,7 +69,11 @@ Task-level `> verification:` lines: Task 1 4/4, Task 2 3/3, Task 3 5/5. Frontmat
 | 6 | Invalid content data fails the build via zod | `pnpm vitest run packages/content/test/validate.test.ts` (CLI subprocess on the invalid fixture exits 1) |
 
 ## CI
-Pushed to `dev`; the GitHub Actions run for the pushed SHA is recorded in this section after it completes (see the follow-up commit).
+- **Run:** https://github.com/ace027/Dokapon-kingdom-2/actions/runs/36259612598 (CI run #4, event `push`, branch `dev`)
+- **Head SHA:** `c7c50743132aab06fbbc2c2d09a75f7f1455c535` (the plan 01-04 commit)
+- **Result:** `status: completed`, `conclusion: success`
+
+This commit only adds the run URL to this SUMMARY; `.planning/` is excluded from Prettier, and no code changed.
 
 ## Decisions / Deviations
 1. **p2 render assertion adapted (plan-internal conflict).** Task 3 asked that p2's render *not* contain `your note`. But the execution contract says the note line appears whenever `self` is non-null (`(none)` for a null note), and `viewFor` gives a seated player their own `self` (`{note: null}` for p2). Both contracts are kept; the test instead asserts that p2's render contains `your note: (none)` and does not contain `p1 secret` or `SecretSet`. The "no `your note` line" case is covered by the spectator render test. This preserves the assertion's intent (p2 never sees p1's note).
