@@ -64,15 +64,15 @@ This is essential for the indie-release goal.
 
 ## Feature Scope
 ### MVP
-- [ ] **Board:** one region map, 60–90 spaces with branches. Space types: Battle, Item, Loot, Gold, Town, Castle (home/quest giver), Shop, Temple (heal/revive), Event/Chance.
+- [ ] **Board:** one region map as an **open web** graph of 60–90 spaces with many branches; see *Map & Economy Spec*. Space types: Battle, Item, Loot, Gold, Town, Castle (home/quest giver), Shop, Temple (heal/revive), Event/Chance.
 - [ ] **Turn flow:** spinner (1–6, modifiable by items/magic), movement with path choice, space resolution, end turn. Weekly cycle (every N rounds) with a quest from the Castle.
 - [ ] **Classes:** 4 base classes (Warrior, Thief, Mage, Cleric) plus 2 hybrids (Spellblade, Shadowpriest). Character level combined with per-class mastery; see *Classes & Combat Spec*.
 - [ ] **Combat:** asymmetric attacker/defender exchanges. Attacker picks Attack / Strike / Spell; defender picks Guard / Counter / Ward. Monsters use a weighted AI. The same system is used for PvP; see *Classes & Combat Spec*.
 - [ ] **Gear & items:** weapon, shield, accessory slots, ~30 items, ~12 battle spells, ~8 field spells.
-- [ ] **Towns & assets:** 8–10 towns held by monsters. Liberate to own, invest gold to raise value, pay tax income each week. Rivals can seize them via PvP or a field spell.
+- [ ] **Towns & assets:** 8–10 towns held by monsters. Liberate to own, invest gold to raise value, and collect weekly tax as a % of value. Rivals can seize them via PvP or a field spell.
 - [ ] **PvP griefing:** on a PvP win, choose Steal Gold / Steal Item / Seize Town / Humiliate (rename, cosmetic "hairdo" debuff, face paint).
 - [ ] **Villain mechanic, the Cursed Crown:** a sentient crown possesses the trailing player for a few turns, granting sabotage powers with risk/reward stakes. This is the main comeback engine; see *Cursed Crown Spec* below.
-- [ ] **Victory:** turn limit (e.g. 4 weeks) or defeating the region boss; winner = highest Assets. Final-week bonus events keep races tight.
+- [ ] **Victory:** deadline of 3/4/5 weeks (chosen at setup). The optional region boss unlocks in the final week, and defeating it ends the game immediately with a big asset bonus. **Royal Bonus Awards** are revealed before the final tally. Winner = highest Assets.
 - [ ] **Players:** 1–4 humans in hot-seat plus CPU fill (Easy/Normal/Hard).
 - [ ] **Presentation:** 2D pixel art (placeholder/licensed packs first), basic SFX/music, keyboard/mouse plus gamepad basics.
 - [ ] **Save/Load:** serialize `GameState` to localStorage (with export file).
@@ -141,6 +141,63 @@ Resolution matrix (damage to defender unless noted; starting values for the sim)
 - Hot-seat secrecy: pass-the-device interstitial between choices (per Open Questions).
 - CPU/monster AI uses weighted choice tables that adapt to the opponent's history (e.g. CPUs learn when a player spams Strike).
 
+### Map & Economy Spec
+**Map shape: open web.**
+- A dense graph of 60–90 spaces with many junctions, similar to the original's overworld.
+- The Castle sits roughly central. Four themed zones (e.g. Enchanted Forest, Goblin Mines, Soggy Coast, Bureaucrat Bog) blend into each other with no hard walls.
+- Monster strength scales with distance from the Castle.
+- Authored in **Tiled**, exported to JSON. Nodes are spaces; edges are walkable links (bidirectional by default, some one-way).
+- **Readability safeguards:**
+  - After spinning, every reachable destination is highlighted with a path preview.
+  - Hover shows the space type and town info.
+  - The minimap shows player positions.
+  - The camera auto-frames the moving player.
+- **AI safeguards:** the `core` graph provides reachable-set and shortest-path queries. CPUs score destinations by utility (town targets, PvP opportunity, shop needs, risk).
+- **Space mix (starting ratio for ~75 spaces):**
+  | Type | Count |
+  |------|-------|
+  | Battle | 22 |
+  | Item / Loot / Gold | 16 |
+  | Town | 10 |
+  | Event/Chance | 8 |
+  | Empty | 6 |
+  | Shop | 4 |
+  | Temple | 3 |
+  | Crown Shrine (flavor; Summon target hotspot) | 2 |
+  | Castle, Boss Lair | 1 each |
+  | Warp gates (pairs) | 2 |
+- **Tuning target:** 2–3 PvP encounters per player per week.
+
+**Town economy: invest-to-grow.**
+- **Liberation:** landing on a monster-held town triggers a fight against its guardian. Winning grants ownership at **base value** (tuning start: 500–1,500 G, higher farther from the Castle).
+- **Invest:** when the owner lands on or passes through their town, they may invest gold, which raises town value 1:1 up to a cap (e.g. 3× base).
+- **Tax:** at each week start, owners receive **10% of each town's current value** as gold.
+- **Seizure:** a rival takes a town (keeping its full invested value) by:
+  - winning a PvP reward choice,
+  - the "Usurp" field spell, or
+  - defeating the town's re-spawned guardian if the town was Blighted.
+
+  This makes investment a big stored-wealth prize: safe-ish, not safe.
+- **Assets formula:** `gold + Σ(item sell value) + Σ(town value) + bonus awards`.
+- **Snowball brakes:** Cursed Crown targets the leader's wealth via Tax and Blight; the Cleric/Thief kits; the rival "seize" path; and the tax cap per player (tuning knob if the sim shows runaway leads).
+
+**Victory & endgame.**
+- **Deadline:** 3, 4 or 5 weeks (a week is one round-robin cycle × N turns, tuned for 45–60 minutes at 4 weeks with 4 players).
+- **Region boss:**
+  - The Boss Lair unlocks at the start of the final week.
+  - Any player may challenge it (a solo fight, rematches allowed on later visits).
+  - The victor gets a large asset bonus (tuning start: 25% of the leader's assets, minimum 3,000 G), and the game ends immediately after that turn.
+- **Royal Bonus Awards:** before the final tally, the monarch reveals 3 random awards from a pool, each worth a fixed asset bonus (tuning start: 1,000 G). The pool:
+  - Most Monsters Slain
+  - Most Humiliated
+  - Best Investor
+  - Biggest Thief
+  - Crown Survivor
+  - Most Steps Walked
+
+  Keep them cheeky and keep losers in contention.
+- **Reveal sequence:** awards → each player's asset breakdown, bottom to top → heir coronation plus humiliation montage of the runner-ups.
+
 ### Cursed Crown Spec (comeback/villain mechanic)
 Original replacement for the Darkling. Design goal: the crown gives the trailing player real power, but most of the value is **at risk** until they survive, so the crown is never a free win and always creates a hunt.
 
@@ -192,6 +249,8 @@ Original replacement for the Darkling. Design goal: the crown gives the trailing
 - **Final game title** (must be original, not "Dokapon"). The user wants more brainstorming. Current candidates: *Heir Apparently*, *Kingdom for Sale*, *Crown & Calamity*, *Throne Grabbers*. Resolve with a naming session plus a trademark/Steam/itch search before any public build; rename the repo at that point.
 - **Combat matrix multipliers, damage constants and LUCK caps.** Starting values are in the spec; tune with the balance simulator.
 - **Hybrid unlock threshold** (mastery rank 3 in two classes). Validate in playtests that hybrids are reachable within a 45–60 minute game.
+- **Economy numbers** (town base values, investment cap, 10% tax, boss bonus, award value, turns per week). Tune with the balance sim toward 45–60 minute games and a last-week comeback rate of ~30%.
+- **Open-web map readability.** Validate with a first playtest; fall back to fewer junctions if players feel lost.
 - **Hot-seat secrecy UX** (pass-the-device vs simultaneous split input). Prototype both in the first combat milestone.
 - **Art sourcing** (commissioned vs licensed packs). Placeholder packs first; decide before the vertical slice.
 - **Online stack choice** (Colyseus vs custom WebSocket). Deferred to post-MVP; the core design keeps it open.
@@ -209,6 +268,12 @@ Web-based (TypeScript, Phaser 3) spiritual sequel to Dokapon Kingdom as original
 - The **Cursed Crown**, an original comeback mechanic: it claims the trailing player (<40% of the leader's Assets at week start) for 3 turns and grants Tyrant's Tax, Blight, Summon and Crown Warp. Spoils go to a hoard the wearer keeps only by surviving; defeating the wearer claims it as a bounty.
 
 **Architecture:** pnpm monorepo with a pure deterministic headless rules engine (`core`, fully unit-tested, drives CPU AI and a balance simulator), a Phaser client (`client`) and data-driven content (`content`).
+
+**Map & economy:**
+- Open-web graph map (60–90 spaces, Tiled-authored, 4 blended zones around a central Castle) with reachable-space previews.
+- Invest-to-grow towns: liberate at base value, invest to raise value up to 3×, weekly 10% tax, rivals can seize.
+- Deadline of 3/4/5 weeks, with an optional final-week region boss that ends the game with a big asset bonus.
+- Royal Bonus Awards revealed before the tally.
 
 **Setting:** a satirical fairy-tale kingdom. A vain, bankrupt monarch will name as heir whoever brings in the most wealth by the deadline (the "Heir Auction"). The Cursed Crown is the monarch's pawned, sentient old crown. The title is still undecided; `Dokapon-kingdom-2` is only an internal codename.
 
