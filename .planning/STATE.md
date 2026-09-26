@@ -23,3 +23,7 @@
 
 ## Next Action
 Run `/legion:build` to execute Phase 1: Foundations & Deterministic Engine
+
+## GitHub
+- Phase 1 issue: #1 — https://github.com/ace027/Dokapon-kingdom-2/issues/1 (label: legion)
+- GitHub access: via GitHub MCP tools (no `gh` CLI in this environment)
