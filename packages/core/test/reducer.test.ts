@@ -242,3 +242,220 @@ describe("isAction", () => {
     expect(isAction(null)).toBe(false);
   });
 });
+
+describe("untrusted action canonicalization", () => {
+  it("reads a getter exactly once (amount 5, then NaN)", () => {
+    let reads = 0;
+    const action = {
+      v: 1,
+      type: "sample/increment",
+      playerId: "p1",
+      get amount() {
+        reads += 1;
+        return reads === 1 ? 5 : Number.NaN;
+      },
+    };
+    const result = reduce(start(), action);
+    expect(reads).toBe(1);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.state.public.counter).toBe(5);
+      expect(result.events).toEqual([
+        {
+          v: 1,
+          type: "CounterIncremented",
+          visibility: { kind: "public" },
+          playerId: "p1",
+          amount: 5,
+          counter: 5,
+        },
+      ]);
+    }
+  });
+
+  it("rejects a sparse required array with INVALID_PAYLOAD", () => {
+    const required: unknown[] = [];
+    required[1] = "p1";
+    expect(0 in required).toBe(false);
+    expectReject(start(), { ...OPEN, required }, "INVALID_PAYLOAD");
+    expect(isAction({ ...OPEN, required })).toBe(false);
+  });
+
+  it.each<[string, ProxyHandler<object>, RejectCode]>([
+    [
+      "get throws",
+      {
+        get() {
+          throw new Error("boom");
+        },
+      },
+      "INVALID_PAYLOAD",
+    ],
+    [
+      "ownKeys throws",
+      {
+        ownKeys() {
+          throw new Error("boom");
+        },
+      },
+      "INVALID_PAYLOAD",
+    ],
+    [
+      "getPrototypeOf throws",
+      {
+        getPrototypeOf() {
+          throw new Error("boom");
+        },
+      },
+      "UNSUPPORTED_VERSION",
+    ],
+  ])("returns a reject (never throws) for a Proxy whose %s", (_label, handler, code) => {
+    const action = new Proxy({ v: 1, type: "sample/roll", playerId: "p1" }, handler);
+    expect(() => reduce(start(), action)).not.toThrow();
+    expectReject(start(), action, code);
+    expect(() => isAction(action)).not.toThrow();
+    expect(isAction(action)).toBe(false);
+  });
+
+  it("a playerId getter cannot switch to __proto__ after the actor check", () => {
+    let reads = 0;
+    const action = {
+      v: 1,
+      type: "sample/setSecret",
+      get playerId() {
+        reads += 1;
+        return reads === 1 ? "p1" : "__proto__";
+      },
+      note: "x",
+    };
+    const { state, events } = step(start(), action);
+    expect(reads).toBe(1);
+    expect(Object.keys(state.private).sort()).toEqual(["p1", "p2"]);
+    expect(Object.hasOwn(state.private, "__proto__")).toBe(false);
+    expect(Object.getPrototypeOf(state.private)).toBe(Object.prototype);
+    expect(state.private.p1).toEqual({ note: "x" });
+    expect(events[0]?.visibility).toEqual({ kind: "players", ids: ["p1"] });
+  });
+
+  it("rejects a __proto__ playerId outright", () => {
+    const action = JSON.parse(
+      '{"v":1,"type":"sample/setSecret","playerId":"__proto__","note":"x"}',
+    ) as unknown;
+    expectReject(start(), action, "WRONG_ACTOR");
+  });
+
+  it("rejects class instances and non-JSON values by version", () => {
+    class Roll {
+      v = 1;
+      type = "sample/roll";
+      playerId = "p1";
+    }
+    expectReject(start(), new Roll(), "UNSUPPORTED_VERSION");
+    expectReject(start(), Number.NaN, "UNSUPPORTED_VERSION");
+    expectReject(start(), () => 1, "UNSUPPORTED_VERSION");
+  });
+});
+
+describe("reject messages", () => {
+  const long = "x".repeat(1000);
+
+  it.each<[string, () => GameState, unknown, RejectCode]>([
+    ["WRONG_ACTOR", start, { v: 1, type: "sample/roll", playerId: long }, "WRONG_ACTOR"],
+    [
+      "STALE_DECISION",
+      inDecision,
+      { v: 1, type: "timeout", playerId: "system", decisionId: long },
+      "STALE_DECISION",
+    ],
+  ])("%s echoes at most 64 chars of attacker input", (_label, make, action, code) => {
+    const result = reduce(make(), action);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe(code);
+      expect(result.error.message).toContain(`${"x".repeat(64)}…`);
+      expect(result.error.message).not.toContain("x".repeat(65));
+      expect(result.error.message.length).toBeLessThan(64 + 60);
+    }
+  });
+});
+
+describe("malformed in-memory state", () => {
+  function malformed(patch: (draft: Record<string, Record<string, unknown>>) => void): GameState {
+    const draft = JSON.parse(stableStringify(inDecision())) as Record<
+      string,
+      Record<string, unknown>
+    >;
+    patch(draft);
+    return draft as unknown as GameState;
+  }
+
+  const commitP1 = { v: 1, type: "decision/commit", playerId: "p1", decisionId: "d1", choice: "A" };
+  const timeoutD1 = { v: 1, type: "timeout", playerId: "system", decisionId: "d1" };
+
+  it.each<[string, (d: Record<string, Record<string, unknown>>) => void]>([
+    [
+      "pending missing",
+      (d) => {
+        delete d.public?.pending;
+      },
+    ],
+    [
+      "pending null",
+      (d) => {
+        if (d.public) d.public.pending = null;
+      },
+    ],
+    [
+      "pending {}",
+      (d) => {
+        if (d.public) d.public.pending = {};
+      },
+    ],
+    [
+      "pending.required not an array",
+      (d) => {
+        if (d.public) d.public.pending = { id: "d1" };
+      },
+    ],
+    [
+      "decision missing",
+      (d) => {
+        delete d.hidden?.decision;
+      },
+    ],
+    [
+      "decision.choices not an object",
+      (d) => {
+        if (d.hidden) d.hidden.decision = { id: "d1", defaultChoice: "A", choices: 3 };
+      },
+    ],
+    [
+      "players not an array",
+      (d) => {
+        if (d.public) d.public.players = "p1";
+      },
+    ],
+  ])("never throws when %s", (_label, patch) => {
+    const state = malformed(patch);
+    for (const action of [
+      commitP1,
+      timeoutD1,
+      OPEN,
+      { v: 1, type: "sample/roll", playerId: "p1" },
+    ]) {
+      let result: ReturnType<typeof reduce> | undefined;
+      expect(() => {
+        result = reduce(state, action);
+      }).not.toThrow();
+      expect(result).toBeDefined();
+    }
+  });
+
+  it("rejects commit/timeout against a missing decision instead of applying them", () => {
+    const state = malformed((d) => {
+      delete d.public?.pending;
+    });
+    expectReject(state, commitP1, "WRONG_ACTOR");
+    expectReject(state, timeoutD1, "STALE_DECISION");
+  });
+});

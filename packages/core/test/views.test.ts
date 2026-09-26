@@ -10,7 +10,7 @@ import {
   type GameState,
   type Viewer,
 } from "../src/index";
-import { arbScript, arbSettings } from "./arbitraries";
+import { arbGame } from "./arbitraries";
 
 const sentinel = (playerId: string): string => `__SECRET_${playerId}__`;
 
@@ -142,7 +142,7 @@ describe("redactEvent / eventsFor", () => {
 describe("leak property", () => {
   it("never shows hidden state or another player's secret to any viewer", () => {
     fc.assert(
-      fc.property(arbSettings, arbScript, (settings, script) => {
+      fc.property(arbGame, ([settings, script]) => {
         const players = settings.players;
         const viewers: Viewer[] = [...players, "spectator"];
 
@@ -156,13 +156,33 @@ describe("leak property", () => {
         for (const p of players) expect(JSON.stringify(viewFor(state, p))).toContain(sentinel(p));
 
         const check = () => {
+          const decision = state.hidden.decision;
           for (const viewer of viewers) {
             const view = viewFor(state, viewer);
             const json = JSON.stringify(view);
             const eventsJson = JSON.stringify(eventsFor(events, viewer));
+            // The view is exactly the public partition plus the viewer's own private entry.
+            expect(Object.keys(view).sort()).toEqual(["public", "self", "v", "viewer"]);
+            expect(view.public).toEqual(state.public);
+            expect(view.self).toEqual(
+              Object.hasOwn(state.private, viewer) ? state.private[viewer] : null,
+            );
             expect("hidden" in view).toBe(false);
             expect(json).not.toContain('"rng"');
             expect(json).not.toContain('"decisionSeq"');
+            expect(json).not.toContain('"defaultChoice"');
+            if (decision !== null) {
+              // Beyond `public` (checked equal to state.public above), nothing may carry another
+              // player's committed choice while the decision is still hidden.
+              const restJson = JSON.stringify({ ...view, public: null });
+              expect(restJson).not.toContain('"choices"');
+              for (const [other, choice] of Object.entries(decision.choices)) {
+                if (other === viewer) continue;
+                expect(restJson).not.toContain(
+                  `${JSON.stringify(other)}:${JSON.stringify(choice)}`,
+                );
+              }
+            }
             for (const other of players) {
               if (other === viewer) continue;
               expect(json).not.toContain(sentinel(other));

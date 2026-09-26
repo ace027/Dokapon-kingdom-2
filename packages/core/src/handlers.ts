@@ -3,6 +3,7 @@ import { PUBLIC, onlyPlayers, type GameEvent } from "./events";
 import type { Reject } from "./reducer";
 import type { RngState } from "./rng";
 import type { Choice, GameState, Phase, PlayerId } from "./types";
+import { clip, isChoice, isPlainObject, isStringArray, isUnique, ownGet } from "./validation";
 
 /** Handler-local randomness. `int` draws via `nextInt` and advances `rng`. */
 export interface Ctx {
@@ -41,19 +42,22 @@ function hasBase(raw: Record<string, unknown>, type: Action["type"]): boolean {
   return raw.v === 1 && raw.type === type && typeof raw.playerId === "string";
 }
 
-function isChoice(value: unknown): value is Choice {
-  return value === "A" || value === "B" || value === "C";
-}
-
 function reject(code: Reject["code"], message: string): Reject {
   return { code, message };
 }
 
-/** The open decision's public and hidden halves, or null if they are missing or disagree. */
-function openDecision(s: GameState) {
-  const pending = s.public.pending;
-  const decision = s.hidden.decision;
-  if (pending === null || decision?.id !== pending.id) return null;
+/**
+ * The open decision's public and hidden halves, or null if they are missing, malformed or
+ * disagree. Tolerates a malformed in-memory state (`== null`, array checks) so that `reduce`
+ * rejects with STALE_DECISION / WRONG_ACTOR instead of throwing.
+ */
+export function openDecision(s: GameState) {
+  const pending = s.public.pending as GameState["public"]["pending"] | undefined;
+  const decision = s.hidden.decision as GameState["hidden"]["decision"] | undefined;
+  if (pending == null || decision == null) return null;
+  if (typeof pending.id !== "string" || decision.id !== pending.id) return null;
+  if (!Array.isArray(pending.required) || !Array.isArray(pending.committed)) return null;
+  if (!isPlainObject(decision.choices)) return null;
   return { pending, decision };
 }
 
@@ -70,18 +74,22 @@ function staleDecision(s: GameState, decisionId: string): Reject | null {
   const open = openDecision(s);
   return open?.pending.id === decisionId
     ? null
-    : reject("STALE_DECISION", `decision ${decisionId} is not the open decision`);
+    : reject("STALE_DECISION", `decision ${clip(decisionId)} is not the open decision`);
 }
 
-/** Choices keyed in `required` order (stableStringify sorts anyway). */
+/**
+ * Choices keyed in `required` order (stableStringify sorts anyway). Lookups are own-property
+ * only, so an id like `toString` gets its committed choice or `fallback`, never a prototype
+ * member; `fromEntries` defines own data properties, so no id reaches a prototype setter.
+ */
 function orderedChoices(
   required: readonly PlayerId[],
   choices: Readonly<Record<PlayerId, Choice>>,
   fallback: Choice,
 ): Record<PlayerId, Choice> {
-  const out: Record<PlayerId, Choice> = {};
-  for (const p of required) out[p] = choices[p] ?? fallback;
-  return out;
+  return Object.fromEntries(
+    required.map((p): [PlayerId, Choice] => [p, ownGet(choices, p) ?? fallback]),
+  );
 }
 
 /** Reveal: emit ChoicesRevealed, set lastReveal, clear pending/decision, return to 'turn'. */
@@ -139,7 +147,8 @@ export const handlers = {
       hasBase(raw, "sample/roll") && hasExactKeys(raw, []),
     apply: (s, a, ctx) => {
       const value = ctx.int(1, 6);
-      const { players, activePlayer } = s.public;
+      const { activePlayer } = s.public;
+      const players: readonly PlayerId[] = Array.isArray(s.public.players) ? s.public.players : [];
       const nextPlayer = players[(players.indexOf(activePlayer) + 1) % players.length];
       const turn = s.public.turn + 1;
       const nextActive = nextPlayer ?? activePlayer;
@@ -190,16 +199,16 @@ export const handlers = {
     guard: (raw): raw is ActionOf<"decision/open"> =>
       hasBase(raw, "decision/open") &&
       hasExactKeys(raw, ["required", "defaultChoice"]) &&
-      Array.isArray(raw.required) &&
-      raw.required.every((p) => typeof p === "string") &&
+      isStringArray(raw.required) &&
       isChoice(raw.defaultChoice),
     validate: (s, a) => {
       const { required } = a;
       if (required.length === 0) return reject("INVALID_PAYLOAD", "required must be non-empty");
-      if (new Set(required).size !== required.length) {
+      if (!isUnique(required)) {
         return reject("INVALID_PAYLOAD", "required must not contain duplicates");
       }
-      if (!required.every((p) => s.public.players.includes(p))) {
+      const players: readonly PlayerId[] = Array.isArray(s.public.players) ? s.public.players : [];
+      if (!required.every((p) => players.includes(p))) {
         return reject("INVALID_PAYLOAD", "required must only contain players");
       }
       return null;
@@ -237,8 +246,8 @@ export const handlers = {
       isChoice(raw.choice),
     validate: (s, a) =>
       staleDecision(s, a.decisionId) ??
-      (s.public.pending?.committed.includes(a.playerId)
-        ? reject("ALREADY_COMMITTED", `${a.playerId} already committed`)
+      (openDecision(s)?.pending.committed.includes(a.playerId)
+        ? reject("ALREADY_COMMITTED", `${clip(a.playerId)} already committed`)
         : null),
     apply: (s, a) => {
       const { pending, decision } = requireOpenDecision(s);

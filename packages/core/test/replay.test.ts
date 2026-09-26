@@ -11,7 +11,7 @@ import {
   type GameSettings,
   type GameState,
 } from "../src/index";
-import { arbScript, arbSettings } from "./arbitraries";
+import { arbGame } from "./arbitraries";
 
 function deepFreeze<T>(value: T): T {
   if (typeof value === "object" && value !== null && !Object.isFrozen(value)) {
@@ -38,7 +38,7 @@ function foldFrom(state: GameState, script: readonly unknown[]): GameState {
 describe("replay properties", () => {
   it("is deterministic", () => {
     fc.assert(
-      fc.property(arbSettings, arbScript, (settings, script) => {
+      fc.property(arbGame, ([settings, script]) => {
         const a = run(settings, script);
         const b = run(settings, script);
         expect(stableStringify(a.state)).toBe(stableStringify(b.state));
@@ -52,7 +52,7 @@ describe("replay properties", () => {
 
   it("reduce never throws and never mutates a deep-frozen input", () => {
     fc.assert(
-      fc.property(arbSettings, arbScript, (settings, script) => {
+      fc.property(arbGame, ([settings, script]) => {
         let state = run(settings, []).state;
         for (const action of script) {
           deepFreeze(state);
@@ -69,20 +69,21 @@ describe("replay properties", () => {
     );
   });
 
-  it("rejections leave the prior state object in force", () => {
+  it("a rejection leaves the input state unmodified and matches replay's rejection indices", () => {
     fc.assert(
-      fc.property(arbSettings, arbScript, (settings, script) => {
+      fc.property(arbGame, ([settings, script]) => {
         const expected = run(settings, script);
         let state = run(settings, []).state;
         const rejectedAt: number[] = [];
         script.forEach((action, index) => {
           const prior = state;
+          const snapshotBefore = stableStringify(prior);
           const result = reduce(prior, action);
           if (result.ok) {
             state = result.state;
           } else {
-            expect(result.ok).toBe(false);
-            expect(state).toBe(prior);
+            expect(stableStringify(prior)).toBe(snapshotBefore);
+            expect("state" in result).toBe(false);
             rejectedAt.push(index);
           }
         });
@@ -95,7 +96,7 @@ describe("replay properties", () => {
 
   it("survives serialize/deserialize at any split point", () => {
     fc.assert(
-      fc.property(arbSettings, arbScript, fc.nat(), (settings, script, rawSplit) => {
+      fc.property(arbGame, fc.nat(), ([settings, script], rawSplit) => {
         const k = Math.min(rawSplit, script.length);
         const head = run(settings, script.slice(0, k)).state;
         const restored = deserialize(serialize(head));
@@ -108,7 +109,7 @@ describe("replay properties", () => {
   });
 
   it("generated scripts reach decisions and reveals", () => {
-    const samples = fc.sample(fc.tuple(arbSettings, arbScript), { numRuns: 300, seed: 42 });
+    const samples = fc.sample(arbGame, { numRuns: 300, seed: 42 });
     const types = new Set(
       samples.flatMap(([s, script]) => run(s, script).events.map((e) => e.type)),
     );
@@ -140,6 +141,8 @@ describe("replay example", () => {
     expect(result.rejections[0]?.error.code).toBe("WRONG_ACTOR");
     expect(result.state.public.turn).toBe(3);
     expect(result.state.public.counter).toBe(3);
+    // Pinned before the review-cycle-1 fixes; hardening must not change reachable states.
+    expect(hashState(result.state)).toBe("edac7d4a");
     expect(result.events.map((e) => e.type)).toEqual([
       "Rolled",
       "TurnAdvanced",

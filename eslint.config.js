@@ -40,6 +40,8 @@ export default tseslint.config(
   },
   {
     files: ["packages/core/src/**/*.ts"],
+    // Inline `eslint-disable` comments must not be able to switch purity rules off in core.
+    linterOptions: { noInlineConfig: true },
     rules: {
       "no-restricted-globals": [
         "error",
@@ -54,6 +56,27 @@ export default tseslint.config(
         { name: "process", message: `No Node globals in core. ${PURITY}` },
         { name: "globalThis", message: `No ambient global access in core. ${PURITY}` },
         { name: "console", message: `No I/O in core; emit events instead. ${PURITY}` },
+        { name: "Intl", message: `No locale/time-zone dependent APIs in core. ${PURITY}` },
+        { name: "Reflect", message: `No reflective escape hatches in core. ${PURITY}` },
+        { name: "eval", message: `No dynamic code in core. ${PURITY}` },
+        { name: "Function", message: `No dynamic code in core. ${PURITY}` },
+        { name: "WeakRef", message: `No GC-observable behaviour in core. ${PURITY}` },
+        { name: "FinalizationRegistry", message: `No GC-observable behaviour in core. ${PURITY}` },
+        { name: "require", message: `No module loading in core. ${PURITY}` },
+      ],
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "ImportExpression",
+          message: `No dynamic import() in core. ${PURITY}`,
+        },
+        {
+          // Math may only be used as `Math.<name>` (so no-restricted-properties sees every access);
+          // aliasing (`const M = Math`), passing, destructuring or computed access is banned.
+          selector:
+            "Identifier[name='Math']:not(MemberExpression[computed=false] > Identifier.object):not(MemberExpression[computed=false] > Identifier.property):not(Property > Identifier.key)",
+          message: `Use Math only as Math.<member>; aliasing hides Math.random. ${PURITY}`,
+        },
       ],
       "no-restricted-properties": [
         "error",
@@ -62,6 +85,19 @@ export default tseslint.config(
       "no-restricted-imports": [
         "error",
         {
+          // Bare Node builtins by exact name (`paths`, not `patterns`, so local `./events` stays legal).
+          paths: [
+            "crypto",
+            "os",
+            "child_process",
+            "module",
+            "worker_threads",
+            "perf_hooks",
+            "util",
+            "events",
+            "url",
+            "buffer",
+          ].map((name) => ({ name, message: "core must stay pure and dependency-free" })),
           patterns: [
             {
               group: [

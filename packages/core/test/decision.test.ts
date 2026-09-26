@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { GameEvent } from "../src/events";
 import { createGame } from "../src/game";
 import { reduce, type RejectCode } from "../src/reducer";
+import { deserialize, hashState, serialize } from "../src/serialize";
 import type { GameState } from "../src/types";
+import { viewFor } from "../src/views";
 
 function step(
   state: GameState,
@@ -180,6 +182,64 @@ describe("decision commit/reveal", () => {
       decisionId: "d2",
       choices: { p2: "B" },
       timedOut: [],
+    });
+  });
+
+  describe("player ids that are Object.prototype member names", () => {
+    it.each<[string, string[]]>([
+      ["toString / valueOf", ["toString", "valueOf"]],
+      ["hasOwnProperty / isPrototypeOf", ["hasOwnProperty", "isPrototypeOf"]],
+      ["toString / p2", ["toString", "p2"]],
+    ])("timeout reveals plain default choices for %s", (_label, players) => {
+      const s0 = createGame({ v: 1, seed: "x", players });
+      const s1 = step(s0, open(players, "A")).state;
+      const { state, events } = step(s1, timeout());
+      const expected = Object.fromEntries(players.map((p) => [p, "A"]));
+      expect(state.public.lastReveal).toEqual({
+        decisionId: "d1",
+        choices: expected,
+        timedOut: players,
+      });
+      const choices = state.public.lastReveal?.choices ?? {};
+      for (const p of players) {
+        expect(Object.hasOwn(choices, p)).toBe(true);
+        expect(typeof choices[p]).toBe("string");
+      }
+      expect(events.at(-1)).toMatchObject({ type: "ChoicesRevealed", choices: expected });
+      expect(() => serialize(state)).not.toThrow();
+      expect(() => hashState(state)).not.toThrow();
+      expect(deserialize(serialize(state))).toEqual(state);
+      for (const viewer of [...players, "spectator"]) {
+        const json = JSON.stringify(viewFor(state, viewer));
+        for (const p of players) expect(json).toContain(`"${p}":"A"`);
+      }
+    });
+
+    it("keeps a committed choice for toString and defaults valueOf", () => {
+      const players = ["toString", "valueOf"];
+      const s1 = step(createGame({ v: 1, seed: "x", players }), open(players, "C")).state;
+      const s2 = step(s1, commit("toString", "B")).state;
+      expect(rejectCode(s2, commit("toString", "A"))).toBe("ALREADY_COMMITTED");
+      const { state } = step(s2, timeout());
+      expect(state.public.lastReveal).toEqual({
+        decisionId: "d1",
+        choices: { toString: "B", valueOf: "C" },
+        timedOut: ["valueOf"],
+      });
+    });
+
+    it("gives a prototype-named viewer only its own private state", () => {
+      const players = ["toString", "valueOf"];
+      const s0 = createGame({ v: 1, seed: "x", players });
+      const { state } = step(s0, {
+        v: 1,
+        type: "sample/setSecret",
+        playerId: "valueOf",
+        note: "v",
+      });
+      expect(viewFor(state, "toString").self).toEqual({ note: null });
+      expect(viewFor(state, "valueOf").self).toEqual({ note: "v" });
+      expect(viewFor(state, "hasOwnProperty").self).toBeNull();
     });
   });
 });

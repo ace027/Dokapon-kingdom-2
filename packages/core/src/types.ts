@@ -16,9 +16,12 @@ export const RESERVED_IDS: readonly string[] = [
 ] as const;
 
 export type PlayerId = string;
-// Spec contract: the union documents that `system` is a valid actor even though it widens to string.
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-export type Actor = PlayerId | typeof SYSTEM_ACTOR;
+/**
+ * Who may send an action: any {@link PlayerId} or {@link SYSTEM_ACTOR} (`'system'`). The spec
+ * writes this as `PlayerId | typeof SYSTEM_ACTOR`; that union widens to `string`, so it is
+ * spelled as the (identical) `PlayerId` alias to avoid a redundant-constituent lint suppression.
+ */
+export type Actor = PlayerId;
 export type Phase = "turn" | "decision";
 /** Sample hidden-choice alphabet. */
 export type Choice = "A" | "B" | "C";

@@ -6,6 +6,8 @@ import { loadContentDir } from "../src/load";
 import { validateContent, type ContentEntry } from "../src/validate";
 
 const USAGE = "usage: validate [--dir <path>]";
+/** Optional data-dir override for the `build` script (which takes no args); `--dir` wins over it. */
+const DIR_ENV = "USURPIA_CONTENT_DIR";
 
 function usageError(): never {
   console.error(USAGE);
@@ -13,7 +15,11 @@ function usageError(): never {
 }
 
 function parseArgs(args: readonly string[]): string {
-  let dir = fileURLToPath(new URL("../data/", import.meta.url));
+  const fromEnv = process.env[DIR_ENV];
+  let dir =
+    fromEnv !== undefined && fromEnv !== ""
+      ? path.resolve(process.cwd(), fromEnv)
+      : fileURLToPath(new URL("../data/", import.meta.url));
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     const value = args[i + 1];

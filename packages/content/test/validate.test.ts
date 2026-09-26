@@ -231,9 +231,64 @@ describe("validate CLI (subprocess)", () => {
     expect(result.stderr).toContain("usage: validate [--dir <path>]");
   });
 
+  it("honours USURPIA_CONTENT_DIR, with --dir taking precedence", () => {
+    const env = { ...process.env, USURPIA_CONTENT_DIR: fixturesDir("invalid") };
+    const viaEnv = spawnSync(process.execPath, [tsxCli, scriptPath], {
+      encoding: "utf8",
+      cwd: repoRoot,
+      env,
+    });
+    expect(viaEnv.status).toBe(1);
+    const dirWins = spawnSync(
+      process.execPath,
+      [tsxCli, scriptPath, "--dir", fixturesDir("valid")],
+      {
+        encoding: "utf8",
+        cwd: repoRoot,
+        env,
+      },
+    );
+    expect(dirWins.status).toBe(0);
+  });
+
   it("exits 2 when the dir does not exist", () => {
     const result = runCli("--dir", path.join(os.tmpdir(), "usurpia-does-not-exist-9f3c"));
     expect(result.status).toBe(2);
     expect(result.stderr).toContain("error: content dir not found:");
+  });
+});
+
+describe("content build script (the real `pnpm build` gate)", () => {
+  const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
+  const manifestPath = fileURLToPath(new URL("../package.json", import.meta.url));
+
+  it("wires scripts.build to scripts/validate.ts", () => {
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
+      scripts?: Record<string, string>;
+    };
+    expect(manifest.scripts?.build).toMatch(/(^|\s)tsx scripts\/validate\.ts(\s|$)/);
+  });
+
+  function runBuild(env: NodeJS.ProcessEnv) {
+    return spawnSync("pnpm", ["--filter", "@usurpia/content", "run", "build"], {
+      encoding: "utf8",
+      cwd: repoRoot,
+      env,
+    });
+  }
+
+  it("fails (exit 1) when pointed at the invalid fixture dir", () => {
+    const result = runBuild({ ...process.env, USURPIA_CONTENT_DIR: fixturesDir("invalid") });
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("✗ items.json items.0.id:");
+  });
+
+  it("passes (exit 0) on the shipped data", () => {
+    const env = { ...process.env };
+    delete env.USURPIA_CONTENT_DIR;
+    const result = runBuild(env);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("✓ content valid");
   });
 });

@@ -12,7 +12,8 @@ const cliPath = fileURLToPath(new URL("../src/cli.ts", import.meta.url));
 const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
 const tsxCli = createRequire(import.meta.url).resolve("tsx/cli");
 
-const LINE = /^hash=[0-9a-f]{8} turn=3 counter=3 events=10 rejections=1$/;
+/** Pinned: the fixture's final-state hash must not drift (it predates review cycle 1's fixes). */
+const LINE = /^hash=595a3c9a turn=3 counter=3 events=10 rejections=1$/;
 
 function runCli(...args: string[]) {
   return spawnSync(process.execPath, [tsxCli, cliPath, ...args], {
@@ -130,6 +131,44 @@ describe("sim CLI", () => {
     const result = runCli("replay", "packages/sim/fixtures/sample-game.json");
     expect(result.status).toBe(0);
     expect(result.stdout.trim()).toMatch(LINE);
+  });
+
+  it("replays players named after Object.prototype members through a timeout", () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "usurpia-sim-proto-"));
+    try {
+      const players = ["toString", "valueOf", "hasOwnProperty"];
+      const filePath = path.join(tempDir, "proto.json");
+      fs.writeFileSync(
+        filePath,
+        JSON.stringify({
+          settings: { v: 1, seed: "x", players },
+          actions: [
+            {
+              v: 1,
+              type: "decision/open",
+              playerId: "system",
+              required: players,
+              defaultChoice: "A",
+            },
+            { v: 1, type: "decision/commit", playerId: "valueOf", decisionId: "d1", choice: "B" },
+            { v: 1, type: "timeout", playerId: "system", decisionId: "d1" },
+          ],
+        }),
+      );
+      const result = runCli("replay", filePath);
+      expect(result.stderr).toBe("");
+      expect(result.status).toBe(0);
+      expect(result.stdout.trim()).toMatch(
+        /^hash=[0-9a-f]{8} turn=1 counter=0 events=5 rejections=0$/,
+      );
+      expect(replayFile(filePath).result.state.public.lastReveal).toEqual({
+        decisionId: "d1",
+        choices: { toString: "A", valueOf: "B", hasOwnProperty: "A" },
+        timedOut: ["toString", "hasOwnProperty"],
+      });
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 
   it("prints an error and exits 2 for a missing file", () => {
