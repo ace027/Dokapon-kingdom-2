@@ -2,7 +2,7 @@
 
 ## Phases
 
-- [ ] Phase 1: Foundations & Deterministic Engine (4 plans)
+- [x] Phase 1: Foundations & Deterministic Engine (4 plans)
 - [ ] Phase 2: Combat Core & Balance Sim (5 plans)
 - [ ] Phase 3: Board, Economy & CPU AI Core (6 plans)
 - [ ] Phase 4: Graybox Client & Hot-Seat Play (5 plans)
@@ -119,7 +119,7 @@
 
 | Phase | Plans | Completed | Status |
 |-------|-------|-----------|--------|
-| 1. Foundations & Deterministic Engine | 4 | 3 | In progress |
+| 1. Foundations & Deterministic Engine | 4 | 4 | Complete |
 | 2. Combat Core & Balance Sim | 5 | 0 | Not started |
 | 3. Board, Economy & CPU AI Core | 6 | 0 | Not started |
 | 4. Graybox Client & Hot-Seat Play | 5 | 0 | Not started |
