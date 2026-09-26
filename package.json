@@ -1,0 +1,32 @@
+{
+  "name": "usurpia",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "lint:purity": "node scripts/check-core-purity.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "build": "pnpm -r --if-present run build",
+    "sim": "tsx packages/sim/src/cli.ts",
+    "validate:content": "pnpm --filter @usurpia/content run validate"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.4",
+    "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "fast-check": "^4.10.2",
+    "prettier": "^3.9.9",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.70.1",
+    "vitest": "^5.0.2"
+  }
+}
