@@ -58,8 +58,8 @@ This is essential for the indie-release goal.
 ### MVP
 - [ ] **Board:** one region map, 60–90 spaces with branches. Space types: Battle, Item, Loot, Gold, Town, Castle (home/quest giver), Shop, Temple (heal/revive), Event/Chance.
 - [ ] **Turn flow:** spinner (1–6, modifiable by items/magic), movement with path choice, space resolution, end turn. Weekly cycle (every N rounds) with a quest from the Castle.
-- [ ] **Classes (4):** Warrior, Mage, Thief, Cleric (renamed/rethemed originals), levels 1–~20, stat growth and one passive each. Class switching at the Castle.
-- [ ] **Combat:** hidden simultaneous choice among Attack / Strike / Counter / Magic / Defend. Speed determines initiative. Monsters use a weighted AI. The same system is used for PvP.
+- [ ] **Classes:** 4 base classes (Warrior, Thief, Mage, Cleric) plus 2 hybrids (Spellblade, Shadowpriest). Character level combined with per-class mastery; see *Classes & Combat Spec*.
+- [ ] **Combat:** asymmetric attacker/defender exchanges. Attacker picks Attack / Strike / Spell; defender picks Guard / Counter / Ward. Monsters use a weighted AI. The same system is used for PvP; see *Classes & Combat Spec*.
 - [ ] **Gear & items:** weapon, shield, accessory slots, ~30 items, ~12 battle spells, ~8 field spells.
 - [ ] **Towns & assets:** 8–10 towns held by monsters. Liberate to own, invest gold to raise value, pay tax income each week. Rivals can seize them via PvP or a field spell.
 - [ ] **PvP griefing:** on a PvP win, choose Steal Gold / Steal Item / Seize Town / Humiliate (rename, cosmetic "hairdo" debuff, face paint).
@@ -73,10 +73,65 @@ This is essential for the indie-release goal.
 ### Later
 - [ ] Online multiplayer (server-authoritative `core` on Node/Colyseus, room codes, reconnection)
 - [ ] Additional regions, full campaign mode, region bosses, story
-- [ ] More classes (tiered/advanced classes), more monsters/spells
+- [ ] Remaining 4 hybrids (Paladin, Rogue-Mage, Duelist, Oracle), more monsters/spells
 - [ ] Deeper cosmetics/customization, emotes, replays (event log is already replayable)
 - [ ] Steam build (Electron/Tauri wrapper), achievements, controller polish, localization
 - [ ] Mod/content-pack support via the data-driven `content` package
+
+### Classes & Combat Spec
+**Stats (6):** HP, ATK, DEF, MAG, SPD, LUCK.
+- **MAG** powers Spell damage and Ward strength.
+- **SPD** decides who attacks first each round and the odds of fleeing.
+- **LUCK** affects crit chance, loot quality and one spinner reroll chance per week. Keep LUCK's effects small and capped so it doesn't dominate balance.
+
+**Progression:** character level plus class mastery, with hybrid unlocks.
+- **Character level** (1–~20) comes from XP and raises base stats. It is kept when switching class.
+- **Class mastery** (ranks 1–5 per class) comes from battles won as that class.
+  - Each rank unlocks a passive.
+  - Rank 5 passives are portable: you keep one equipped after switching.
+- **Hybrid unlock:** reaching mastery rank 3 in **two** base classes unlocks their hybrid at the Castle.
+- **Class switching:** at the Castle for a gold fee. Class sets stat multipliers, the Strike/Counter flavor and the passive list.
+
+**Base classes (MVP):**
+| Class | Stat lean | Identity | Sample passives (rank 1 → 5) |
+|-------|-----------|----------|------------------------------|
+| Warrior | HP/ATK/DEF | Frontline brawler, strong Strike | +10% Strike damage → Guard also reduces Strike damage by half |
+| Thief | SPD/LUCK | Griefer, steals, flees | Steal an extra item on PvP win → Pickpocket gold when passing players |
+| Mage | MAG | Burst Spells, field magic | Spells cost less → Cast a field spell and still move |
+| Cleric | MAG/DEF | Sustain, support, Crown hunter | Heal 10% HP each turn → Ward reflects Spells |
+
+**Hybrids:** MVP ships 2 of the 6 possible pairs.
+| Hybrid | Pair | Identity | MVP? |
+|--------|------|----------|------|
+| Spellblade | Warrior + Mage | Strikes carry spell effects | ✅ |
+| Shadowpriest | Thief + Cleric | Drains/steals HP & buffs | ✅ |
+| Paladin | Warrior + Cleric | Tank-healer, bounty bonus vs Crown | Later |
+| Rogue-Mage | Thief + Mage | Hex/curse specialist | Later |
+| Duelist | Warrior + Thief | Speed crits, forced PvP | Later |
+| Oracle | Mage + Cleric | Spinner/fate manipulation | Later |
+
+**Combat structure (asymmetric):**
+- Each round, both combatants take one attack turn in SPD order. Ties go to a LUCK roll.
+- The attacker secretly picks one of:
+  - **Attack:** normal damage.
+  - **Strike:** high damage, pierces Guard, but can be reflected.
+  - **Spell:** MAG damage or an effect.
+- The defender secretly picks one of:
+  - **Guard:** halves Attack damage.
+  - **Counter:** reflects Strike.
+  - **Ward:** resists Spells.
+
+Resolution matrix (damage to defender unless noted; starting values for the sim):
+| Attacker \ Defender | Guard | Counter | Ward |
+|---|---|---|---|
+| Attack | 0.5× | 1.25× (a failed counter leaves the defender open) | 1.0× |
+| Strike | 1.5× (pierces) | **attacker takes 1.0×** (reflected) | 1.75× |
+| Spell | 1.0× (MAG-based) | 1.0× | 0.4× |
+
+- Base damage = `max(1, ATK×k − DEF×j)`, and crits come from LUCK. The sim tunes `k`/`j`.
+- Battles last up to 3 rounds, then the fight ends as a draw, KO, or flee (SPD-based).
+- Hot-seat secrecy: pass-the-device interstitial between choices (per Open Questions).
+- CPU/monster AI uses weighted choice tables that adapt to the opponent's history (e.g. CPUs learn when a player spams Strike).
 
 ### Cursed Crown Spec (comeback/villain mechanic)
 Original replacement for the Darkling. Design goal: the crown gives the trailing player real power, but most of the value is **at risk** until they survive, so the crown is never a free win and always creates a hunt.
@@ -127,7 +182,8 @@ Original replacement for the Darkling. Design goal: the crown gives the trailing
 ## Open Questions
 - **Cursed Crown numbers** (threshold, tax %, buff size). Tune via the balance simulator; the starting values are listed in the spec.
 - **Final game title and setting** (must be original, not "Dokapon"). Resolve during `/legion:start` brand pass before any public build.
-- **Exact number of combat commands and magic balance.** Resolve by prototyping plus the balance simulator.
+- **Combat matrix multipliers, damage constants and LUCK caps.** Starting values are in the spec; tune with the balance simulator.
+- **Hybrid unlock threshold** (mastery rank 3 in two classes). Validate in playtests that hybrids are reachable within a 45–60 minute game.
 - **Hot-seat secrecy UX** (pass-the-device vs simultaneous split input). Prototype both in the first combat milestone.
 - **Art sourcing** (commissioned vs licensed packs). Placeholder packs first; decide before the vertical slice.
 - **Online stack choice** (Colyseus vs custom WebSocket). Deferred to post-MVP; the core design keeps it open.
@@ -137,7 +193,9 @@ Web-based (TypeScript, Phaser 3) spiritual sequel to Dokapon Kingdom as original
 
 **MVP pillars:**
 - Board movement with branching spaces
-- Attack/Strike/Counter/Magic/Defend hidden-choice combat with 4 classes and gear
+- Asymmetric hidden-choice combat: attacker picks Attack/Strike/Spell, defender picks Guard/Counter/Ward
+- Six stats (HP/ATK/DEF/MAG/SPD/LUCK) and gear
+- 4 base classes (Warrior, Thief, Mage, Cleric) with character level plus per-class mastery (ranks 1–5); rank 3 in two classes unlocks a hybrid, and 2 hybrids (Spellblade, Shadowpriest) ship in the MVP
 - Town liberation/investment with asset-based victory
 - PvP griefing (steal gold/items/towns, humiliation)
 - The **Cursed Crown**, an original comeback mechanic: it claims the trailing player (<40% of the leader's Assets at week start) for 3 turns and grants Tyrant's Tax, Blight, Summon and Crown Warp. Spoils go to a hoard the wearer keeps only by surviving; defeating the wearer claims it as a bounty.
