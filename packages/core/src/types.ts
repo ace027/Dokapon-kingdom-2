@@ -3,6 +3,12 @@ import type { RngState } from "./rng";
 export const SCHEMA_VERSION = 1 as const;
 export const SYSTEM_ACTOR = "system" as const;
 
+/**
+ * Upper bound (inclusive) for `public.turn`, `public.counter` and `hidden.decisionSeq`:
+ * `deserialize` rejects larger values and `reduce` rejects transitions that would exceed it.
+ */
+export const MAX_COUNTER = 2 ** 31 - 1;
+
 /** Player ids must match this pattern and must not be one of {@link RESERVED_IDS}. */
 export const PLAYER_ID_PATTERN = /^[A-Za-z0-9_-]{1,32}$/;
 

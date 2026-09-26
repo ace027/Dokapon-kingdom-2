@@ -2,7 +2,7 @@ import type { Action } from "./actions";
 import { PUBLIC, onlyPlayers, type GameEvent } from "./events";
 import type { Reject } from "./reducer";
 import type { RngState } from "./rng";
-import type { Choice, GameState, Phase, PlayerId } from "./types";
+import { MAX_COUNTER, type Choice, type GameState, type Phase, type PlayerId } from "./types";
 import { clip, isChoice, isPlainObject, isStringArray, isUnique, ownGet } from "./validation";
 
 /** Handler-local randomness. `int` draws via `nextInt` and advances `rng`. */
@@ -44,6 +44,13 @@ function hasBase(raw: Record<string, unknown>, type: Action["type"]): boolean {
 
 function reject(code: Reject["code"], message: string): Reject {
   return { code, message };
+}
+
+/** Rejects a transition that would push a bounded counter above {@link MAX_COUNTER}. */
+function overflow(label: string, current: number, step: number): Reject | null {
+  return current > MAX_COUNTER - step
+    ? reject("INVALID_PAYLOAD", `${label} would exceed MAX_COUNTER`)
+    : null;
 }
 
 /**
@@ -122,6 +129,7 @@ export const handlers = {
       hasBase(raw, "sample/increment") &&
       hasExactKeys(raw, ["amount"]) &&
       isIntInRange(raw.amount, MIN_AMOUNT, MAX_AMOUNT),
+    validate: (s, a) => overflow("counter", s.public.counter, a.amount),
     apply: (s, a) => {
       const counter = s.public.counter + a.amount;
       return {
@@ -145,6 +153,7 @@ export const handlers = {
     actor: "active",
     guard: (raw): raw is ActionOf<"sample/roll"> =>
       hasBase(raw, "sample/roll") && hasExactKeys(raw, []),
+    validate: (s) => overflow("turn", s.public.turn, 1),
     apply: (s, a, ctx) => {
       const value = ctx.int(1, 6);
       const { activePlayer } = s.public;
@@ -211,7 +220,7 @@ export const handlers = {
       if (!required.every((p) => players.includes(p))) {
         return reject("INVALID_PAYLOAD", "required must only contain players");
       }
-      return null;
+      return overflow("decisionSeq", s.hidden.decisionSeq, 1);
     },
     apply: (s, a) => {
       const decisionSeq = s.hidden.decisionSeq + 1;

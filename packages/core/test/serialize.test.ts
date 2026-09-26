@@ -8,6 +8,7 @@ import {
   isAction,
   reduce,
   replay,
+  MAX_COUNTER,
   SchemaVersionError,
   serialize,
   stableStringify,
@@ -15,6 +16,9 @@ import {
   type GameState,
 } from "../src/index";
 import { arbGame, arbInput } from "./arbitraries";
+import { usePurityTraps } from "./purity-traps";
+
+usePurityTraps();
 
 const minimalState: GameState = {
   v: 1,
@@ -123,12 +127,6 @@ describe("serialize / deserialize", () => {
       }),
     ],
     [
-      "bad phase",
-      withPatch((d) => {
-        (d.public as Record<string, unknown>).phase = "combat";
-      }),
-    ],
-    [
       "empty players",
       withPatch((d) => {
         (d.public as Record<string, unknown>).players = [];
@@ -233,9 +231,32 @@ describe("deserialize full-shape validation (review cycle 1)", () => {
       },
     ],
     [
+      // Built from a valid decision state so only the phase check can reject it.
+      "bad phase",
+      (d) => {
+        pub(d).phase = "combat";
+      },
+    ],
+    [
+      // committed/choices emptied too, so only the non-empty check can reject it.
       "pending.required empty",
       (d) => {
         pendingOf(d).required = [];
+        pendingOf(d).committed = [];
+        decisionOf(d).choices = {};
+      },
+    ],
+    [
+      "numeric pending.id and decision.id",
+      (d) => {
+        pendingOf(d).id = 5;
+        decisionOf(d).id = 5;
+      },
+    ],
+    [
+      "numeric lastReveal.decisionId",
+      (d) => {
+        (pub(d).lastReveal as Record<string, unknown>).decisionId = 5;
       },
     ],
     [
@@ -418,6 +439,60 @@ describe("deserialize full-shape validation (review cycle 1)", () => {
     ],
   ])("throws TypeError for %s", (_label, patch) => {
     expect(() => deserialize(patchDecision(patch))).toThrow(TypeError);
+  });
+});
+
+describe("deserialize exact keys and counter bounds (review cycle 2)", () => {
+  const lastRevealOf = (d: Draft) => pub(d).lastReveal as Record<string, unknown>;
+  const lastRollOf = (d: Draft) => pub(d).lastRoll as Record<string, unknown>;
+
+  it.each<[string, (d: Draft) => void]>([
+    ["root", (d) => void ((d as unknown as Record<string, unknown>).zz = 0)],
+    ["public", (d) => void (pub(d).zz = 0)],
+    ["hidden", (d) => void (hid(d).zz = 0)],
+    ["a private entry", (d) => void ((d.private.p1 as Record<string, unknown>).zz = 0)],
+    ["lastRoll", (d) => void (lastRollOf(d).zz = 0)],
+    ["pending", (d) => void (pendingOf(d).zz = 0)],
+    ["decision", (d) => void (decisionOf(d).zz = 0)],
+    ["lastReveal", (d) => void (lastRevealOf(d).zz = 0)],
+  ])("throws TypeError for an extra key on %s", (_label, patch) => {
+    expect(() => deserialize(patchDecision(patch))).toThrow(TypeError);
+  });
+
+  it("rejects a 5000-deep extra key at deserialize (not a later RangeError)", () => {
+    const deep = `${'{"zz":'.repeat(5000)}0${"}".repeat(5000)}`;
+    const json = serialize(decisionState).replace('"hidden":{', `"hidden":{"zz":${deep},`);
+    expect(json).not.toBe(serialize(decisionState));
+    expect(() => deserialize(json)).toThrow(TypeError);
+  });
+
+  it.each<[string, (d: Draft) => void]>([
+    ["duplicate lastReveal.timedOut", (d) => void (lastRevealOf(d).timedOut = ["p1", "p1"])],
+    ["duplicate pending.committed", (d) => void (pendingOf(d).committed = ["p1", "p1"])],
+  ])("throws TypeError for %s", (_label, patch) => {
+    expect(() => deserialize(patchDecision(patch))).toThrow(TypeError);
+  });
+
+  it.each<[string, (d: Draft, n: number) => void]>([
+    ["public.turn", (d, n) => void (pub(d).turn = n)],
+    ["public.counter", (d, n) => void (pub(d).counter = n)],
+    ["hidden.decisionSeq", (d, n) => void (hid(d).decisionSeq = n)],
+  ])("accepts %s = MAX_COUNTER and rejects MAX_COUNTER + 1", (_label, set) => {
+    expect(MAX_COUNTER).toBe(2 ** 31 - 1);
+    expect(() =>
+      deserialize(
+        patchDecision((d) => {
+          set(d, MAX_COUNTER);
+        }),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      deserialize(
+        patchDecision((d) => {
+          set(d, MAX_COUNTER + 1);
+        }),
+      ),
+    ).toThrow(TypeError);
   });
 });
 

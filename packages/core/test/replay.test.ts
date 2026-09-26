@@ -12,6 +12,9 @@ import {
   type GameState,
 } from "../src/index";
 import { arbGame } from "./arbitraries";
+import { usePurityTraps } from "./purity-traps";
+
+usePurityTraps();
 
 function deepFreeze<T>(value: T): T {
   if (typeof value === "object" && value !== null && !Object.isFrozen(value)) {

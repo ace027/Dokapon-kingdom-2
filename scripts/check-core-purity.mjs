@@ -36,6 +36,29 @@ const CASES = [
   },
   { name: 'import "crypto"', rule: "no-restricted-imports", lines: ['import "crypto";'] },
   {
+    name: "(() => 0).constructor (Function via arrow)",
+    rule: "no-restricted-syntax",
+    lines: [
+      "const F = (() => 0).constructor as new (...args: string[]) => () => number;",
+      'void new F("return 1")();',
+    ],
+  },
+  {
+    name: "generator .constructor (GeneratorFunction)",
+    rule: "no-restricted-syntax",
+    lines: [
+      "const G: unknown = Object.getPrototypeOf(function* () {",
+      "  yield 0;",
+      '})["constructor"];',
+      "void G;",
+    ],
+  },
+  {
+    name: '"a".localeCompare("b")',
+    rule: "no-restricted-syntax",
+    lines: ['void "a".localeCompare("b");'],
+  },
+  {
     name: "inline eslint-disable-next-line",
     rule: "no-restricted-globals",
     lines: ["// eslint-disable-next-line no-restricted-globals", "Date.now();"],

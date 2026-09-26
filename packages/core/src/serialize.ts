@@ -1,5 +1,5 @@
 import { fnv1a32 } from "./hash";
-import { SCHEMA_VERSION, type GameState } from "./types";
+import { MAX_COUNTER, SCHEMA_VERSION, type GameState } from "./types";
 import { isChoice, isPlainObject, isStringArray, isUnique, playersError } from "./validation";
 
 export class SchemaVersionError extends Error {
@@ -60,9 +60,29 @@ function isU32(value: unknown): boolean {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 && value < 2 ** 32;
 }
 
-function isNonNegativeSafeInt(value: unknown): boolean {
-  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+/** An integer in `[0, MAX_COUNTER]` (turn, counter, decisionSeq). */
+function isCounter(value: unknown): boolean {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= MAX_COUNTER;
 }
+
+// Exact own keys at every object level (spec: deserialize contract, review cycle 2 amendment).
+const ROOT_KEYS = ["v", "public", "private", "hidden"] as const;
+const PUBLIC_KEYS = [
+  "phase",
+  "turn",
+  "activePlayer",
+  "players",
+  "counter",
+  "lastRoll",
+  "pending",
+  "lastReveal",
+] as const;
+const HIDDEN_KEYS = ["rng", "decisionSeq", "decision"] as const;
+const PRIVATE_ENTRY_KEYS = ["note"] as const;
+const LAST_ROLL_KEYS = ["playerId", "value"] as const;
+const PENDING_KEYS = ["id", "kind", "required", "committed"] as const;
+const DECISION_KEYS = ["id", "defaultChoice", "choices"] as const;
+const LAST_REVEAL_KEYS = ["decisionId", "choices", "timedOut"] as const;
 
 function shapeError(message: string): never {
   throw new TypeError(`deserialize: ${message}`);
@@ -93,6 +113,8 @@ function assertPublicDecision(
 ): void {
   if (!isPlainObject(pending)) shapeError("public.pending must be an object in phase 'decision'");
   if (!isPlainObject(decision)) shapeError("hidden.decision must be an object in phase 'decision'");
+  if (!hasExactlyOwnKeys(pending, PENDING_KEYS)) shapeError("public.pending has wrong keys");
+  if (!hasExactlyOwnKeys(decision, DECISION_KEYS)) shapeError("hidden.decision has wrong keys");
   if (typeof pending.id !== "string") shapeError("public.pending.id must be a string");
   if (pending.kind !== "sample") shapeError("public.pending.kind must be 'sample'");
   const { required, committed } = pending;
@@ -115,7 +137,7 @@ function assertPublicDecision(
   }
 }
 
-/** Full structural validation (spec: deserialize contract, review cycle 1 amendment). */
+/** Full structural validation (spec: deserialize contract, review cycle 1 + 2 amendments). */
 function assertStateShape(value: unknown): asserts value is GameState {
   if (!isPlainObject(value)) shapeError("state must be a plain object");
   if (value.v !== SCHEMA_VERSION) {
@@ -127,6 +149,9 @@ function assertStateShape(value: unknown): asserts value is GameState {
   if (!isPlainObject(pub) || !isPlainObject(priv) || !isPlainObject(hidden)) {
     shapeError("public, private and hidden must be plain objects");
   }
+  if (!hasExactlyOwnKeys(value, ROOT_KEYS)) shapeError("state has wrong keys");
+  if (!hasExactlyOwnKeys(pub, PUBLIC_KEYS)) shapeError("public has wrong keys");
+  if (!hasExactlyOwnKeys(hidden, HIDDEN_KEYS)) shapeError("hidden has wrong keys");
 
   const playersProblem = playersError(pub.players);
   if (playersProblem !== null) shapeError(`public.${playersProblem}`);
@@ -137,18 +162,20 @@ function assertStateShape(value: unknown): asserts value is GameState {
   if (pub.phase !== "turn" && pub.phase !== "decision") {
     shapeError("public.phase must be 'turn' or 'decision'");
   }
-  if (!isNonNegativeSafeInt(pub.turn)) shapeError("public.turn must be a non-negative integer");
-  if (!isNonNegativeSafeInt(pub.counter)) {
-    shapeError("public.counter must be a non-negative integer");
-  }
-  if (!isNonNegativeSafeInt(hidden.decisionSeq)) {
-    shapeError("hidden.decisionSeq must be a non-negative integer");
+  if (!isCounter(pub.turn)) shapeError("public.turn must be an integer in [0, MAX_COUNTER]");
+  if (!isCounter(pub.counter)) shapeError("public.counter must be an integer in [0, MAX_COUNTER]");
+  if (!isCounter(hidden.decisionSeq)) {
+    shapeError("hidden.decisionSeq must be an integer in [0, MAX_COUNTER]");
   }
 
   if (!hasExactlyOwnKeys(priv, players)) shapeError("private keys must equal public.players");
   for (const p of players) {
     const entry = priv[p];
-    if (!isPlainObject(entry) || (entry.note !== null && typeof entry.note !== "string")) {
+    if (
+      !isPlainObject(entry) ||
+      !hasExactlyOwnKeys(entry, PRIVATE_ENTRY_KEYS) ||
+      (entry.note !== null && typeof entry.note !== "string")
+    ) {
       shapeError("private entries must be {note: string | null}");
     }
   }
@@ -157,6 +184,7 @@ function assertStateShape(value: unknown): asserts value is GameState {
   if (lastRoll !== null) {
     if (
       !isPlainObject(lastRoll) ||
+      !hasExactlyOwnKeys(lastRoll, LAST_ROLL_KEYS) ||
       typeof lastRoll.playerId !== "string" ||
       !players.includes(lastRoll.playerId) ||
       typeof lastRoll.value !== "number" ||
@@ -178,14 +206,18 @@ function assertStateShape(value: unknown): asserts value is GameState {
 
   const lastReveal = pub.lastReveal;
   if (lastReveal !== null) {
-    if (!isPlainObject(lastReveal) || typeof lastReveal.decisionId !== "string") {
+    if (
+      !isPlainObject(lastReveal) ||
+      !hasExactlyOwnKeys(lastReveal, LAST_REVEAL_KEYS) ||
+      typeof lastReveal.decisionId !== "string"
+    ) {
       shapeError("public.lastReveal must be null or {decisionId, choices, timedOut}");
     }
     const revealed = choiceRecordKeys(lastReveal.choices, "public.lastReveal.choices");
     if (!isSubset(revealed, players)) shapeError("public.lastReveal.choices keys must be players");
     const timedOut = lastReveal.timedOut;
-    if (!isStringArray(timedOut) || !isSubset(timedOut, players)) {
-      shapeError("public.lastReveal.timedOut must be players");
+    if (!isStringArray(timedOut) || !isUnique(timedOut) || !isSubset(timedOut, players)) {
+      shapeError("public.lastReveal.timedOut must be unique players");
     }
   }
 

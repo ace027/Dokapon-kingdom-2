@@ -11,6 +11,9 @@ import {
   type Viewer,
 } from "../src/index";
 import { arbGame } from "./arbitraries";
+import { usePurityTraps } from "./purity-traps";
+
+usePurityTraps();
 
 const sentinel = (playerId: string): string => `__SECRET_${playerId}__`;
 

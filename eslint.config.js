@@ -77,6 +77,27 @@ export default tseslint.config(
             "Identifier[name='Math']:not(MemberExpression[computed=false] > Identifier.object):not(MemberExpression[computed=false] > Identifier.property):not(Property > Identifier.key)",
           message: `Use Math only as Math.<member>; aliasing hides Math.random. ${PURITY}`,
         },
+        {
+          // `(() => 0).constructor` is Function (likewise generator/async variants): dynamic code.
+          selector: "MemberExpression[property.name='constructor']",
+          message: `No .constructor access in core (reaches Function). ${PURITY}`,
+        },
+        {
+          selector: "MemberExpression[property.value='constructor']",
+          message: `No .constructor access in core (reaches Function). ${PURITY}`,
+        },
+        {
+          selector: "ObjectPattern > Property[key.name='constructor']",
+          message: `No .constructor access in core (reaches Function). ${PURITY}`,
+        },
+        {
+          selector: "MemberExpression[computed=true][property.type='TemplateLiteral']",
+          message: `No template-literal computed member access in core. ${PURITY}`,
+        },
+        {
+          selector: "CallExpression[callee.property.name=/^(localeCompare|toLocale\\w*)$/]",
+          message: `No locale-dependent APIs in core (cross-platform hash drift). ${PURITY}`,
+        },
       ],
       "no-restricted-properties": [
         "error",
