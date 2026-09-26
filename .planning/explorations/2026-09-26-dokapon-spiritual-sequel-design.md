@@ -74,7 +74,7 @@ This is essential for the indie-release goal.
 - [ ] **Villain mechanic, the Cursed Crown:** a sentient crown possesses the trailing player for a few turns, granting sabotage powers with risk/reward stakes. This is the main comeback engine; see *Cursed Crown Spec* below.
 - [ ] **Victory:** deadline of 3/4/5 weeks (chosen at setup). The optional region boss unlocks in the final week, and defeating it ends the game immediately with a big asset bonus. **Royal Bonus Awards** are revealed before the final tally. Winner = highest Assets.
 - [ ] **Players:** 1–4 humans in hot-seat plus CPU fill (Easy/Normal/Hard).
-- [ ] **Presentation:** 2D pixel art (placeholder/licensed packs first), basic SFX/music, keyboard/mouse plus gamepad basics.
+- [ ] **Presentation:** 640×360 pixel art (32px tiles, integer-scaled) with layered cosmetic sprites; licensed packs first; jaunty chiptune-orchestral audio; keyboard/mouse plus gamepad basics. See *Art & Audio Spec*.
 - [ ] **Save/Load:** serialize `GameState` to localStorage (with export file).
 - [ ] **Quality:** Vitest rules suite, headless balance simulator CLI, static web deploy.
 
@@ -316,6 +316,32 @@ Each town also has a town-flavored name and title, e.g. "Knight of Foreclosure o
 
 **AI notes:** each monster has a weighted command table (e.g. the Crab's Counter weight is high) plus 1–2 signature abilities. All definitions live in `packages/content` with tier stat curves so palette-swap variants are data-only.
 
+### Art & Audio Spec
+**Visuals:**
+- **Resolution:** 640×360 internal, integer-scaled (×3 = 1080p, ×6 = 4K) with pixel-perfect rendering (Phaser `pixelArt: true`, `roundPixels`). Letterbox to preserve integer scaling.
+- **Tiles:** 32×32 board tiles.
+- **Sprite sizes:**
+  - Overworld player sprites: 32×32.
+  - Battle sprites: 64×64 for players and regular monsters, 96×96 for guardians, 192×192+ for The Crown's Body.
+  - Portraits: 64×64.
+- **Cosmetic layers:** player sprites and portraits are built from layers (body, hair/wig, face paint, hat/crown) so the humiliation cosmetics and the Cursed Crown transformation are data-driven overlays.
+- **Palette:** bright storybook palette (target ≤ 48 colors, e.g. based on a public palette like Resurrect 64). Each zone has an accent hue: Forest green, Coast teal, Mines amber, Bog violet. The Cursed Crown and boss use a unique sickly gold that appears nowhere else.
+- **UI:** chunky pixel fonts (open-licensed, commercial use OK) and 9-slice panels. Keep text readable at ×2.
+- **Sourcing:**
+  - MVP uses commercial-use licensed or CC0 packs (itch.io, OpenGameArt), tracked in `CREDITS.md` with license links.
+  - **Commission before release:** the 4 base plus 2 hybrid class sprites, the Cursed Crown/Crown Enforcer, The Crown's Body, the monarch, the town guardians and key art/capsule images.
+  - No AI-generated final assets.
+- **Tooling:** Aseprite for sprites (JSON atlas export), Tiled for the map, TexturePacker or the Aseprite CLI in the build pipeline.
+
+**Audio:**
+- **Music:** jaunty chiptune-orchestral hybrid.
+  - Main royal-fanfare theme and title/menu.
+  - 4 zone themes, a battle theme, a PvP battle theme, a Cursed Crown theme (a sinister remix of the royal theme) and the boss theme.
+  - Final tally/coronation theme.
+- **SFX:** comedic stingers for griefing moments (sad trombone on losses, kazoo fanfare on humiliation), plus the spinner tick, coins and battle hits.
+- **Sourcing:** licensed or royalty-free packs for the MVP (tracked in `CREDITS.md`); commission the main theme and Crown/boss themes before release.
+- **Tech:** Phaser sound with OGG + M4A fallbacks, music ducking during stingers, separate music/SFX volume sliders.
+
 ### Cursed Crown Spec (comeback/villain mechanic)
 Original replacement for the Darkling. Design goal: the crown gives the trailing player real power, but most of the value is **at risk** until they survive, so the crown is never a free win and always creates a hunt.
 
@@ -373,7 +399,7 @@ Original replacement for the Darkling. Design goal: the crown gives the trailing
 - **Open-web map readability.** Validate with a first playtest; fall back to fewer junctions if players feel lost.
 - **Item/spell prices and drop tables.** Set during content authoring; validate with the sim and playtests. Watch the Usurp field spell and Royal Summons for frustration.
 - **Hot-seat secrecy UX** (pass-the-device vs simultaneous split input). Prototype both in the first combat milestone.
-- **Art sourcing** (commissioned vs licensed packs). Placeholder packs first; decide before the vertical slice.
+- **Commission budget and artists.** Decided: licensed packs for the MVP, commission signature characters, Crown, boss, key art and main themes before release. Pick artists and composer and set a budget at the vertical-slice milestone.
 - **Online stack choice** (Colyseus vs custom WebSocket). Deferred to post-MVP; the core design keeps it open.
 
 ## Start Input
@@ -389,6 +415,13 @@ Web-based (TypeScript, Phaser 3) spiritual sequel to Dokapon Kingdom as original
 - The **Cursed Crown**, an original comeback mechanic: it claims the trailing player (<40% of the leader's Assets at week start) for 3 turns and grants Tyrant's Tax, Blight, Summon and Crown Warp. Spoils go to a hoard the wearer keeps only by surviving; defeating the wearer claims it as a bounty.
 
 **Architecture:** pnpm monorepo with a pure deterministic headless rules engine (`core`, fully unit-tested, drives CPU AI and a balance simulator), a Phaser client (`client`) and data-driven content (`content`).
+
+**Art & audio:**
+- 640×360 internal resolution, 32px tiles, integer scaling.
+- Layered cosmetic sprites for humiliations and the Crown transformation.
+- Storybook palette with a per-zone accent.
+- Licensed/CC0 packs for the MVP (tracked in `CREDITS.md`); commission signature art and themes before release; no AI-generated final assets.
+- Jaunty chiptune-orchestral music with comedic stingers.
 
 **Monsters:**
 - ~20 satirical "monsters with day jobs", 4 per zone across 4 tiers (Forest → Coast → Mines → Bog).
