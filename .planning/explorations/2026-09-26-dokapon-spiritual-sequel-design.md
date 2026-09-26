@@ -75,6 +75,7 @@ This is essential for the indie-release goal.
 - [ ] **Victory:** deadline of 3/4/5 weeks (chosen at setup). The optional region boss unlocks in the final week, and defeating it ends the game immediately with a big asset bonus. **Royal Bonus Awards** are revealed before the final tally. Winner = highest Assets.
 - [ ] **Players:** 1–4 humans in hot-seat plus CPU fill. CPUs combine a skill level (Easy/Normal/Hard, never cheating) with a personality (Tycoon/Menace/Adventurer/Opportunist). See *CPU AI Spec*.
 - [ ] **Presentation:** 640×360 pixel art (32px tiles, integer-scaled) with layered cosmetic sprites; licensed packs first; jaunty chiptune-orchestral audio; keyboard/mouse plus gamepad basics. See *Art & Audio Spec*.
+- [ ] **Onboarding & accessibility:** skippable ~3-minute guided first week, one-time contextual tips, a pass-the-device hot-seat interstitial, and the full accessibility set (colorblind-safe color+shape, text/UI scale, speed/motion, full remapping). See *Onboarding & UX Spec*.
 - [ ] **Save/Load:** serialize `GameState` to localStorage (with export file).
 - [ ] **Quality:** Vitest rules suite, headless balance simulator CLI, static web deploy.
 
@@ -138,7 +139,7 @@ Resolution matrix (damage to defender unless noted; starting values for the sim)
 
 - Base damage = `max(1, ATK×k − DEF×j)`, and crits come from LUCK. The sim tunes `k`/`j`.
 - Battles last up to 3 rounds, then the fight ends as a draw, KO, or flee (SPD-based).
-- Hot-seat secrecy: pass-the-device interstitial between choices (per Open Questions).
+- Hot-seat secrecy: pass-the-device interstitial between choices (see *Onboarding & UX Spec*).
 - CPU/monster AI uses weighted choice tables that adapt to the opponent's history (e.g. CPUs learn when a player spams Strike).
 
 ### Map & Economy Spec
@@ -441,6 +442,35 @@ Hard CPUs **never** see hidden info (rivals' secret choices, errands, future car
 - No persona exceeds 35% win rate in 4-player mixes at equal difficulty.
 - Menace doesn't make games run > 20% longer.
 
+### Onboarding & UX Spec
+**Onboarding:**
+- **Guided first week (~3 minutes, skippable):** offered on the first launch and from the title menu. It's a scripted short game vs 1–3 Easy CPUs on a trimmed map that teaches:
+  - spin and path choice,
+  - a monster battle (Attack/Strike/Spell vs Guard/Counter/Ward, explained with the matrix as a visual),
+  - liberating a town,
+  - investing,
+  - a Gazette card.
+
+  It ends with the monarch's Heir Auction speech and drops into a normal game or back to the title.
+- **Contextual tips:** a one-time popup the first time each mechanic appears (PvP rewards, the Cursed Crown, decrees/errands, field spells, class switching, hybrids, the boss). Tips are per player profile, can be reset, and can be switched off globally.
+- **Help everywhere:**
+  - A `?` hotkey opens a rules glossary.
+  - Hover/long-press shows tooltips on spaces, items, stats and status effects.
+  - The battle screen always shows a compact resolution-matrix hint.
+
+**Hot-seat flow:**
+- **Pass-the-device interstitial** before any hidden input (combat choices, errand viewing, secret targets): a full-screen "Hand the controller to **Alex**" card with their color and portrait, then "Press to continue". This is auto-skipped when the other side is a CPU or when only one human is in the game.
+- Visible turn banner with player name, color and shape icon; the camera auto-frames the active player.
+- **Speed:** CPU turns are fast-forwardable (hold to 3×, or instant); humans can end their turn early; there's an optional turn timer for parties.
+- **Save anytime:** autosave at every turn start and manual save/export; resume from the title.
+
+**Accessibility (all MVP):**
+- **Colorblind-safe:** each player has a color **and** a shape/icon (crown, shield, star, moon) on their token, portrait and UI. Zone accents and status effects use icons plus color. Colorblind presets (deuteranopia/protanopia/tritanopia) adjust the palette.
+- **Text & UI scale:** 3 text sizes (100/125/150%) with UI panels reflowing, a high-contrast UI theme, and a dyslexia-friendly font option.
+- **Speed & motion:** animation speed 1×/2×/instant; reduce screen shake and flashing (on by default for flashes > 3 Hz); disable parallax.
+- **Full remapping:** rebind every keyboard and gamepad action. Mouse-only play and one-handed layouts are supported; no required simultaneous presses.
+- Settings persist per browser (localStorage) and are accessible from the pause menu mid-game.
+
 ### Cursed Crown Spec (comeback/villain mechanic)
 Original replacement for the Darkling. Design goal: the crown gives the trailing player real power, but most of the value is **at risk** until they survive, so the crown is never a free win and always creates a hunt.
 
@@ -497,7 +527,6 @@ Original replacement for the Darkling. Design goal: the crown gives the trailing
 - **Economy numbers** (town base values, investment cap, 10% tax, boss bonus, award value, turns per week). Tune with the balance sim toward 45–60 minute games and a last-week comeback rate of ~30%.
 - **Open-web map readability.** Validate with a first playtest; fall back to fewer junctions if players feel lost.
 - **Item/spell prices and drop tables.** Set during content authoring; validate with the sim and playtests. Watch the Usurp field spell and Royal Summons for frustration.
-- **Hot-seat secrecy UX** (pass-the-device vs simultaneous split input). Prototype both in the first combat milestone.
 - **Commission budget and artists.** Decided: licensed packs for the MVP, commission signature characters, Crown, boss, key art and main themes before release. Pick artists and composer and set a budget at the vertical-slice milestone.
 - **Online stack choice** (Colyseus vs custom WebSocket). Deferred to post-MVP; the core design keeps it open.
 
@@ -523,6 +552,11 @@ Web-based (TypeScript, Phaser 3) spiritual sequel to Dokapon Kingdom as original
 - Headless utility AI in `core`: skill level (Easy/Normal/Hard) × personality (Tycoon, Menace, Adventurer, Opportunist).
 - Combat uses matchup tables, expected value and opponent modeling.
 - Hard never cheats; all AI randomness is seeded; the sim validates balance.
+
+**UX:**
+- Guided ~3-minute first week plus one-time contextual tips.
+- Pass-the-device interstitial for hidden choices, with fast-forwardable CPU turns and autosave.
+- MVP accessibility: colorblind-safe color+shape, text/UI scale and high contrast, animation speed and reduced motion, full input remapping.
 
 **Art & audio:**
 - 640×360 internal resolution, 32px tiles, integer scaling.
