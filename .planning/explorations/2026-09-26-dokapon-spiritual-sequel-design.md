@@ -68,7 +68,7 @@ This is essential for the indie-release goal.
 - [ ] **Turn flow:** spinner (1–6, modifiable by items/magic), movement with path choice, space resolution, end turn. Weekly cycle (every N rounds) with a quest from the Castle.
 - [ ] **Classes:** 4 base classes (Warrior, Thief, Mage, Cleric) plus 2 hybrids (Spellblade, Shadowpriest). Character level combined with per-class mastery; see *Classes & Combat Spec*.
 - [ ] **Combat:** asymmetric attacker/defender exchanges. Attacker picks Attack / Strike / Spell; defender picks Guard / Counter / Ward. Monsters use a weighted AI. The same system is used for PvP; see *Classes & Combat Spec*.
-- [ ] **Gear & items:** weapon, shield, accessory slots, ~30 items, ~12 battle spells, ~8 field spells.
+- [ ] **Gear & items:** weapon, shield and accessory slots; class-sized bag; ~12 consumables, 5 joke items, ~15 gear pieces, 8 battle + 4 ward spells, 8 field spells. See *Items & Spells Spec*.
 - [ ] **Towns & assets:** 8–10 towns held by monsters. Liberate to own, invest gold to raise value, and collect weekly tax as a % of value. Rivals can seize them via PvP or a field spell.
 - [ ] **PvP griefing:** on a PvP win, choose Steal Gold / Steal Item / Seize Town / Humiliate (rename, cosmetic "hairdo" debuff, face paint).
 - [ ] **Villain mechanic, the Cursed Crown:** a sentient crown possesses the trailing player for a few turns, granting sabotage powers with risk/reward stakes. This is the main comeback engine; see *Cursed Crown Spec* below.
@@ -198,6 +198,85 @@ Resolution matrix (damage to defender unless noted; starting values for the sim)
   Keep them cheeky and keep losers in contention.
 - **Reveal sequence:** awards → each player's asset breakdown, bottom to top → heir coronation plus humiliation montage of the runner-ups.
 
+### Items & Spells Spec
+**Loadout model:**
+- **Gear slots:** Weapon, Shield, Accessory.
+- **Spell slots:** 1 **Battle Spell** (offense, used with the attacker's *Spell* command) and 1 **Ward Spell** (defense, used with the defender's *Ward* command). Buying or looting a new one swaps it.
+- **Field spells:** consumable scrolls, up to 3 carried. They take no bag space, but a Thief steal can take them.
+- **Bag (consumables and joke items), size by class:**
+  | Class | Bag |
+  |-------|-----|
+  | Warrior | 5 |
+  | Mage | 6 |
+  | Cleric | 6 |
+  | Thief | 8 |
+  | Spellblade | 6 |
+  | Shadowpriest | 7 |
+- Switching to a smaller bag forces you to sell or discard the overflow at the Castle, a small switching cost.
+- **Acquisition:** shops (zone-specific stock), Item/Loot spaces (random by zone tier, with LUCK improving the rarity roll), monster drops, and PvP steals.
+
+**Consumables (~12):**
+| Item | Effect |
+|------|--------|
+| Herb / Big Herb / Royal Elixir | Heal 30% / 60% / 100% HP |
+| Antidote | Clear status effects |
+| Swift Boots | Next spin +3 |
+| Lead Boots | Next spin fixed at 1 (throw at a rival, or use to stop on a space) |
+| Homing Stone | Warp to the Castle |
+| Pathfinder | Pick your exact spin result 1–6 |
+| Smoke Bomb | Guaranteed flee |
+| Battle Tonic | +25% ATK for one battle |
+| Iron Tonic | +25% DEF for one battle |
+| Coin Purse Lock | Blocks the next gold steal against you |
+
+**Joke / griefing items (5 curated):**
+| Item | Effect |
+|------|--------|
+| **Decoy Gold Bag** | Drop on a space. The next rival to land "picks it up" and loses 10% of their gold to you. |
+| **Cursed Wig** | Force on a rival: a hideous wig. −10% SPD for 3 turns, and it appears on their portrait. |
+| **Whoopee Scroll** | Target rival's next battle opens with an embarrassing fanfare; they lose initiative in round 1. |
+| **Royal Summons (fake)** | Forged decree: teleports a rival to the Castle, wasting their next move. |
+| **Bag of Bees** | Throw at a rival: they drop a random bag item on their current space for anyone to grab. |
+
+**Gear (~15 for MVP, 5 per slot, tiered by zone):**
+- **Weapons:** Wooden Sword → Bronze Blade → Knight's Saber → Goblin Cleaver (+LUCK) → Royal Claymore
+- **Shields:** Pot Lid → Buckler → Tower Shield → Mirror Shield (weakens Spells) → Aegis of Usurpia
+- **Accessories:** Lucky Sock (+LUCK) → Speed Anklet (+SPD) → Mage Ring (+MAG) → Tax Collector's Seal (+5% town tax) → Crown Ward Amulet (resists Cursed Crown Tax)
+
+**Battle spells (8 offense):**
+| Spell | Effect |
+|-------|--------|
+| Spark | Low MAG damage, cheap |
+| Fireball | Mid damage |
+| Thunderclap | High damage, may stun (skip next choice) |
+| Frostbite | Damage + SPD −20% |
+| Drain | Damage, heal half |
+| Hex | No damage; ATK −25% for the rest of the battle |
+| Pickpocket Bolt | Light damage + steal gold on hit |
+| Royal Decree | Highest damage; rare/late |
+
+**Ward spells (4 defense):**
+| Spell | Effect |
+|-------|--------|
+| Barrier | Standard spell resist (the matrix value) |
+| Reflect | Reflect 50% of spell damage |
+| Absorb | Heal from spell damage |
+| Counterspell | Negate the spell entirely, but take 1.25× from Attack/Strike this exchange |
+
+**Field spells (8, consumable scrolls):**
+| Spell | Effect |
+|-------|--------|
+| Haste | Spin twice, take the higher result |
+| Snare | Target rival spins with a max of 2 for 2 turns |
+| Usurp | Attempt to seize a rival's town (MAG vs MAG check); on failure you lose 10% gold |
+| Blessing | Heal fully + clear status |
+| Fog | Rivals can't see your position/stats for 2 turns; immune to targeting |
+| Golden Touch | Your next Gold space pays double |
+| Swap | Swap positions with any player |
+| Silence | Target rival can't use field spells for 3 turns |
+
+**Balance notes:** item and spell data live in `packages/content` with zod schemas. The balance sim reports pick/win rates per item and spell; flag anything above a 60% win-rate delta.
+
 ### Cursed Crown Spec (comeback/villain mechanic)
 Original replacement for the Darkling. Design goal: the crown gives the trailing player real power, but most of the value is **at risk** until they survive, so the crown is never a free win and always creates a hunt.
 
@@ -253,6 +332,7 @@ Original replacement for the Darkling. Design goal: the crown gives the trailing
 - **Hybrid unlock threshold** (mastery rank 3 in two classes). Validate in playtests that hybrids are reachable within a 45–60 minute game.
 - **Economy numbers** (town base values, investment cap, 10% tax, boss bonus, award value, turns per week). Tune with the balance sim toward 45–60 minute games and a last-week comeback rate of ~30%.
 - **Open-web map readability.** Validate with a first playtest; fall back to fewer junctions if players feel lost.
+- **Item/spell prices and drop tables.** Set during content authoring; validate with the sim and playtests. Watch the Usurp field spell and Royal Summons for frustration.
 - **Hot-seat secrecy UX** (pass-the-device vs simultaneous split input). Prototype both in the first combat milestone.
 - **Art sourcing** (commissioned vs licensed packs). Placeholder packs first; decide before the vertical slice.
 - **Online stack choice** (Colyseus vs custom WebSocket). Deferred to post-MVP; the core design keeps it open.
@@ -270,6 +350,13 @@ Web-based (TypeScript, Phaser 3) spiritual sequel to Dokapon Kingdom as original
 - The **Cursed Crown**, an original comeback mechanic: it claims the trailing player (<40% of the leader's Assets at week start) for 3 turns and grants Tyrant's Tax, Blight, Summon and Crown Warp. Spoils go to a hoard the wearer keeps only by surviving; defeating the wearer claims it as a bounty.
 
 **Architecture:** pnpm monorepo with a pure deterministic headless rules engine (`core`, fully unit-tested, drives CPU AI and a balance simulator), a Phaser client (`client`) and data-driven content (`content`).
+
+**Items & spells:**
+- Gear slots: Weapon/Shield/Accessory.
+- 1 equipped Battle Spell + 1 Ward Spell.
+- Up to 3 consumable field-spell scrolls.
+- Class-sized bag: Warrior 5, Mage/Cleric/Spellblade 6, Shadowpriest 7, Thief 8.
+- ~12 consumables, 5 curated joke/griefing items, ~15 gear pieces, 8 battle spells, 4 ward spells and 8 field spells.
 
 **Map & economy:**
 - Open-web graph map (60–90 spaces, Tiled-authored, 4 blended zones around a central Castle) with reachable-space previews.
