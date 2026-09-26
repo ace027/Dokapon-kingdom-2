@@ -73,7 +73,7 @@ This is essential for the indie-release goal.
 - [ ] **PvP griefing:** on a PvP win, choose Steal Gold / Steal Item / Seize Town / Humiliate (rename, cosmetic "hairdo" debuff, face paint).
 - [ ] **Villain mechanic, the Cursed Crown:** a sentient crown possesses the trailing player for a few turns, granting sabotage powers with risk/reward stakes. This is the main comeback engine; see *Cursed Crown Spec* below.
 - [ ] **Victory:** deadline of 3/4/5 weeks (chosen at setup). The optional region boss unlocks in the final week, and defeating it ends the game immediately with a big asset bonus. **Royal Bonus Awards** are revealed before the final tally. Winner = highest Assets.
-- [ ] **Players:** 1–4 humans in hot-seat plus CPU fill (Easy/Normal/Hard).
+- [ ] **Players:** 1–4 humans in hot-seat plus CPU fill. CPUs combine a skill level (Easy/Normal/Hard, never cheating) with a personality (Tycoon/Menace/Adventurer/Opportunist). See *CPU AI Spec*.
 - [ ] **Presentation:** 640×360 pixel art (32px tiles, integer-scaled) with layered cosmetic sprites; licensed packs first; jaunty chiptune-orchestral audio; keyboard/mouse plus gamepad basics. See *Art & Audio Spec*.
 - [ ] **Save/Load:** serialize `GameState` to localStorage (with export file).
 - [ ] **Quality:** Vitest rules suite, headless balance simulator CLI, static web deploy.
@@ -403,6 +403,44 @@ Each town also has a town-flavored name and title, e.g. "Knight of Foreclosure o
 
 **Data:** decrees, errands and Gazette cards live as data in `packages/content` with typed effect definitions (`{trigger, condition, effect}`). The `core` rules engine resolves them deterministically. The balance sim reports decree completion rate (target 70–85%) and each card's impact on asset variance.
 
+### CPU AI Spec
+**Model: skill level × personality.** Each CPU slot picks a difficulty and a personality independently (plus a "Random" option for each).
+
+**Architecture (in `packages/core`, headless):**
+- **Board decisions:** a utility AI. Enumerate the legal actions and reachable destinations after the spin, score each with `Σ(weight_personality[f] × feature_f)`, and pick by difficulty rule.
+  - Features: gold gain, town value gain, decree/errand progress, PvP win probability × spoils, risk (HP, monster tier), distance to Castle/Temple/shop, Crown bounty, leader proximity.
+- **Combat decisions:** choice weights come from a mix of:
+  1. a base table (by class/stat matchup),
+  2. an expected-value estimate from the resolution matrix, and
+  3. an **opponent model**: frequency counts of the opponent's past choices (per human, persisting across the game), exploited at higher skill.
+- **Item/spell use:** rule triggers (heal below X% HP, Pathfinder when the target is 1–6 away, joke items vs the leader), with thresholds shaped by personality.
+- **Shop/equip:** greedy upgrade by stat-value per gold, with personality bias (Tycoon saves gold; Adventurer buys weapons).
+- **Determinism:** all AI randomness uses the seeded RNG, so games and sims are replayable.
+
+**Difficulty (decision quality only; never cheats):**
+| Level | Board | Combat | Mistakes |
+|-------|-------|--------|----------|
+| Easy | Softmax over utilities with high temperature, 1-step horizon | Base table only | Forgets to heal ~30% of the time, ignores decrees sometimes |
+| Normal | Softmax, medium temperature, considers the next week's tax | Base table + EV | Occasional suboptimal target |
+| Hard | Near-argmax + 2-turn lookahead on key choices (Usurp, boss attempts, Crown hunts) | Base + EV + opponent model | None intentional; uses only information a human could see |
+
+Hard CPUs **never** see hidden info (rivals' secret choices, errands, future cards or RNG). Hard's edge must come from better play so players trust the AI and balance-sim results stay valid.
+
+**Personalities (MVP):**
+| Persona | Priorities (high weight) | Avoids | Signature behaviors |
+|---------|--------------------------|--------|---------------------|
+| **Tycoon** | Town liberation/investment, gold decrees, tax accessories | Unprofitable PvP, wild risks | Invests heavily; buys Coin Purse Lock; Usurps weakly-defended high-value towns |
+| **Menace** | PvP vs the leader, humiliations, joke items, Crown Warp | Slow investing | Chases players across the map; always picks Humiliate when ahead; hoards Decoy Gold Bags |
+| **Adventurer** | XP, monster battles, far-tier towns, boss attempts, mastery/hybrids | Shops beyond essentials | Pushes to the Bog early; first to challenge the boss |
+| **Opportunist** | Loot/Gold/Event spaces, Crown bounty, sniping weakened players and the boss's final HP | Fair fights | Waits near the Temple; strikes after others soften the target; loves Swap and Fog |
+
+**Flavor:** each persona has short bark lines per event (win/lose/humiliated/crowned), displayed in speech bubbles and togglable off.
+
+**Sim use:** the balance simulator runs all-CPU games across persona/difficulty mixes. Health checks:
+- Hard beats Normal ≥ 60%.
+- No persona exceeds 35% win rate in 4-player mixes at equal difficulty.
+- Menace doesn't make games run > 20% longer.
+
 ### Cursed Crown Spec (comeback/villain mechanic)
 Original replacement for the Darkling. Design goal: the crown gives the trailing player real power, but most of the value is **at risk** until they survive, so the crown is never a free win and always creates a hunt.
 
@@ -480,6 +518,11 @@ Web-based (TypeScript, Phaser 3) spiritual sequel to Dokapon Kingdom as original
 **Events & quests:**
 - Each week brings one public Royal Decree race (~10 in the pool; the first to complete it wins a big reward) plus a private Personal Errand per player (~12 in the pool, rerollable once per week).
 - Event spaces draw satirical Kingdom Gazette cards (~24; mostly mild, a few board-wide wild cards).
+
+**CPU AI:**
+- Headless utility AI in `core`: skill level (Easy/Normal/Hard) × personality (Tycoon, Menace, Adventurer, Opportunist).
+- Combat uses matchup tables, expected value and opponent modeling.
+- Hard never cheats; all AI randomness is seeded; the sim validates balance.
 
 **Art & audio:**
 - 640×360 internal resolution, 32px tiles, integer scaling.
