@@ -13,7 +13,7 @@
 ## Recent Decisions
 - Execution mode: Guided
 - Planning depth: Deep Analysis (8 phases mirroring milestones M0–M7; online multiplayer is a post-MVP milestone)
-- Cost profile: Balanced
+- Cost profile: Balanced — from Phase 2 on, applied explicitly per agent role (planning/review → Opus 5.5, execution/fix → Sonnet 5, checks → Haiku 4.5); Phase 1 ran all agents on Opus (see memory PRF-003)
 - Design source: `.planning/explorations/2026-09-26-dokapon-spiritual-sequel-design.md`
 - Codebase map: skipped (greenfield, no source code)
 - Branching: work on `dev`, release from `main`

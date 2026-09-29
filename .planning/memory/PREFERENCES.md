@@ -30,3 +30,22 @@ Phase 1 review escalated after 3 cycles with 1 test-only WARNING. Production cod
 Implication: once production code is verified correct, residual test-assertion gaps should not block phase completion.
 
 ---
+
+## PRF-003: Balanced cost profile — per-role model tiers from Phase 2 on
+- **Date**: 2026-09-29
+- **Type**: preference
+- **Tags**: cost-profile, models, agents, subagents
+- **Phase**: Phase 2 onward
+
+Apply the Balanced cost profile explicitly by passing `model` on every spawned agent. Phase 1 ran everything on Opus because no override was passed.
+
+| Role | Model | Examples |
+|------|-------|----------|
+| Planning / design | `opus` (Opus 5.5) | architecture proposals, spec pipeline and spec critique, plan critique (pre-mortem, assumptions), phase decomposition |
+| Review | `opus` | `/legion:review` panel reviewers and re-reviewers |
+| Execution | `sonnet` (Sonnet 5) | `/legion:build` plan executors, review fix agents, code polish |
+| Checks | `haiku` (Haiku 4.5) | read-only verification sweeps, CI-run polling, simple lookups and status checks |
+
+The orchestrator (main session) stays on the session model. If a Sonnet executor fails a plan twice on complexity (not environment), escalate that plan to Opus and note it in the SUMMARY.
+
+---
