@@ -1,6 +1,6 @@
 // v2 fast-check arbitraries shared by the property suites (replay, views). 02-03 adds the combat
 // generators (`combat/start`, `system/setCharacter`, combat commits); 02-04 extends `arbInputFor`
-// with the loadout actions.
+// with the loadout actions (`system/grant`, `loadout/*`).
 import fc from "fast-check";
 import type { GameSettings } from "../src/types";
 
@@ -306,6 +306,78 @@ function arbSetCharacter(ids: readonly string[]): fc.Arbitrary<unknown> {
     );
 }
 
+// ---- grant and loadout generators (02-04) ---------------------------------------------------
+
+const GRANT_IDS = {
+  item: ["herb", "bomb", "tonic", "antidote", "boots", "wig", "toString", "constructor"],
+  scroll: ["haste", "fog", "toString", "valueOf"],
+  gear: ["stick", "sword", "lid", "mirror", "charm", "band", "toString"],
+  battleSpell: ["zap", "jolt", "leech", "hex", "frost", "pilfer", "toString"],
+  wardSpell: ["shell", "mirror-ward", "sponge", "null-ward", "constructor"],
+} as const;
+const GRANT_AMOUNTS = [1, 5, 60, 150, 1000, 1_000_000, 0, 1_000_001] as const;
+const LOADOUT_CLASSES = ["fighter", "caster", "battlemage", "toString", null] as const;
+const LOADOUT_ITEMS = [...KIT_ITEMS, "valueOf", "toString"] as const;
+
+const arbGrant: fc.Arbitrary<unknown> = fc.oneof(
+  ...(Object.keys(GRANT_IDS) as (keyof typeof GRANT_IDS)[]).map((kind) => ({
+    weight: 2,
+    arbitrary: fc.constantFrom(...GRANT_IDS[kind]).map((id) => ({ kind, id })),
+  })),
+  ...(["gold", "xp"] as const).map((kind) => ({
+    weight: 2,
+    arbitrary: fc.constantFrom(...GRANT_AMOUNTS).map((amount) => ({ kind, amount })),
+  })),
+);
+
+function arbGrantAction(ids: readonly string[]): fc.Arbitrary<unknown> {
+  return fc.tuple(arbPlayerId(ids, ["ghost"]), arbGrant).map(([target, grant]) => ({
+    v: 2,
+    type: "system/grant",
+    playerId: "system",
+    target,
+    grant,
+  }));
+}
+
+function arbLoadout(ids: readonly string[]): fc.Arbitrary<unknown> {
+  const player = arbPlayerId(ids, ["ghost"]);
+  const classId = fc.constantFrom(...LOADOUT_CLASSES);
+  const item = fc.constantFrom(...LOADOUT_ITEMS);
+  return fc.oneof(
+    {
+      weight: 3,
+      arbitrary: fc
+        .tuple(player, classId, fc.array(item, { maxLength: 3 }))
+        .map(([playerId, cls, discard]) => ({
+          v: 2,
+          type: "loadout/switchClass",
+          playerId,
+          classId: cls ?? "fighter",
+          discard,
+        })),
+    },
+    {
+      weight: 2,
+      arbitrary: fc
+        .tuple(player, item)
+        .map(([playerId, itemId]) => ({ v: 2, type: "loadout/discard", playerId, itemId })),
+    },
+    {
+      weight: 3,
+      arbitrary: fc
+        .tuple(player, item)
+        .map(([playerId, itemId]) => ({ v: 2, type: "loadout/useItem", playerId, itemId })),
+    },
+    {
+      weight: 2,
+      arbitrary: fc
+        .tuple(player, classId)
+        .map(([playerId, cls]) => ({ v: 2, type: "loadout/setPortable", playerId, classId: cls })),
+    },
+  );
+}
+
 /** Any action-shaped input for a game whose seats are `ids`, player ids biased toward them. */
 export function arbInputFor(ids: readonly string[]): fc.Arbitrary<unknown> {
   return fc.oneof(
@@ -318,6 +390,8 @@ export function arbInputFor(ids: readonly string[]): fc.Arbitrary<unknown> {
     { weight: 3, arbitrary: arbSetCharacter(ids) },
     { weight: 14, arbitrary: arbCombatCommit(ids) },
     { weight: 3, arbitrary: arbCombatTimeout },
+    { weight: 5, arbitrary: arbGrantAction(ids) },
+    { weight: 5, arbitrary: arbLoadout(ids) },
   );
 }
 

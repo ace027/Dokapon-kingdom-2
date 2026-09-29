@@ -21,6 +21,11 @@ import { usePurityTraps } from "./purity-traps";
 
 usePurityTraps();
 
+function need<T>(value: T | undefined): T {
+  if (value === undefined) throw new Error("missing fixture entry");
+  return value;
+}
+
 const PROMPT_FOR_P1: GameEvent = {
   v: 2,
   type: "PromptOpened",
@@ -303,5 +308,75 @@ describe("structural redaction property", () => {
       }),
       { numRuns: 200 },
     );
+  });
+});
+
+describe("grant redaction", () => {
+  const grant = (target: string, g: unknown) => ({
+    v: 2,
+    type: "system/grant",
+    playerId: "system",
+    target,
+    grant: g,
+  });
+  const granted = (target: string, g: unknown) => {
+    const result = reduce(newGame(), grant(target, g), TEST_RULES);
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
+  };
+
+  it.each([
+    ["item", { kind: "item", id: "tonic" }],
+    ["scroll", { kind: "scroll", id: "haste" }],
+  ])("a %s Granted is visible only to the target", (_kind, g) => {
+    const event = need(granted("p1", g).events[0]);
+    expect(event.type).toBe("Granted");
+    expect(redactEvent(event, "p1")).toBe(event);
+    expect(redactEvent(event, "p2")).toBeNull();
+    expect(redactEvent(event, "spectator")).toBeNull();
+    expect(redactEvent(event, "toString")).toBeNull();
+  });
+
+  it("ScrollsUpdated is visible only to the target", () => {
+    const events = granted("p2", { kind: "scroll", id: "haste" }).events;
+    const updated = need(events.find((e) => e.type === "ScrollsUpdated"));
+    expect(redactEvent(updated, "p2")).toBe(updated);
+    expect(redactEvent(updated, "p1")).toBeNull();
+    expect(redactEvent(updated, "spectator")).toBeNull();
+    expect(eventsFor(events, "p1")).toEqual([]);
+    expect(eventsFor(events, "p2")).toEqual(events);
+  });
+
+  it.each([
+    ["gold", { kind: "gold", amount: 5 }],
+    ["xp", { kind: "xp", amount: 60 }],
+    ["gear", { kind: "gear", id: "sword" }],
+    ["battleSpell", { kind: "battleSpell", id: "jolt" }],
+    ["wardSpell", { kind: "wardSpell", id: "sponge" }],
+  ])("a %s Granted is public", (_kind, g) => {
+    const events = granted("p1", g).events;
+    const event = need(events[0]);
+    expect(event.type).toBe("Granted");
+    for (const viewer of ["p1", "p2", "spectator"]) expect(redactEvent(event, viewer)).toBe(event);
+    // LevelUp follows the xp Granted and is public too
+    expect(eventsFor(events, "spectator")).toEqual(events);
+  });
+
+  it("other players see the scroll count, never the ids", () => {
+    const { state } = granted("p2", { kind: "scroll", id: "haste" });
+    const view = viewFor(state, "p1");
+    expect(view.counts.p2).toEqual({ bag: 2, scrolls: 1 });
+    expect(view.self?.scrolls).toEqual([]);
+    expect(JSON.stringify(view)).not.toContain("haste");
+    expect(viewFor(state, "p2").self?.scrolls).toEqual(["haste"]);
+    expect(JSON.stringify(viewFor(state, "spectator"))).not.toContain("haste");
+  });
+
+  it("other players see the bag count, never the granted item", () => {
+    const { state } = granted("p2", { kind: "item", id: "antidote" });
+    const view = viewFor(state, "p1");
+    expect(view.counts.p2).toEqual({ bag: 3, scrolls: 0 });
+    expect(JSON.stringify(view)).not.toContain("antidote");
+    expect(viewFor(state, "p2").self?.bag).toEqual(["herb", "bomb", "antidote"]);
   });
 });
