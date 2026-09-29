@@ -1,0 +1,323 @@
+{
+ "scenario": "kernel-game",
+ "rules": "TEST_RULES",
+ "rulesHash": "7433ea8b",
+ "settings": {
+  "v": 2,
+  "seed": "fixture",
+  "players": [
+   {
+    "id": "p1",
+    "classId": "fighter"
+   },
+   {
+    "id": "p2",
+    "classId": "caster"
+   }
+  ]
+ },
+ "initialHash": "758ef72c",
+ "steps": [
+  {
+   "i": 0,
+   "type": "decision/open",
+   "ok": true,
+   "error": null,
+   "hash": "8557c459",
+   "events": [
+    {
+     "v": 2,
+     "type": "DecisionOpened",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d1",
+     "kind": "poll",
+     "required": [
+      "p1",
+      "p2"
+     ]
+    },
+    {
+     "v": 2,
+     "type": "PromptOpened",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p1"
+      ]
+     },
+     "decisionId": "d1",
+     "playerId": "p1",
+     "options": [
+      "yes",
+      "no"
+     ],
+     "default": "no"
+    },
+    {
+     "v": 2,
+     "type": "PromptOpened",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p2"
+      ]
+     },
+     "decisionId": "d1",
+     "playerId": "p2",
+     "options": [
+      "red",
+      "green",
+      "blue"
+     ],
+     "default": "red"
+    }
+   ]
+  },
+  {
+   "i": 1,
+   "type": "decision/commit",
+   "ok": true,
+   "error": null,
+   "hash": "6d3f756c",
+   "events": [
+    {
+     "v": 2,
+     "type": "ChoiceCommitted",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d1",
+     "playerId": "p1"
+    }
+   ]
+  },
+  {
+   "i": 2,
+   "type": "decision/commit",
+   "ok": false,
+   "error": "ALREADY_COMMITTED",
+   "hash": "6d3f756c",
+   "events": []
+  },
+  {
+   "i": 3,
+   "type": "timeout",
+   "ok": true,
+   "error": null,
+   "hash": "f34995e5",
+   "events": [
+    {
+     "v": 2,
+     "type": "ChoiceTimedOut",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d1",
+     "playerId": "p2"
+    },
+    {
+     "v": 2,
+     "type": "ChoicesRevealed",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d1",
+     "kind": "poll",
+     "choices": {
+      "p1": "yes",
+      "p2": "red"
+     },
+     "timedOut": [
+      "p2"
+     ]
+    }
+   ]
+  },
+  {
+   "i": 4,
+   "type": "decision/open",
+   "ok": true,
+   "error": null,
+   "hash": "7ad35d0a",
+   "events": [
+    {
+     "v": 2,
+     "type": "DecisionOpened",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d2",
+     "kind": "poll",
+     "required": [
+      "p2"
+     ]
+    },
+    {
+     "v": 2,
+     "type": "PromptOpened",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p2"
+      ]
+     },
+     "decisionId": "d2",
+     "playerId": "p2",
+     "options": [
+      "a",
+      "b"
+     ],
+     "default": "a"
+    }
+   ]
+  },
+  {
+   "i": 5,
+   "type": "decision/commit",
+   "ok": false,
+   "error": "INVALID_PAYLOAD",
+   "hash": "7ad35d0a",
+   "events": []
+  },
+  {
+   "i": 6,
+   "type": "decision/commit",
+   "ok": true,
+   "error": null,
+   "hash": "9616698e",
+   "events": [
+    {
+     "v": 2,
+     "type": "ChoiceCommitted",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d2",
+     "playerId": "p2"
+    },
+    {
+     "v": 2,
+     "type": "ChoicesRevealed",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d2",
+     "kind": "poll",
+     "choices": {
+      "p2": "b"
+     },
+     "timedOut": []
+    }
+   ]
+  }
+ ],
+ "finalHash": "9616698e",
+ "finalState": {
+  "hidden": {
+   "combatSeq": 0,
+   "decision": null,
+   "decisionSeq": 2,
+   "rng": [
+    2094061593,
+    184016598,
+    2753665883,
+    215806170
+   ]
+  },
+  "private": {
+   "p1": {
+    "bag": [
+     "herb"
+    ],
+    "prompt": null,
+    "scrolls": []
+   },
+   "p2": {
+    "bag": [
+     "herb",
+     "bomb"
+    ],
+    "prompt": null,
+    "scrolls": []
+   }
+  },
+  "public": {
+   "activePlayer": "p1",
+   "characters": {
+    "p1": {
+     "accessory": null,
+     "battleSpell": "zap",
+     "classId": "fighter",
+     "gold": 100,
+     "hp": 48,
+     "level": 1,
+     "mastery": {
+      "battlemage": 0,
+      "caster": 0,
+      "fighter": 0
+     },
+     "portable": null,
+     "shield": "lid",
+     "wardSpell": null,
+     "weapon": "stick",
+     "xp": 0
+    },
+    "p2": {
+     "accessory": "charm",
+     "battleSpell": "zap",
+     "classId": "caster",
+     "gold": 100,
+     "hp": 36,
+     "level": 1,
+     "mastery": {
+      "battlemage": 0,
+      "caster": 0,
+      "fighter": 0
+     },
+     "portable": null,
+     "shield": "lid",
+     "wardSpell": "shell",
+     "weapon": "stick",
+     "xp": 0
+    }
+   },
+   "choiceHistory": {
+    "p1": {
+     "attack": 0,
+     "counter": 0,
+     "guard": 0,
+     "spell": 0,
+     "strike": 0,
+     "ward": 0
+    },
+    "p2": {
+     "attack": 0,
+     "counter": 0,
+     "guard": 0,
+     "spell": 0,
+     "strike": 0,
+     "ward": 0
+    }
+   },
+   "combat": null,
+   "lastReveal": {
+    "choices": {
+     "p2": "b"
+    },
+    "decisionId": "d2",
+    "kind": "poll",
+    "timedOut": []
+   },
+   "pending": null,
+   "phase": "turn",
+   "players": [
+    "p1",
+    "p2"
+   ],
+   "turn": 1
+  },
+  "v": 2
+ }
+}

@@ -1,9 +1,0 @@
-duel n=60 seed=golden level=5 difficulty=hard:easy rules=94160b70
-# class-vs-class
-cleric:cleric n=10 a=5 b=3 draw=2 fled=0 aRate=0.625
-mage:mage n=10 a=2 b=0 draw=8 fled=0 aRate=1.000
-shadowpriest:shadowpriest n=10 a=5 b=0 draw=5 fled=0 aRate=1.000
-spellblade:spellblade n=10 a=7 b=2 draw=1 fled=0 aRate=0.778
-thief:thief n=10 a=4 b=3 draw=3 fled=0 aRate=0.571
-warrior:warrior n=10 a=8 b=1 draw=1 fled=0 aRate=0.889
-total n=60 a=31 b=9 draw=20 fled=0

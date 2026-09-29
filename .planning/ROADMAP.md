@@ -3,7 +3,7 @@
 ## Phases
 
 - [x] Phase 1: Foundations & Deterministic Engine (4 plans)
-- [ ] Phase 2: Combat Core & Balance Sim (5 plans)
+- [ ] Phase 2: Combat Core & Balance Sim (6 plans)
 - [ ] Phase 3: Board, Economy & CPU AI Core (6 plans)
 - [ ] Phase 4: Graybox Client & Hot-Seat Play (5 plans)
 - [ ] Phase 5: Griefing, Cursed Crown & Boss (5 plans)
@@ -36,10 +36,10 @@
 - [ ] Every cell of the resolution matrix (3×3) is unit-tested, including Strike reflection and a failed Counter.
 - [ ] 4 base classes with mastery passives (ranks 1–5) and hybrid unlock logic (Spellblade, Shadowpriest) pass tests.
 - [ ] Gear, spell slots, field-spell scrolls and class-sized bags enforce their limits; overflow on class switch is handled.
-- [ ] ~20 monsters and 3 guardian archetypes load from `content` with tiered stat curves.
+- [ ] ~20 monsters and 3 guardian archetypes load from `content` with tiered stat curves (satisfied as 20 NPC definitions: 16 zone monsters + 3 guardians + the Crown Enforcer).
 - [ ] `pnpm sim duel --n 10000` completes and reports class-vs-class and class-vs-monster win rates.
 - [ ] The combat CPU (Easy/Normal/Hard) runs headless; Hard beats Easy ≥ 70% in mirror matchups.
-**Plans**: 5
+**Plans**: 6
 
 ### Phase 3: Board, Economy & CPU AI Core
 **Goal**: A full game playable headlessly: map, movement, towns, weekly decrees/errands/Gazette, victory and persona-driven CPU AI.
@@ -120,7 +120,7 @@
 | Phase | Plans | Completed | Status |
 |-------|-------|-----------|--------|
 | 1. Foundations & Deterministic Engine | 4 | 4 | Complete (reviewed) |
-| 2. Combat Core & Balance Sim | 5 | 0 | Not started |
+| 2. Combat Core & Balance Sim | 6 | 0 | Not started |
 | 3. Board, Economy & CPU AI Core | 6 | 0 | Not started |
 | 4. Graybox Client & Hot-Seat Play | 5 | 0 | Not started |
 | 5. Griefing, Cursed Crown & Boss | 5 | 0 | Not started |

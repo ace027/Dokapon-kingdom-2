@@ -1,5 +1,9 @@
 import {seedRng,nextInt} from './kernel.mjs';
 import {snap,computeCell,critChance,critEligible,npcDef} from './engine.mjs';
+// exp(x) for x <= 0 using only IEEE-754 +,-,*,/ and Math.round (exactly specified in ECMAScript), so results are engine-independent
+export const LN2=0.6931471805599453;
+export function expNeg(x){if(!(x<=0))throw new RangeError('expNeg: x must be <= 0');if(x<-700)return 0;
+ const k=Math.round(x/LN2);const r=x-k*LN2;let p=1;for(let i=13;i>=1;i--)p=1+r*p/i;for(let j=0;j<-k;j++)p=p*0.5;return p;}
 export const AI={healThresholdBp:3500,easyForgetHealBp:3000,koBonus:0.5,normalTemp:0.15,hardTemp:0.04,hardPriorStrength:4,weightScale:1000000};
 export function createAi(seed,playerId,difficulty){return {rng:seedRng(`${seed}\u0000ai\u0000${playerId}\u0000${difficulty}`),playerId,difficulty};}
 const ATT=['attack','strike','spell'],DEF=['guard','counter','ward'];
@@ -38,8 +42,9 @@ export function combatPolicy(view,R,difficulty){const self=view.self;const promp
   return role==='attacker'?v:-v;};
  const ev=mine.map(k=>okeys.reduce((t,o,i)=>t+q[i]*(role==='attacker'?val(k,o):val(o,k)),0));
  const T=difficulty==='normal'?AI.normalTemp:AI.hardTemp;
- const logit=mine.map((k,i)=>(difficulty==='normal'?Math.log(base[i]>0?base[i]:1e-9):0)+ev[i]/T);
- const mx=Math.max(...logit);const ex=logit.map(l=>Math.exp(l-mx));const se=ex.reduce((a,b)=>a+b,0);
+ // engine-independent softmax: no Math.exp/Math.log (see expNeg); Normal multiplies by the bias instead of adding ln(bias)
+ const z=ev.map(e=>e/T);const mx=Math.max(...z);
+ const ex=mine.map((k,i)=>(difficulty==='normal'?(base[i]>0?base[i]:1e-9):1)*expNeg(z[i]-mx));const se=ex.reduce((a,b)=>a+b,0);
  const w=ex.map(e=>Math.round(e/se*AI.weightScale));
  return {commands:mine,weights:w,ev};}
 

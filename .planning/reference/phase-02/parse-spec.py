@@ -1,5 +1,8 @@
 import json,re
-s=open('/home/user/Dokapon-kingdom-2/.planning/specs/02-combat-core-balance-sim-spec.md').read()
+import os,sys
+HERE=os.path.dirname(os.path.abspath(__file__))
+SPEC=os.path.join(HERE,'..','..','specs','02-combat-core-balance-sim-spec.md')
+s=open(SPEC).read()
 def table(h):
     i=s.index(h); lines=s[i:].split('\n')
     rows=[];started=False
@@ -52,4 +55,4 @@ for r in table('##### Guardians'):
 R['guardians']=gu
 i=s.index('##### Tuning');j=s.index('```json',i)+7;k=s.index('```',j)
 t=json.loads(s[j:k]); R['combat']=t['combat'];R['progression']=t['progression'];R['economy']=t['economy']
-json.dump(R,open('/tmp/uref/spec-rules.json','w'))
+json.dump(R,open(os.path.join(HERE,'spec-rules.json'),'w'))

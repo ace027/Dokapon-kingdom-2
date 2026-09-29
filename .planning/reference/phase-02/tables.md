@@ -1,9 +1,9 @@
 #### Classes (`classes.json`)
 | id | name | kind | parents | statBp hp/atk/def/mag/spd/luck | bagSize | switchFee | aiBias atk/str/spl/grd/ctr/wrd |
 |---|---|---|---|---|---|---|---|
-| `warrior` | Warrior | base | — | 11500/11500/11500/8500/9000/9000 | 5 | 100 | 35/45/20/45/35/20 |
+| `warrior` | Warrior | base | — | 11500/11500/11500/8500/9000/9000 | 5 | 100 | 30/50/20/50/30/20 |
 | `thief` | Thief | base | — | 9500/10000/9000/8000/13000/14000 | 8 | 100 | 50/30/20/35/40/25 |
-| `mage` | Mage | base | — | 8500/7500/8500/13000/10000/10000 | 6 | 100 | 25/15/60/30/25/45 |
+| `mage` | Mage | base | — | 8500/7500/8500/13000/10000/10000 | 6 | 100 | 30/20/50/40/30/30 |
 | `cleric` | Cleric | base | — | 10500/9500/11000/12000/9000/10000 | 6 | 100 | 35/20/45/35/25/40 |
 | `spellblade` | Spellblade | hybrid | warrior + mage | 11000/11500/10000/11500/9500/9000 | 6 | 300 | 30/45/25/40/35/25 |
 | `shadowpriest` | Shadowpriest | hybrid | thief + cleric | 10000/10000/9500/11000/12000/12000 | 7 | 300 | 45/30/25/35/35/30 |
@@ -72,13 +72,13 @@ Starter loadouts (base classes only; hybrids have `starter: null`):
 | id | name | tier | price | powerBp | effect |
 |---|---|---|---|---|---|
 | `spark` | Spark | 1 | 50 | 9000 | `{"kind":"none"}` |
-| `fireball` | Fireball | 2 | 200 | 11000 | `{"kind":"none"}` |
-| `thunderclap` | Thunderclap | 3 | 600 | 13500 | `{"kind":"stun","chanceBp":2500}` |
+| `fireball` | Fireball | 2 | 200 | 14000 | `{"kind":"none"}` |
+| `thunderclap` | Thunderclap | 3 | 600 | 16000 | `{"kind":"stun","chanceBp":2500}` |
 | `frostbite` | Frostbite | 2 | 300 | 10000 | `{"kind":"mod","stat":"spd","bp":-2000}` |
 | `drain` | Drain | 1 | 150 | 9000 | `{"kind":"drain","bp":5000}` |
 | `hex` | Hex | 2 | 300 | 0 | `{"kind":"mod","stat":"atk","bp":-2500}` |
 | `pickpocket-bolt` | Pickpocket Bolt | 2 | 250 | 7000 | `{"kind":"stealGold","bp":500}` |
-| `royal-decree` | Royal Decree | 4 | 1500 | 17000 | `{"kind":"none"}` |
+| `royal-decree` | Royal Decree | 4 | 1500 | 20000 | `{"kind":"none"}` |
 
 #### Ward spells (`spells.json` → `ward`, 4)
 | id | name | tier | price | mode | valueBp |
@@ -127,7 +127,7 @@ Starter loadouts (base classes only; hybrids have `starter: null`):
 | `swamp-witch-notary` | Swamp Witch Notary | 4 | bureaucrat-bog | 9500/8000/9000/12500/10000/10000 | 25/15/60/0 | 30/30/40 | hex | reflect | — | 160 | 150 | Sign here, here, and in blood. |
 | `bog-troll-bouncer` | Bog Troll Bouncer | 4 | bureaucrat-bog | 15000/11500/10500/6000/7000/8000 | 45/45/10/0 | 50/35/15 | spark | null | — | 170 | 140 | You're not on the list. |
 | `wisp-paperwork-spirit` | Wisp Paperwork Spirit | 4 | bureaucrat-bog | 8000/6000/9000/12500/12000/10000 | 10/10/80/0 | 20/20/60 | frostbite | absorb | `physTakenBp` -5000 | 160 | 130 | Form 27-B, stroke 6. |
-| `ogre-middle-manager` | Ogre Middle Manager | 4 | bureaucrat-bog | 11500/11000/10500/10000/9000/9000 | 40/35/25/0 | 35/35/30 | fireball | barrier | `atkBp` 1000 | 180 | 160 | Let's circle back on your face. |
+| `ogre-middle-manager` | Ogre Middle Manager | 4 | bureaucrat-bog | 11500/11000/10500/10000/9000/9000 | 40/35/25/0 | 35/35/30 | fireball | barrier | `attackDmgBp` 1000 | 180 | 160 | Let's circle back on your face. |
 
 #### Guardians (`monsters.json` → `guardians`, 3) and Crown Enforcer (`monsters.json` → `enforcer`)
 | id | name | style | statBp | attackTable | defendTable | battle | ward | xpPerTier / xpPerLevel | goldPerTier / goldPerLevel |
@@ -141,9 +141,9 @@ Starter loadouts (base classes only; hybrids have `starter: null`):
 ```json
 {
  "combat": {
-  "kBp": 12500,
+  "kBp": 14500,
   "jBp": 5000,
-  "jMagBp": 5000,
+  "jMagBp": 3500,
   "matrix": {
    "attack": {
     "guard": 5000,
@@ -191,7 +191,7 @@ Starter loadouts (base classes only; hybrids have `starter: null`):
    "luck": 5
   },
   "growth": {
-   "hp": 8,
+   "hp": 9,
    "atk": 3,
    "def": 2,
    "mag": 3,

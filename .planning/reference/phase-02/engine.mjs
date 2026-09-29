@@ -37,7 +37,9 @@ export function physBase(R,att,def){return Math.max(1,fl((att.stats.atk*R.combat
 export function computeCell(R,att,def,a,d,crit){const m=R.combat.matrix;const out={toDef:0,toAtt:0,healAtt:0,healDef:0,tags:[],effectLands:false};
  const base=a==='spell'?spellBase(R,att,def):physBase(R,att,def);
  if(a==='strike'&&d==='counter'){let r=fl(base*m.strike.counter/10000);r=fl(r*(10000+def.h.counterDmgBp)/10000);out.toAtt=Math.max(1,r);out.tags.push('reflected');return out;}
- let dmg=fl(base*m[a][d]/10000);
+ // D2: Spell x Ward with NO ward spell uses the Guard multiplier (no spell resistance without a ward spell)
+ const mult=(a==='spell'&&d==='ward'&&def.ward===null)?m.spell.guard:m[a][d];
+ let dmg=fl(base*mult/10000);
  const bonus=a==='attack'?att.h.attackDmgBp:a==='strike'?att.h.strikeDmgBp:att.h.spellDmgBp;
  dmg=fl(dmg*(10000+bonus)/10000);
  if(a==='strike'&&d==='guard'&&def.h.guardVsStrikeBp>0)dmg=fl(dmg*(10000-Math.min(10000,def.h.guardVsStrikeBp))/10000);
@@ -172,6 +174,8 @@ function advance(s,ctx,R,events){const c=s.public.combat;
 function startRoundNoOpen(s,round,ctx,R,events){const first=initiative(s,ctx,R);s=setCombat(s,{round,exchange:1,first});
  events.push({v:V,type:'RoundStarted',visibility:{kind:'public'},combatId:s.public.combat.id,round,first});return s;}
 export let rewardsEnabled=true;
+// reference-only switch: rewards off reproduces the pre-02-04 (W2) engine for trace localisation
+export function setRewardsEnabled(v){rewardsEnabled=v;}
 function endCombat(s,{outcome,winner,fled},events,R){const c=s.public.combat;
  events.push({v:V,type:'CombatEnded',visibility:{kind:'public'},combatId:c.id,outcome,winner,fled,hp:hpPair(s)});
  const sides=c.sides;s={...s,public:{...s.public,combat:null}};

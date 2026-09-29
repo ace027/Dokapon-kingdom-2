@@ -7,7 +7,7 @@ export const classes={
  warrior:{id:'warrior',name:'Warrior',kind:'base',parents:null,statBp:S(11500,11500,11500,8500,9000,9000),bagSize:5,switchFee:100,
   passives:[P(1,'brawler','Brawler','strikeDmgBp',1000),P(2,'thick-skin','Thick Skin','hpBp',1000),P(3,'shield-wall','Shield Wall','defBp',1000),P(4,'battle-rhythm','Battle Rhythm','attackDmgBp',1000),P(5,'unbreakable','Unbreakable','guardVsStrikeBp',5000)],
   starter:{weapon:'wooden-sword',shield:'pot-lid',accessory:null,battleSpell:'spark',wardSpell:null,bag:['herb']},
-  aiBias:{attack:35,strike:45,spell:20,guard:45,counter:35,ward:20}},
+  aiBias:{attack:30,strike:50,spell:20,guard:50,counter:30,ward:20}},
  thief:{id:'thief',name:'Thief',kind:'base',parents:null,statBp:S(9500,10000,9000,8000,13000,14000),bagSize:8,switchFee:100,
   passives:[P(1,'sticky-fingers','Sticky Fingers','pvpExtraSteal',1),P(2,'quick-feet','Quick Feet','fleeBp',2000),P(3,'lucky-break','Lucky Break','critBp',500),P(4,'fleet','Fleet','spdBp',1000),P(5,'pickpocket','Pickpocket','passPickpocketBp',500)],
   starter:{weapon:'wooden-sword',shield:'pot-lid',accessory:'lucky-sock',battleSpell:'spark',wardSpell:null,bag:['herb','smoke-bomb']},
@@ -15,7 +15,7 @@ export const classes={
  mage:{id:'mage',name:'Mage',kind:'base',parents:null,statBp:S(8500,7500,8500,13000,10000,10000),bagSize:6,switchFee:100,
   passives:[P(1,'frugal-caster','Frugal Caster','spellPriceBp',-2500),P(2,'focus','Focus','spellDmgBp',1000),P(3,'arcane-mind','Arcane Mind','magBp',1000),P(4,'overcharge','Overcharge','spellDmgBp',1500),P(5,'fieldcraft','Fieldcraft','fieldSpellMove',1)],
   starter:{weapon:'wooden-sword',shield:'pot-lid',accessory:null,battleSpell:'fireball',wardSpell:'barrier',bag:['herb']},
-  aiBias:{attack:25,strike:15,spell:60,guard:30,counter:25,ward:45}},
+  aiBias:{attack:30,strike:20,spell:50,guard:40,counter:30,ward:30}},
  cleric:{id:'cleric',name:'Cleric',kind:'base',parents:null,statBp:S(10500,9500,11000,12000,9000,10000),bagSize:6,switchFee:100,
   passives:[P(1,'mending','Mending','turnRegenBp',1000),P(2,'sanctuary','Sanctuary','roundRegenBp',500),P(3,'faith','Faith','defBp',1000),P(4,'devotion','Devotion','magBp',1000),P(5,'mirror-ward','Mirror Ward','wardReflectBp',5000)],
   starter:{weapon:'wooden-sword',shield:'pot-lid',accessory:null,battleSpell:'drain',wardSpell:'barrier',bag:['herb','antidote']},
@@ -68,13 +68,13 @@ export const items={
 const B=(id,name,tier,price,powerBp,effect)=>({id,name,tier,price,powerBp,effect});
 export const battleSpells={
  'spark':B('spark','Spark',1,50,9000,{kind:'none'}),
- 'fireball':B('fireball','Fireball',2,200,11000,{kind:'none'}),
- 'thunderclap':B('thunderclap','Thunderclap',3,600,13500,{kind:'stun',chanceBp:2500}),
+ 'fireball':B('fireball','Fireball',2,200,14000,{kind:'none'}),
+ 'thunderclap':B('thunderclap','Thunderclap',3,600,16000,{kind:'stun',chanceBp:2500}),
  'frostbite':B('frostbite','Frostbite',2,300,10000,{kind:'mod',stat:'spd',bp:-2000}),
  'drain':B('drain','Drain',1,150,9000,{kind:'drain',bp:5000}),
  'hex':B('hex','Hex',2,300,0,{kind:'mod',stat:'atk',bp:-2500}),
  'pickpocket-bolt':B('pickpocket-bolt','Pickpocket Bolt',2,250,7000,{kind:'stealGold',bp:500}),
- 'royal-decree':B('royal-decree','Royal Decree',4,1500,17000,{kind:'none'}),
+ 'royal-decree':B('royal-decree','Royal Decree',4,1500,20000,{kind:'none'}),
 };
 const WS=(id,name,tier,price,mode,valueBp)=>({id,name,tier,price,mode,valueBp});
 export const wardSpells={
@@ -114,7 +114,7 @@ export const monsters={
  'swamp-witch-notary':M('swamp-witch-notary','Swamp Witch Notary',4,'bureaucrat-bog','Sign here, here, and in blood.',S(9500,8000,9000,12500,10000,10000),AT(25,15,60,0),DT(30,30,40),'hex','reflect',[],160,150),
  'bog-troll-bouncer':M('bog-troll-bouncer','Bog Troll Bouncer',4,'bureaucrat-bog',"You're not on the list.",S(15000,11500,10500,6000,7000,8000),AT(45,45,10,0),DT(50,35,15),'spark',null,[],170,140),
  'wisp-paperwork-spirit':M('wisp-paperwork-spirit','Wisp Paperwork Spirit',4,'bureaucrat-bog','Form 27-B, stroke 6.',S(8000,6000,9000,12500,12000,10000),AT(10,10,80,0),DT(20,20,60),'frostbite','absorb',[H('physTakenBp',-5000)],160,130),
- 'ogre-middle-manager':M('ogre-middle-manager','Ogre Middle Manager',4,'bureaucrat-bog',"Let's circle back on your face.",S(11500,11000,10500,10000,9000,9000),AT(40,35,25,0),DT(35,35,30),'fireball','barrier',[H('atkBp',1000)],180,160),
+ 'ogre-middle-manager':M('ogre-middle-manager','Ogre Middle Manager',4,'bureaucrat-bog',"Let's circle back on your face.",S(11500,11000,10500,10000,9000,9000),AT(40,35,25,0),DT(35,35,30),'fireball','barrier',[H('attackDmgBp',1000)],180,160),
 };
 const GD=(id,name,style,statBp,attackTable,defendTable,battleSpell,wardSpell,hooks,xpPerTier,goldPerTier)=>({id,name,style,statBp,attackTable,defendTable,battleSpell,wardSpell,hooks,xpPerTier,goldPerTier});
 export const guardians={
@@ -124,12 +124,12 @@ export const guardians={
 };
 export const enforcer={id:'crown-enforcer',name:'Crown Enforcer',statBp:S(9000,12000,10000,8000,10000,10000),attackTable:AT(25,60,15,0),defendTable:DT(35,40,25),battleSpell:'spark',wardSpell:null,hooks:[],xpPerLevel:10,goldPerLevel:0};
 export const npcCurve=[S(48,15,9,11,9,4),S(95,30,16,22,13,6),S(140,44,24,32,16,8),S(190,58,32,42,19,10),S(245,72,40,52,22,12)];
-export const combat={kBp:12500,jBp:5000,jMagBp:5000,
+export const combat={kBp:14500,jBp:5000,jMagBp:3500,
  matrix:{attack:{guard:5000,counter:12500,ward:10000,open:10000},strike:{guard:15000,counter:10000,ward:17500,open:15000},spell:{guard:10000,counter:10000,ward:4000,open:10000}},
  critBaseBp:300,critPerLuckBp:25,critCapBp:2000,critMultBp:15000,maxRounds:3,
  fleeBaseBp:5000,fleePerSpdBp:250,fleeMinBp:1000,fleeMaxBp:9000,modMinBp:-5000,modMaxBp:5000,poisonBp:800,seniorRewardBp:15000,pvpXpPerLevel:10};
 const xpCurve=[];for(let L=1;L<=20;L++)xpCurve.push(25*(L-1)*L);
-export const progression={maxLevel:20,xpCurve,baseStats:S(40,14,10,12,10,5),growth:S(8,3,2,3,1,1),masteryWins:[0,3,7,12,18],hybridUnlockRank:3};
+export const progression={maxLevel:20,xpCurve,baseStats:S(40,14,10,12,10,5),growth:S(9,3,2,3,1,1),masteryWins:[0,3,7,12,18],hybridUnlockRank:3};
 export const economy={startingGold:100,maxScrolls:3};
 export const CONTENT_RULES={v:1,classes,gear,items,battleSpells,wardSpells,fieldSpells,monsters,guardians,enforcer,npcCurve,combat,progression,economy};
 function strip(v){if(Array.isArray(v))return v.map(strip);if(v&&typeof v==='object'){const o={};for(const k of Object.keys(v)){if(k==='name'||k==='tagline')continue;o[k]=strip(v[k]);}return o;}return v;}

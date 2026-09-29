@@ -1,4 +1,5 @@
-import {createGame,reduce,viewFor,rewardsEnabled} from './engine.mjs';
+import {createGame,reduce,viewFor} from './engine.mjs';
+import {hashState} from './kernel.mjs';
 import {createAi,decideCombat} from './ai.mjs';
 export const KITS={ // per class, tier 1..4
  warrior:[['wooden-sword','pot-lid',null,'spark',null],['bronze-blade','buckler','lucky-sock','spark','barrier'],['knights-saber','tower-shield','speed-anklet','fireball','barrier'],['royal-claymore','aegis-of-usurpia','crown-ward-amulet','fireball','reflect']],
@@ -18,9 +19,9 @@ export function duel(R,seed,A,B,diffA,diffB,level){ // A,B: {kind:'class',id} | 
  const ev=[];const app=a=>{const r=reduce(s,a,R);if(!r.ok)throw new Error('rej '+r.error.code+' '+JSON.stringify(a));s=r.state;ev.push(...r.events);};
  let lvl=level;if(B.kind==='monster')lvl=TIER_LEVEL[R.monsters[B.id].tier-1];
  app(setChar(R,'a',A.id,lvl));if(B.kind==='class')app(setChar(R,'b',B.id,lvl));
- app({v:2,type:'combat/start',playerId:'system',attacker:'a',opponent:B.kind==='class'?{kind:'player',playerId:'b'}:{kind:'monster',monsterId:B.id,senior:false}});
+ app({v:2,type:'combat/start',playerId:'system',attacker:'a',opponent:B.kind==='class'?{kind:'player',playerId:'b'}:{kind:'npc',npc:{kind:'monster',id:B.id,senior:false}}});
  const ais={a:createAi(seed,'a',diffA),b:createAi(seed,'b',diffB)};let guard=0;
  while(s.public.phase==='decision'){if(++guard>100)throw new Error('loop');const p=s.public.pending;
   for(const pid of p.required){if(s.public.phase!=='decision'||s.public.pending.id!==p.id)break;if(s.public.pending.committed.includes(pid))continue;
    const r=decideCombat(viewFor(s,pid),R,ais[pid]);ais[pid]=r.ai;app(r.action);}}
- const end=ev.findLast(e=>e.type==='CombatEnded');return {end,state:s,events:ev};}
+ const end=ev.findLast(e=>e.type==='CombatEnded');return {end,state:s,events:ev,hash:hashState(s)};}

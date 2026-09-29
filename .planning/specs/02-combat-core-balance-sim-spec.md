@@ -5,20 +5,20 @@ Phase 2 turns the Phase 1 kernel into a real game engine for **combat, classes, 
 - **Kernel v2** (`packages/core`): `reduce(state, action, rules)` with data-only `Rules`, a generic multi-player `PendingDecision` with per-player options/defaults, schema v2 state (characters, loadouts, combat, public choice history), and the Phase 1 sample module deleted.
 - **Combat engine** (`core/src/combat/*`, `core/src/handlers/combat.ts`): asymmetric Attack/Strike/Spell vs Guard/Counter/Ward, SPD initiative with a LUCK tie roll, up to 3 rounds, flee, items, battle/ward spells, statuses, integer-only damage math, monsters/guardians/Crown Enforcer as non-player combatants whose commands are drawn inside `reduce`.
 - **Progression + inventory** (`core/src/progression.ts`, `core/src/inventory.ts`, `core/src/handlers/loadout.ts`): XP/levels, class mastery ranks 1–5 with data-tagged passives, hybrid unlock, portable rank-5 passive, class switching with explicit overflow discards, bag/scroll/gear/spell limits.
-- **Content** (`packages/content`): six zod-validated data files → `buildRules()` → `Rules`, with 6 classes, 15 gear, 17 items (12 consumables + 5 joke items), 8 battle + 4 ward + 8 field spells, 16 monsters, 3 guardians and the Crown Enforcer. **All numbers in this spec are initial tuning** for the sim to refine.
+- **Content** (`packages/content`): six zod-validated data files → `buildRules()` → `Rules`, with 6 classes, 15 gear, 17 items (12 consumables + 5 joke items), 8 battle + 4 ward + 8 field spells, and **20 NPC definitions = 16 zone monsters (4 per zone/tier) + 4 special NPCs (3 town guardians + the Crown Enforcer)** — this is how the roadmap's "~20 monsters" is satisfied. **All numbers in this spec are initial tuning** for the sim to refine (Revision 2 retuned them so the Hard-vs-Easy gate passes with margin).
 - **CPU AI** (`core/src/ai/*`, exported as `@usurpia/core/ai`): Easy/Normal/Hard combat policies reading only `PlayerView` + `Rules`, with their own seeded RNG outside `reduce`.
 - **Balance sim** (`packages/sim`): `pnpm sim duel` runs thousands of duels through `reduce` and reports class×class and class×monster win rates; `pnpm sim replay` replays v2 files and checks a `rulesHash`.
 
-Architecture direction (user-selected, 2026-09-29): **Hybrid: Pragmatic-based**, with the forward-compat decisions from Phase 1 Open Question 5 bound as written in *Key Decisions*. This spec was produced with a **reference implementation run by the planner** (Node scratch scripts); every golden value below was computed by it. An implementation that disagrees with a golden value is wrong unless a Revision History row says otherwise.
+Architecture direction (user-selected, 2026-09-29): **Hybrid: Pragmatic-based**, with the forward-compat decisions from Phase 1 Open Question 5 bound as written in *Key Decisions*. Every golden value below was computed by the **reference implementation committed at `.planning/reference/phase-02/`** (the *golden oracle*, see *Golden oracle and traces*); `node .planning/reference/phase-02/verify-spec.mjs` re-derives every golden from this spec's own tables and action blocks and must report 0 failures. An implementation that disagrees with a golden value is wrong unless a Revision History row says otherwise.
 
 ## Requirements
 | ID | Description | Priority | Acceptance Criteria |
 |----|-------------|----------|---------------------|
 | R5 | Six stats; 4 base classes; level + per-class mastery ranks 1–5 with passives; hybrid unlock at rank 3 in two classes (Spellblade, Shadowpriest) | Must | `stats.test.ts`, `progression.test.ts`, `rewards.test.ts`: sheet-stat goldens; rank thresholds `[0,3,7,12,18]` wins; passives of ranks ≤ current rank active; hybrid unlock exactly when both parents reach rank 3; portable rank-5 passive active only outside its own class; content `data.test.ts` pins every class and passive |
-| R6 | Asymmetric combat: attacker Attack/Strike/Spell vs defender Guard/Counter/Ward via the resolution matrix, SPD initiative, ≤ 3 rounds, flee | Must | `resolve.test.ts` pins **every matrix cell** (incl. Strike×Counter reflection and failed Counter = Attack×Counter 1.25×) against the golden table; `combat-flow.test.ts` pins the state machine and the combat golden replay (hash `ec0c3508`) |
+| R6 | Asymmetric combat: attacker Attack/Strike/Spell vs defender Guard/Counter/Ward via the resolution matrix, SPD initiative, ≤ 3 rounds, flee; the Ward command works with the equipped Ward Spell (no ward spell → Spell×Ward uses the Guard multiplier) | Must | `resolve.test.ts` pins **every matrix cell** (incl. Strike×Counter reflection, failed Counter = Attack×Counter 1.25×, and Spell×Ward without a ward spell = Guard multiplier) against the golden table; `combat-flow.test.ts` pins the state machine; `combat-golden.test.ts` pins the combat golden replay (hash `ec0c3508`) and its exchange table |
 | R7 | Gear (Weapon/Shield/Accessory), Battle + Ward spell slot, ≤ 3 field-spell scrolls, class-sized bag, ~12 consumables, ~15 gear, 8 battle, 4 ward, 8 field spells | Must | `inventory.test.ts` / `loadout.test.ts`: slot/kind checks, bag capacity, 3-scroll cap, class-switch overflow requires an exact `discard` list; content counts pinned in `data.test.ts` |
 | R8 | ~20 "monsters with day jobs" across 4 tiers, 3 guardian archetypes, the Crown Enforcer, weighted command tables | Must | Content ships 16 monsters (4 per tier) + 3 guardians + 1 enforcer = 20 NPC definitions, plus data-only Senior variants (tier + 1); `npc.test.ts` pins tier-curve stats; command draws are seeded and pinned |
-| R9 | Headless balance simulator CLI reporting win rates (game length/assets arrive in Phase 3) | Must | `pnpm sim duel --n 10000` exits 0 within the performance budget and prints class-vs-class and class-vs-monster sections; `gate.test.ts`: Hard beats Easy ≥ 70% of decisive duels in every class mirror at the pinned seed |
+| R9 | Headless balance simulator CLI reporting win rates (game length/assets arrive in Phase 3) | Must | `perf.test.ts` runs `pnpm sim duel --n 10000 --seed perf`: exit 0, ≤ 60 s wall, both sections, pinned `total` line; `gate.test.ts`: in **every** class mirror of the gate, Hard wins ≥ 70% of **decisive** duels **and** the draw rate is ≤ 40%, with the exact pinned counts |
 
 ## Architecture
 ```
@@ -43,16 +43,16 @@ packages/
 │  │  └─ resolve.ts       snapshots, computeCell, critChanceBp, fleeChanceBp, drawNpcCommand, resolveExchange (pure; injected draw)
 │  ├─ progression.ts      applyXp, awardVictory, hybridsUnlocked (pure)
 │  ├─ inventory.ts        addItem, removeItem, addScroll, equipGear, setSpell, planClassSwitch (pure; value | Reject)
-│  ├─ ai/                 index.ts (public AI API), combat.ts (policy), opponent-model.ts, tuning.ts
+│  ├─ ai/                 index.ts (public AI API), combat.ts (policy), opponent-model.ts, tuning.ts, exp.ts (expNeg)
 │  ├─ game.ts  replay.ts  views.ts  serialize.ts  validation.ts  rng.ts  hash.ts  index.ts
 ├─ core/test/fixtures/test-rules.ts   TEST_RULES (small Rules literal; no content dependency)
 ├─ content/  data/{classes,gear,items,spells,monsters,tuning}.json, src/schemas/*, src/build-rules.ts, src/node.ts
-├─ sim/      src/{cli,replay-file,duel,kits,report,rules}.ts, fixtures/combat-game.json
+├─ sim/      src/{cli,replay-file,duel,kits,report,rules}.ts, fixtures/combat-game.json, test/{duel,gate,perf,content-stats,cli,replay-file}.test.ts
 └─ client/   text shell updated to the v2 view (Phaser arrives in Phase 4)
 ```
 
 **Dependency direction (Phase 2):**
-- `core` → nothing (unchanged lint). `core/src/**` except `core/src/ai/**` must not import `ai/` (new lint). `core/src/ai/**` must not import `reducer`/`handlers` or the `GameState`/`HiddenState` types (new lint).
+- `core` → nothing (unchanged lint). `core/src/**` except `core/src/ai/**` must not import `ai/` (new lint). `core/src/ai/**` must not import `reducer`, `handlers/*`, the core barrel `index`, `serialize`, `game` or `replay` (each exposes `GameState` values), must not import the names `GameState`/`HiddenState` from **any** module, and must not use `Math.exp`/`Math.log`/`Math.pow` (new lint; see *Lint and purity probe*).
 - `content` → `core` (**type-only** imports of `Rules` and friends, plus the pure value helpers `rulesHash`, `CONTENT_ID_PATTERN`, `STAT_KEYS`, `COMBAT_HOOKS`, `BOARD_HOOKS`).
 - `sim` → `core`, `core/ai`, `content` (`@usurpia/content/node`).
 - `client` → `core` only (content wiring is Phase 4).
@@ -75,13 +75,17 @@ packages/
 | Deserialize | `deserialize(json, rules)`: full exact-key shape + referential checks against `rules` + derived invariants (level vs xp, hp ≤ max, npc stat snapshot = recomputation, prompts = engine prompts) | Saves loaded under different rules fail loudly; Phase 1 discipline extended | Rules-free shape check only |
 | Handlers split | `handlers/{shared,decision,combat,system,loadout,index}.ts`; the decision module dispatches reveal to a per-kind resolver table passed in by `index.ts` (no mutable registry) | Wave-parallel ownership; purity | One big `handlers.ts` |
 | AI export | Subpath export `@usurpia/core/ai` (`core/package.json` `exports["./ai"]`); the main `index.ts` never imports `ai/` | Enforces the import boundary at package level too | Re-export from index |
-| Sim/client rules in W1 | Until W3 the sim uses `packages/sim/src/kernel-rules.ts` and the client uses `packages/client/src/demo-rules.ts`, both **verbatim copies of `TEST_RULES` typed as `Rules`**; W3 (02-05) deletes the sim copy and loads content rules | `buildRules` does not exist until W2; core test fixtures cannot be imported across packages (composite `rootDir`) | Exporting test fixtures from core `src` |
-| Performance | `pnpm sim duel --n 10000` ≤ 60 s wall on `ubuntu-latest` (target ≤ 20 s; reference JS ran 10 000 duels in 1.9 s) | Headroom for per-action validation in `reduce` | Bypassing `reduce` in the sim (forbidden: user requirement) |
+| Sim/client rules in W1 | From 02-01a until W3 the sim uses `packages/sim/src/kernel-rules.ts` and the client uses `packages/client/src/demo-rules.ts`, both **verbatim copies of `TEST_RULES` typed as `Rules`**; W3 (02-05) deletes the sim copy and loads content rules | `buildRules` does not exist until W2; core test fixtures cannot be imported across packages (composite `rootDir`) | Exporting test fixtures from core `src` |
+| Performance | `pnpm sim duel --n 10000` ≤ 60 s wall on `ubuntu-latest` (target ≤ 20 s; reference JS ran 10 000 duels in 2.2 s), asserted automatically by `packages/sim/test/perf.test.ts` (02-05) | Headroom for per-action validation in `reduce` | Bypassing `reduce` in the sim (forbidden: user requirement) |
+| Ward without a ward spell (user decision D2, 2026-09-29) | The Ward command is always offered. With **no ward spell equipped**, Spell×Ward uses the **Guard multiplier** (`matrix.spell.guard`, 10000 bp) — Ward gives no spell resistance on its own. The starter ward spell **Barrier** (`valueBp 0`) is the baseline that grants the 0.4× spell resist (`matrix.spell.ward`); Reflect/Absorb/Counterspell build on it exactly as in `computeCell` | Design intent (design doc *Spell slots*): "1 **Ward Spell** (defense, used with the defender's *Ward* command)" and *Ward spells*: "Barrier — Standard spell resist (the matrix value)". So the 0.4× matrix value is what the Barrier ward spell provides; the Ward command without a ward spell is an unskilled block (Guard value vs Spell). The design doc itself is not edited; this row is the binding interpretation | Ward always 0.4× (made Barrier worthless and Ward free) |
+| Golden oracle (critique #1) | `.planning/reference/phase-02/` (reference JS, `verify-spec.mjs`, `gen-goldens.mjs`, `traces/*.json`) is the single source of every golden; it is excluded from eslint, prettier, tsc and vitest; executors diff against its per-action traces to localise a mismatch | Composite goldens (hashes, stdout, gate counts) are otherwise opaque to debug | Scratch scripts in `/tmp` (lost) |
+| Hard-vs-Easy gate (user decision D1) | Every class mirror of the gate must satisfy **both** `hardWins / (hardWins + easyWins) ≥ 0.70` and `draws / 400 ≤ 0.40`; initial tuning was retuned (Revision 2) so every mirror has ≥ 0.773 and ≤ 0.285 | A Hard AI that only "wins" 3 decisive duels out of 400 proves nothing | Decisive-only rate (draw-dominated mirrors passed vacuously) |
+| AI arithmetic (critique #10) | The AI softmax uses `expNeg` (range reduction + degree-13 Taylor, IEEE `+ − × ÷` and `Math.round` only); no `Math.exp`/`Math.log`/`Math.pow`. AI goldens are therefore engine-independent (not just V8/Node-exact) | ECMAScript leaves `exp`/`log`/`pow` implementation-approximated | Accept V8-only goldens |
 
 ## API and Type Contracts
 Unchanged from Phase 1 and still binding: `rng.ts` (sfc32/cyrb128 + golden vectors), `hash.ts`, `stableStringify`, the canonicalize-once rule for untrusted actions, `Object.hasOwn`/`ownGet` for every record keyed by player ids **or content ids**, bounded echo (≤ 64 chars) in reject messages, `RESERVED_IDS`, `PLAYER_ID_PATTERN`, `MAX_COUNTER = 2**31 − 1`, frozen `PUBLIC` visibility, `onlyPlayers()`, replay-continues-after-rejection.
 
-### `rules.ts` — the `Rules` contract (W1, 02-01)
+### `rules.ts` — the `Rules` contract (W1a, 02-01a)
 ```ts
 export const RULES_VERSION = 1 as const;
 export type ContentId = string;                       // CONTENT_ID_PATTERN and not in RESERVED_CONTENT_IDS
@@ -204,13 +208,14 @@ export function levelForXp(rules: Rules, xp: number): number;         // max L w
 ```
 - Every record is keyed by its entry's `id` (`record[id].id === id`). All lookups use `ownGet`. Core **trusts** `Rules` (it is validated by `buildRules` or is the typed `TEST_RULES` literal); core never re-validates rules.
 - `Rules` contains no names, descriptions or taglines.
+- **NPC hooks:** an NPC's `hooks` are summed by `applyPassives(def.hooks)` in `snapshotNpc` and act only through **combat-time** hooks (`attackDmgBp`, `physTakenBp`, on-hit hooks, …). `npcStats` never reads hooks, so the sheet-stat hooks `hpBp`/`atkBp`/`defBp`/`magBp`/`spdBp`/`luckBp` would be silent no-ops on an NPC; content rejects them (cross-ref rule "npc sheet-stat hooks are not applied"). All three shipped guardians and the Crown Enforcer have `hooks: []`; `EnforcerDef` has **no** `style` field (only guardians have one).
 
-### `types.ts` — GameState v2 (W1, 02-01)
+### `types.ts` — GameState v2 (W1a, 02-01a)
 ```ts
 export const SCHEMA_VERSION = 2 as const;
 export const MAX_COUNTER = 2 ** 31 - 1;       // turn, decisionSeq, combatSeq, xp, gold, mastery wins, choiceHistory counts
 export const MAX_STAT = 99_999;               // hp and npc stat snapshots
-export const CHOICE_PATTERN = /^[a-z][a-z0-9:-]{0,47}$/;   // decision option / choice tokens
+export const CHOICE_PATTERN = /^[a-z][a-z0-9:-]{0,63}$/;   // decision option / choice tokens (≤ 64 chars: fits "item:" + a 48-char content id)
 export type Phase = "turn" | "decision";
 export type DecisionKind = "poll" | "combat/exchange";
 export interface SeatSettings { readonly id: PlayerId; readonly classId: ContentId }
@@ -254,7 +259,7 @@ Removed from v1: `Choice`, `counter`, `lastRoll`, `PrivateState.note`, `hidden.d
 
 **Partition rationale / redaction:** public = everything a player at the table can see (class, level, xp, hp, gold, equipped gear and spells, mastery, combat state, who has committed, revealed choices, choice history). Private = bag, field-spell scrolls, the player's own open prompt (its options reveal bag items). Hidden = RNG, decision/combat sequence numbers, committed-but-unrevealed choices.
 
-**`createGame(settings, rules)`** (W1) throws `SettingsError` unless: settings is an object; `v === 2`; `seed` is a non-empty string; `players` is an array of 1–4 plain objects with exactly the keys `id`, `classId`; ids pass `playersError` (pattern, reserved, unique); each `classId` is an own key of `rules.classes` whose `kind === "base"`. It returns:
+**`createGame(settings, rules)`** (W1a) throws `SettingsError` unless: settings is an object; `v === 2`; `seed` is a non-empty string; `players` is an array of 1–4 plain objects with exactly the keys `id`, `classId`; ids pass `playersError` (pattern, reserved, unique); each `classId` is an own key of `rules.classes` whose `kind === "base"`. It returns:
 - `public = {phase:"turn", turn:1, activePlayer: players[0].id, players: ids, characters, choiceHistory, pending:null, lastReveal:null, combat:null}`;
 - `characters[id] = {classId, level:1, xp:0, gold: rules.economy.startingGold, mastery: {every class id (sorted): 0}, portable:null, weapon/shield/accessory/battleSpell/wardSpell from classes[classId].starter, hp: sheetStats(...).hp}`;
 - `choiceHistory[id] = {attack:0, strike:0, spell:0, guard:0, counter:0, ward:0}`;
@@ -262,12 +267,12 @@ Removed from v1: `Choice`, `counter`, `lastRoll`, `PrivateState.note`, `hidden.d
 - `hidden = {rng: seedRng(seed), decisionSeq: 0, combatSeq: 0, decision: null}`.
 All records are built with `Object.fromEntries` (PIT-002).
 
-**Golden (W1):** `createGame({v:2, seed:"fixture", players:[{id:"p1",classId:"fighter"},{id:"p2",classId:"caster"}]}, TEST_RULES)` has `hashState = 758ef72c` and canonical JSON:
+**Golden (W1a):** `createGame({v:2, seed:"fixture", players:[{id:"p1",classId:"fighter"},{id:"p2",classId:"caster"}]}, TEST_RULES)` has `hashState = 758ef72c` and canonical JSON:
 ```json
 {"hidden":{"combatSeq":0,"decision":null,"decisionSeq":0,"rng":[2094061593,184016598,2753665883,215806170]},"private":{"p1":{"bag":["herb"],"prompt":null,"scrolls":[]},"p2":{"bag":["herb","bomb"],"prompt":null,"scrolls":[]}},"public":{"activePlayer":"p1","characters":{"p1":{"accessory":null,"battleSpell":"zap","classId":"fighter","gold":100,"hp":48,"level":1,"mastery":{"battlemage":0,"caster":0,"fighter":0},"portable":null,"shield":"lid","wardSpell":null,"weapon":"stick","xp":0},"p2":{"accessory":"charm","battleSpell":"zap","classId":"caster","gold":100,"hp":36,"level":1,"mastery":{"battlemage":0,"caster":0,"fighter":0},"portable":null,"shield":"lid","wardSpell":"shell","weapon":"stick","xp":0}},"choiceHistory":{"p1":{"attack":0,"counter":0,"guard":0,"spell":0,"strike":0,"ward":0},"p2":{"attack":0,"counter":0,"guard":0,"spell":0,"strike":0,"ward":0}},"combat":null,"lastReveal":null,"pending":null,"phase":"turn","players":["p1","p2"],"turn":1},"v":2}
 ```
 
-### `game.ts` / `replay.ts` signatures (W1)
+### `game.ts` / `replay.ts` signatures (W1a)
 ```ts
 export class SettingsError extends Error {}
 export function createGame(settings: GameSettings, rules: Rules): GameState;
@@ -277,7 +282,7 @@ export function hashState(state: GameState): string;                            
 ```
 `packages/core/src/index.ts` exports everything in this section plus `rules.ts`, `combat/{passives,stats,options,resolve}.ts`, `progression.ts` and `inventory.ts` public functions (added by the owning plan); it never re-exports `ai/`.
 
-### `views.ts` (W1)
+### `views.ts` (W1a shape; `counts` and the full redaction suite in W1b)
 ```ts
 export interface PlayerView {
   readonly v: typeof SCHEMA_VERSION; readonly viewer: Viewer; readonly public: PublicState;
@@ -298,7 +303,8 @@ export type Grant =
   | { kind: "item" | "scroll" | "gear" | "battleSpell" | "wardSpell"; id: ContentId }
   | { kind: "gold" | "xp"; amount: number };                                  // int 1..1_000_000
 export type Action =
-  // W1 (02-01)
+  // W1b (02-01b). In 02-01a `Action` is the empty union (`never`), `ACTION_TYPES = []` and the handler map is `{}`;
+  // every versioned object is then UNKNOWN_ACTION. 02-01b adds these three members, their guards and handlers together.
   | { v: 2; type: "decision/open"; playerId: "system"; prompts: { playerId: PlayerId; options: string[]; default: string }[] }
   | { v: 2; type: "decision/commit"; playerId: PlayerId; decisionId: string; choice: string }
   | { v: 2; type: "timeout"; playerId: "system"; decisionId: string }
@@ -366,14 +372,14 @@ State-validation order is the row order below; the **first** failing check wins.
 
 Actor rules unchanged (`active`, `any-player`, `system`, `required`). Phase 2 uses no `active` handler; `turn`/`activePlayer` stay at their initial values.
 
-### Transition semantics — kernel (W1)
+### Transition semantics — kernel (W1b, 02-01b)
 - **`openDecision(state, kind, prompts, events)`**: `decisionSeq += 1`; `id = "d" + decisionSeq`; `public.pending = {id, kind, required: prompts.map(p ⇒ p.playerId), committed: []}`; `hidden.decision = {id, choices: {}}`; each `private[p].prompt = {decisionId: id, options, default}`; `phase = "decision"`; emit `DecisionOpened`, then one `PromptOpened` per prompt in order.
 - **`decision/open`** (kind `poll`): `openDecision` with the action's prompts (options copied).
 - **`decision/commit`**: append to `committed`, store `choices[p]`, emit `ChoiceCommitted`; if all required committed → **reveal** with `timedOut: []`.
 - **`timeout`**: for each required player not committed (in `required` order) emit `ChoiceTimedOut`; then **reveal** with those players as `timedOut`; their choice is their own `prompt.default`.
 - **reveal**: `choices` built in `required` order (committed choice via `ownGet`, else own default); `lastReveal = {decisionId, kind, choices, timedOut}`; clear `pending`, `hidden.decision` and every required player's `prompt`; `phase = "turn"`; emit `ChoicesRevealed`. If `kind === "combat/exchange"`: for each required player **not** in `timedOut` whose choice is one of the 6 `COMMANDS`, `choiceHistory[p][choice] = min(MAX_COUNTER, n + 1)`; then call the kind's resolver `resolvers[kind](state, choices, ctx, rules, events)`. The `poll` resolver returns the state unchanged. In W1 the `combat/exchange` resolver slot holds `resolveUnsupported` (returns the state unchanged; unreachable because W1 `deserialize` rejects combat decisions); 02-03 replaces it.
 
-**Golden (W1, `packages/sim/fixtures/kernel-game.json`, core `replay.test.ts`)** — settings `{v:2, seed:"fixture", players:[{id:"p1",classId:"fighter"},{id:"p2",classId:"caster"}]}`, rules `TEST_RULES`, actions:
+**Golden (W1b, `packages/sim/fixtures/kernel-game.json`, core `replay.test.ts`)** — settings `{v:2, seed:"fixture", players:[{id:"p1",classId:"fighter"},{id:"p2",classId:"caster"}]}`, rules `TEST_RULES`, actions:
 ```json
 [{"v":2,"type":"decision/open","playerId":"system","prompts":[{"playerId":"p1","options":["yes","no"],"default":"no"},{"playerId":"p2","options":["red","green","blue"],"default":"red"}]},
  {"v":2,"type":"decision/commit","playerId":"p1","decisionId":"d1","choice":"yes"},
@@ -383,9 +389,9 @@ Actor rules unchanged (`active`, `any-player`, `system`, `required`). Phase 2 us
  {"v":2,"type":"decision/commit","playerId":"p2","decisionId":"d2","choice":"c"},
  {"v":2,"type":"decision/commit","playerId":"p2","decisionId":"d2","choice":"b"}]
 ```
-→ rejections `[{index:2, ALREADY_COMMITTED}, {index:5, INVALID_PAYLOAD}]`; 10 events `DecisionOpened, PromptOpened, PromptOpened, ChoiceCommitted, ChoiceTimedOut, ChoicesRevealed, DecisionOpened, PromptOpened, ChoiceCommitted, ChoicesRevealed`; final `hashState = 9616698e`; `lastReveal = {decisionId:"d2", kind:"poll", choices:{p2:"b"}, timedOut:[]}`; the first reveal's choices are `{p1:"yes", p2:"red"}` with `timedOut:["p2"]`; `rulesHash(TEST_RULES) = 7433ea8b`. Sim line: `hash=9616698e rules=7433ea8b turn=1 events=10 rejections=2`.
+→ rejections `[{index:2, ALREADY_COMMITTED}, {index:5, INVALID_PAYLOAD}]`; 10 events `DecisionOpened, PromptOpened×2, ChoiceCommitted, ChoiceTimedOut, ChoicesRevealed, DecisionOpened, PromptOpened, ChoiceCommitted, ChoicesRevealed`; final `hashState = 9616698e`; `lastReveal = {decisionId:"d2", kind:"poll", choices:{p2:"b"}, timedOut:[]}`; the first reveal's choices are `{p1:"yes", p2:"red"}` with `timedOut:["p2"]`; `rulesHash(TEST_RULES) = 7433ea8b`. Sim line: `hash=9616698e rules=7433ea8b turn=1 events=10 rejections=2`. Oracle summary (`traces/kernel-game.trace.json`): `2 rejections ([{"index":2,"code":"ALREADY_COMMITTED"},{"index":5,"code":"INVALID_PAYLOAD"}]), 10 events, final hashState = 9616698e`.
 
-### `combat/passives.ts` + `combat/stats.ts` — stats (W1, 02-01; pure, no GameState)
+### `combat/passives.ts` + `combat/stats.ts` — stats (W1a, 02-01a; pure, no GameState)
 ```ts
 export type HookTotals = Readonly<Record<CombatHook, number>>;
 export function applyPassives(hooks: readonly Hook[]): HookTotals;
@@ -454,7 +460,7 @@ export function resolveExchange(rules: Rules, input: ExchangeInput, draw: Draw):
 **`computeCell` — the exact algorithm** (`m = t.matrix`, all steps `fl`, `h` = hook totals):
 1. `base = a === "spell" ? spellBase : physBase` (att must have a spell for `"spell"`; guaranteed by options/tables).
 2. **Strike × Counter (reflection):** `r = fl(base × m.strike.counter / 10000)`; `r = fl(r × (10000 + def.h.counterDmgBp) / 10000)`; return `toAttacker = max(1, r)`, tags `["reflected"]`, everything else 0, `effectLands = false`. `crit` is ignored.
-3. `dmg = fl(base × m[a][d] / 10000)`.
+3. `mult = (a === "spell" && d === "ward" && def.ward === null) ? m.spell.guard : m[a][d]` (**D2:** Ward without a ward spell gives no spell resistance — the Guard multiplier applies; with any ward spell, incl. Barrier, `m.spell.ward` applies); `dmg = fl(base × mult / 10000)`.
 4. `dmg = fl(dmg × (10000 + bonus) / 10000)`, `bonus = att.h.attackDmgBp | strikeDmgBp | spellDmgBp` by command.
 5. If `a === "strike" && d === "guard" && def.h.guardVsStrikeBp > 0`: `dmg = fl(dmg × (10000 − min(10000, def.h.guardVsStrikeBp)) / 10000)`.
 6. `dmg = fl(dmg × max(0, 10000 + (a === "spell" ? def.h.spellTakenBp : def.h.physTakenBp)) / 10000)`.
@@ -466,40 +472,43 @@ export function resolveExchange(rules: Rules, input: ExchangeInput, draw: Draw):
 12. `toDefender = dmg`.
 13. If `d === "ward" && a === "spell" && base > 0 && !negated`: `rbp = (ward?.mode === "reflect" ? ward.valueBp : 0) + def.h.wardReflectBp`; if `rbp > 0`: `sraw = fl(base × (10000 + att.h.spellDmgBp) / 10000)`, `toAttacker = max(1, fl(sraw × rbp / 10000))`, tag `reflected`.
 14. If `a !== "spell" && dmg > 0 && att.h.lifestealBp > 0`: `healAttacker += fl(dmg × lifestealBp / 10000)`.
-15. `carries = a === "spell" || (a === "strike" && att.h.spellbladeStrike > 0 && att.spell !== null)`; `effectLands = carries && d !== "ward" && (dmg > 0 || (a === "spell" && att.spell.powerBp === 0))`.
+15. `carries = a === "spell" || (a === "strike" && att.h.spellbladeStrike > 0 && att.spell !== null)`; `effectLands = carries && d !== "ward" && (dmg > 0 || (a === "spell" && att.spell.powerBp === 0))`. (The **Ward command** blocks spell side effects whether or not a ward spell is equipped; D2 changes only the step-3 multiplier.)
 16. If `effectLands && att.spell.effect.kind === "drain"`: `healAttacker += fl(dmg × effect.bp / 10000)`.
 
-**Golden matrix (`resolve.test.ts`)** — tuning = `TEST_RULES.combat` (identical to shipped initial tuning: `kBp 12500, jBp 5000, jMagBp 5000`, matrix below, `critMultBp 15000`). Fixture: attacker battle stats `{hp:100, atk:30, def:20, mag:24, spd:10, luck:8}`, hp 100/100, all hooks 0, spell `{powerBp:12000, effect:none}`, ward null; defender `{hp:90, atk:26, def:18, mag:20, spd:9, luck:4}`, hp 90/90, hooks 0, ward null. So `physBase = 28`, `spellBase = 18`, `critChanceBp(att) = 500`.
+**Golden matrix (`resolve.test.ts`)** — tuning = `TEST_RULES.combat` (`kBp 12500, jBp 5000, jMagBp 5000`, matrix below, `critMultBp 15000`; the shipped content tuning differs since Revision 2 — `kBp 14500`, `jMagBp 3500` — so this golden deliberately uses the TEST_RULES values). Fixture: attacker battle stats `{hp:100, atk:30, def:20, mag:24, spd:10, luck:8}`, hp 100/100, all hooks 0, spell `{powerBp:12000, effect:none}`, ward null; defender `{hp:90, atk:26, def:18, mag:20, spd:9, luck:4}`, hp 90/90, hooks 0, **ward null** (so the Spell×Ward base cell exercises D2). So `physBase = 28`, `spellBase = 18`, `critChanceBp(att) = 500`. The multiplier shown is the one step 3 uses.
 
 | Attacker \ Defender | Guard (m) | Counter (m) | Ward (m) | Open (m) |
 |---|---|---|---|---|
 | **Attack** | 5000 → **14** (crit 21) | 12500 → **35** (crit 52) — failed Counter | 10000 → **28** (crit 42) | 10000 → **28** (crit 42) |
 | **Strike** | 15000 → **42** (crit 63) — pierces Guard | reflection 10000 → **attacker takes 28**, defender 0 (no crit) | 17500 → **49** (crit 73) | 15000 → **42** (crit 63) |
-| **Spell** | 10000 → **18**, effectLands | 10000 → **18**, effectLands | 4000 → **7**, no effect | 10000 → **18**, effectLands |
+| **Spell** | 10000 → **18**, effectLands | 10000 → **18**, effectLands | 10000 → **18**, no effect — **no ward spell: Guard multiplier (D2)** | 10000 → **18**, effectLands |
 
-Variant rows (same fixture, one change each; `toDefender / toAttacker / healAttacker / healDefender / tags`):
+Variant rows (same fixture, one change each; ward spells are the TEST_RULES ones: `shell` = Barrier (`valueBp 0`), `mirror-ward` = Reflect 5000, `sponge` = Absorb, `null-ward` = Counterspell 12500). `effectLands` is listed for spell cells and Spellblade strikes; "extras" are heals and tags:
 
-| Variant | Cell | Result (no crit) | Crit |
+| Variant | Cell | Result (no crit): toDefender / toAttacker / extras | Crit toDefender |
 |---|---|---|---|
 | att `strikeDmgBp +1000` | Strike×Ward | 53 / 0 | 79 |
 | def `guardVsStrikeBp 5000` (Warrior r5) | Strike×Guard | 21 / 0 | 31 |
 | def `counterDmgBp +2000` | Strike×Counter | 0 / 33 / `reflected` | n/a |
-| def `spellTakenBp −2000` (Mirror Shield) | Spell×Guard | 14 / 0 | n/a |
+| def `spellTakenBp −2000` (Mirror Shield) | Spell×Guard | 14 / 0 / effectLands true | n/a |
 | def `physTakenBp −5000` (Wisp) | Attack×Ward | 14 / 0 | 21 |
-| def ward Barrier | Spell×Ward | 7 / 0 | n/a |
-| def ward Reflect (5000) | Spell×Ward | 7 / 9 / `reflected` | n/a |
-| def ward Absorb | Spell×Ward | 0 / 0 / heal def 7 / `absorbed` | n/a |
-| def ward Counterspell (12500) | Spell×Ward | 0 / 0 / `negated` | n/a |
+| def ward Barrier (`shell`, the 0.4× baseline) | Spell×Ward | 7 / 0 / effectLands false | n/a |
+| def ward Barrier | Attack×Ward | 28 / 0 | 42 |
+| def ward Reflect (`mirror-ward`, 5000) | Spell×Ward | 7 / 9 / `reflected` / effectLands false | n/a |
+| def ward Absorb (`sponge`) | Spell×Ward | 0 / 0 / heal def 7 / `absorbed` / effectLands false | n/a |
+| def ward Counterspell (`null-ward`, 12500) | Spell×Ward | 0 / 0 / `negated` / effectLands false | n/a |
 | def ward Counterspell | Attack×Ward | 35 / 0 | 52 |
 | def ward Counterspell | Strike×Ward | 61 / 0 | 91 |
-| def `wardReflectBp 5000` (Cleric r5) | Spell×Ward | 7 / 9 / `reflected` | n/a |
-| att spell Hex (power 0) | Spell×Guard | 0 / 0, effectLands **true** | n/a |
-| att spell Hex | Spell×Ward | 0 / 0, effectLands false | n/a |
-| att spell Leech (power 8000, drain 5000) | Spell×Counter | 9 / 0 / heal att 4, effectLands | n/a |
+| def `wardReflectBp 5000`, no ward spell (Cleric r5) | Spell×Ward | 18 / 9 / `reflected` / effectLands false | n/a |
+| def `wardReflectBp 5000` + ward Barrier | Spell×Ward | 7 / 9 / `reflected` / effectLands false | n/a |
+| att spell Hex (power 0) | Spell×Guard | 0 / 0 / effectLands true | n/a |
+| att spell Hex, def no ward spell | Spell×Ward | 0 / 0 / effectLands false | n/a |
+| att spell Leech (power 8000, drain 5000) | Spell×Counter | 9 / 0 / heal att 4 / effectLands true | n/a |
+| att spell Leech, def no ward spell | Spell×Ward | 9 / 0 / effectLands false | n/a |
 | att `lifestealBp 2000` | Attack×Counter | 35 / 0 / heal att 7 | 52 |
-| att `spellbladeStrike 5000` | Strike×Guard | 51 / 0, effectLands | 72 |
-| att `spellbladeStrike 5000` | Strike×Ward | 58 / 0, effectLands false | 82 |
-| att `spellbladeStrike 5000` | Strike×Counter | 0 / 28 / `reflected` | n/a |
+| att `spellbladeStrike 5000` | Strike×Guard | 51 / 0 / effectLands true | 72 |
+| att `spellbladeStrike 5000` | Strike×Ward | 58 / 0 / effectLands false | 82 |
+| att `spellbladeStrike 5000` | Strike×Counter | 0 / 28 / `reflected` / effectLands false | n/a |
 | att `atk 1` (min-1 rule) | Attack×Guard | 1 / 0 | 1 |
 
 ### `resolveExchange` — one exchange (pure)
@@ -522,6 +531,8 @@ export interface ExchangeOutcome {
 ```ts
 // combat/options.ts (pure)
 export const DEFENDER_OPTIONS: readonly DefendCommand[] = ["guard", "counter", "ward"];   // default "guard"
+  // "ward" is ALWAYS offered, even with wardSpell === null (D2): then Spell×Ward uses the Guard multiplier
+  // (computeCell step 3) but still blocks spell side effects; Attack/Strike×Ward use the ward column as usual.
 export function attackerOptions(rules: Rules, ch: CharacterPublic, bag: readonly ContentId[]): string[];
   // ["attack", "strike", ...(ch.battleSpell !== null ? ["spell"] : []), "flee",
   //  ...("item:" + id for each distinct bag id, in first-occurrence order, whose use is "combat" or "both")]; default "attack"
@@ -551,7 +562,7 @@ combat/start ──► CombatStarted ──► startRound(1) ──► openExcha
 
 **`system/setCharacter`** apply (`handlers/system.ts`): `character = {...ch, classId, level, xp: xpCurve[level − 1], weapon, shield, accessory, battleSpell, wardSpell}`, then `hp = sheetStats(...).hp` (full heal, also revives); `private.bag = [...bag]` (scrolls, prompt, mastery, gold, portable unchanged); emit `CharacterSet`, then `BagUpdated`. It bypasses hybrid unlock and starter rules on purpose (sim/test scenarios; system actor only).
 
-**Combat golden (W2, `core/test/combat-golden.test.ts`, TEST_RULES)** — settings `{v:2, seed:"combat-golden", players:[{id:"p1",classId:"fighter"},{id:"p2",classId:"caster"}]}`, 18 actions, 0 rejections, 80 events, final `hashState = ec0c3508`:
+**Combat golden (W2, `core/test/combat-golden.test.ts`, TEST_RULES)** — settings `{v:2, seed:"combat-golden", players:[{id:"p1",classId:"fighter"},{id:"p2",classId:"caster"}]}`, 18 actions, 0 rejections, 80 events, final `hashState = ec0c3508` (oracle summary `0 rejections ([]), 80 events, final hashState = ec0c3508`; per-action trace `traces/combat-golden.trace.json`):
 ```json
 [{"v":2,"type":"system/setCharacter","playerId":"system","target":"p1","classId":"battlemage","level":1,"weapon":"stick","shield":"mirror","accessory":"band","battleSpell":"jolt","wardSpell":"mirror-ward","bag":["herb","tonic"]},
  {"v":2,"type":"combat/start","playerId":"system","attacker":"p1","opponent":{"kind":"player","playerId":"p2"}},
@@ -572,27 +583,31 @@ combat/start ──► CombatStarted ──► startRound(1) ──► openExcha
  {"v":2,"type":"decision/commit","playerId":"p2","decisionId":"d9","choice":"spell"},
  {"v":2,"type":"decision/commit","playerId":"p2","decisionId":"d10","choice":"strike"}]
 ```
-`ExchangeResolved` sequence (combat, round.exchange, attacker, command/defense → damage, heal, effects, hp):
+`ExchangeResolved` sequence plus `ExchangeSkipped`/`CombatEnded` markers (combat, round.exchange, attacker side, command / defense → damage [side0, side1], heal, effects, hp after):
 
-| # | c | r.e | att | command / defense | damage [s0,s1] | heal | effects | hp after |
+| # | c | r.e | att | command / defense | damage | heal | effects | hp after |
 |---|---|---|---|---|---|---|---|---|
 | 1 | c1 | 1.1 | 0 | spell / counter | [0,8] | [0,0] | `stun` | [44,28] |
 | — | c1 | 1.2 | 1 | `ExchangeSkipped` (stunned) | | | | |
-| 2 | c1 | 2.1 | 0 | item:tonic / null (p2 timed out → guard, ignored) | [0,0] | [0,0] | `item:tonic` | [44,28] |
-| 3 | c1 | 2.2 | 1 | spell / ward (Reflect ward + Mirror Shield) | [2,4] | [0,0] | `reflected` | [42,24] |
+| 2 | c1 | 2.1 | 0 | item:tonic / null | [0,0] | [0,0] | `item:tonic` | [44,28] |
+| 3 | c1 | 2.2 | 1 | spell / ward | [2,4] | [0,0] | `reflected` | [42,24] |
 | 4 | c1 | 3.1 | 0 | strike / counter | [20,0] | [0,0] | `reflected` | [22,24] |
-| 5 | c1 | 3.2 | 1 | item:bomb / null | [0,0] | [0,0] | `item:bomb`, `fled` | [22,24] → `CombatEnded fled, fled:1` |
-| 6 | c2 | 1.1 | 1 (gull) | strike / guard | [13,0] | [0,0] | `steal-gold:10`, `steal-item:herb` | [11,36] |
-| 7 | c2 | 1.2 | 0 | attack / guard (drawn) | [0,6] | [0,0] | — | [11,30] |
+| 5 | c1 | 3.2 | 1 | item:bomb / null | [0,0] | [0,0] | `item:bomb`, `fled` | [22,24] |
+| end | c1 | — | — | `CombatEnded fled` winner null fled 1 | | | | [22,24] |
+| 6 | c2 | 1.1 | 1 | strike / guard | [13,0] | [0,0] | `steal-gold:10`, `steal-item:herb` | [11,36] |
+| 7 | c2 | 1.2 | 0 | attack / guard | [0,6] | [0,0] | — | [11,30] |
 | 8 | c2 | 2.1 | 1 | flee / null | [0,0] | [0,0] | `flee-failed` | [11,30] |
-| 9 | c2 | 2.2 | 0 | spell / ward (drawn) | [0,4] | [0,0] | — | [11,26] |
-| 10 | c2 | 3.1 | 0 | strike / counter (drawn) | [11,0] | [0,0] | `reflected` | [0,26] → `CombatEnded ko, winner:1` (npc: no reward) |
+| 9 | c2 | 2.2 | 0 | spell / ward | [0,12] | [0,0] | — | [11,18] |
+| 10 | c2 | 3.1 | 0 | strike / counter | [11,0] | [0,0] | `reflected` | [0,18] |
+| end | c2 | — | — | `CombatEnded ko` winner 1 fled null | | | | [0,18] |
+
+Notes: #2 — p2 timed out (default `guard`), ignored because the command is an item. #3 — p1 wards with Reflect (`mirror-ward`) + Mirror Shield (`spellTakenBp −2000`). #6 — the gull's Strike steals 10 gold and the herb. #7, #9, #10 — the gull's defenses are drawn. **#9 changed in Revision 2 (D2):** the gull has **no ward spell**, so its Ward takes the Guard multiplier: `spellBase` 11 × 10000 bp = 11, +10% caster r1 `spellDmgBp` → **12** (was 4 under the old always-0.4× rule; row #10's hp changed accordingly). The final `hashState` is unchanged by D2 because the gull's hp is not part of the final state (combat is `null`); the per-action trace (`traces/combat-golden.trace.json`) pins the difference. c2 ends `ko` winner 1 (npc: no reward).
 
 Round starts: c1 `first` = 0, 0, 0; c2 `first` = 1, 1, 0. Final: p1 hp 22, bag `["herb"]`; p2 hp 0, gold 90, bag `[]`; `choiceHistory.p1 = {attack:0,strike:1,spell:1,guard:1,counter:0,ward:1}`, `choiceHistory.p2 = {attack:1,strike:1,spell:2,guard:1,counter:3,ward:0}` (the timed-out `guard` at d2 is not counted); `hidden = {combatSeq:2, decisionSeq:10, decision:null, rng:[3200512360,239253250,3363130012,583700052]}`. Event type sequence (80):
 `CharacterSet, BagUpdated, CombatStarted, RoundStarted, DecisionOpened, PromptOpened×2, ChoiceCommitted×2, ChoicesRevealed, ExchangeResolved, ExchangeSkipped, RoundEnded, RoundStarted, DecisionOpened, PromptOpened×2, ChoiceCommitted, ChoiceTimedOut, ChoicesRevealed, ExchangeResolved, BagUpdated, DecisionOpened, PromptOpened×2, ChoiceCommitted×2, ChoicesRevealed, ExchangeResolved, RoundEnded, RoundStarted, DecisionOpened, PromptOpened×2, ChoiceCommitted×2, ChoicesRevealed, ExchangeResolved, DecisionOpened, PromptOpened×2, ChoiceCommitted×2, ChoicesRevealed, ExchangeResolved, BagUpdated, CombatEnded, CombatStarted, RoundStarted, DecisionOpened, PromptOpened, ChoiceCommitted, ChoicesRevealed, ExchangeResolved, BagUpdated, DecisionOpened, PromptOpened, ChoiceCommitted, ChoicesRevealed, ExchangeResolved, RoundEnded, RoundStarted, DecisionOpened, PromptOpened, ChoiceCommitted, ChoicesRevealed, ExchangeResolved, DecisionOpened, PromptOpened, ChoiceCommitted, ChoicesRevealed, ExchangeResolved, RoundEnded, RoundStarted, DecisionOpened, PromptOpened, ChoiceCommitted, ChoicesRevealed, ExchangeResolved, CombatEnded`.
 The scenario ends every combat without a player KO win, so the W3 reward logic cannot change this hash.
 
-### `serialize.ts` — `deserialize(json, rules)` v2
+### `serialize.ts` — `deserialize(json, rules)` v2 (W1b, 02-01b; 02-01a ships only the shim described in *Deliverables*; 02-03 adds check 8)
 `serialize(state)` = `stableStringify(state)` (unchanged). `deserialize(json: string, rules: Rules): GameState`: `JSON.parse` (SyntaxError propagates); not a plain object → `TypeError`; `v !== 2` → `SchemaVersionError`; then every check below, in this order, each throwing `TypeError("deserialize: <unique message>")`. **Exact own keys at every object level** (root, public, private entries, hidden, characters, mastery, choiceHistory entries, prompt, pending, decision, lastReveal, combat, sides, npc refs, stats, mods). All player-/content-keyed lookups via `ownGet`.
 1. Root / partitions: plain objects, exact keys (`v, public, private, hidden`; public: `phase, turn, activePlayer, players, characters, choiceHistory, pending, lastReveal, combat`; hidden: `rng, decisionSeq, combatSeq, decision`).
 2. `players` (same rules as `createGame`), `activePlayer ∈ players`, `phase ∈ {turn, decision}`, `turn`, `decisionSeq`, `combatSeq` integers in `[0, MAX_COUNTER]`, `rng` 4 × u32.
@@ -601,7 +616,7 @@ The scenario ends every combat without a player KO win, so the W3 reward logic c
 5. `private`: own keys = players; `bag` array of item ids, length ≤ class `bagSize`; `scrolls` array of field-spell ids, length ≤ `maxScrolls`; `prompt` null or `{decisionId, options, default}` (options: 1..24 unique tokens; default ∈ options).
 6. Decision consistency: `phase === "turn"` ⇒ `pending`, `hidden.decision`, every `prompt` null and `combat` null. `phase === "decision"` ⇒ `pending` `{id, kind, required, committed}` with `id === "d" + decisionSeq`, `kind ∈ DecisionKind`, `required` non-empty unique ⊆ players, `committed` unique ⊆ required and `committed.length < required.length`; `hidden.decision {id === pending.id, choices}` with own keys = committed and each value ∈ that player's prompt options; `prompt !== null` exactly for required players, each with `decisionId === pending.id`.
 7. `lastReveal`: null or `{decisionId, kind, choices, timedOut}`: choices own keys ⊆ players, values tokens; `timedOut` unique ⊆ choice keys.
-8. Combat (**02-03 adds this; in W1 the check is "combat must be null" and `kind === "combat/exchange"` is rejected with "combat decisions unsupported"**): `combat !== null` ⇔ `pending?.kind === "combat/exchange"`; `id === "c" + combatSeq`; `round ∈ [1, maxRounds]`; `exchange ∈ {1,2}`; `first ∈ {0,1}`; `sides` length 2, `sides[0]` a player side; player sides: seated, distinct; npc sides: valid `NpcRef` (ids exist, `townTier` 1..4, `level` 1..maxLevel), `stats` deep-equal `npcStats(rules, npc)`, `hp` in `[1, stats.hp]`; `mods` ints in `[modMinBp, modMaxBp]` and booleans; every player side's character `hp >= 1`; `pending.required` equals `requiredFor(combat)`; each prompt deep-equals the one `openExchange` would build.
+8. Combat (**02-03 adds this; in W1b the check is "combat must be null" and `kind === "combat/exchange"` is rejected with "combat decisions unsupported"**): `combat !== null` ⇔ `pending?.kind === "combat/exchange"`; `id === "c" + combatSeq`; `round ∈ [1, maxRounds]`; `exchange ∈ {1,2}`; `first ∈ {0,1}`; `sides` length 2, `sides[0]` a player side; player sides: seated, distinct; npc sides: valid `NpcRef` (ids exist, `townTier` 1..4, `level` 1..maxLevel), `stats` deep-equal `npcStats(rules, npc)`, `hp` in `[1, stats.hp]`; `mods` ints in `[modMinBp, modMaxBp]` and booleans; every player side's character `hp >= 1`; `pending.required` equals `requiredFor(combat)`; each prompt deep-equals the one `openExchange` would build.
 
 Every state `reduce` produces must pass `deserialize(serialize(s), rules)` (property test). Handlers reject (`INVALID_PAYLOAD`) any transition that would push a bounded counter above `MAX_COUNTER` where the transition is player/system-requested (`decision/open`, `combat/start`, `system/grant`); internal awards (`choiceHistory`, reward XP/gold/mastery, stolen gold) **saturate** at `MAX_COUNTER`.
 
@@ -634,7 +649,7 @@ export function planClassSwitch(rules: Rules, ch: CharacterPublic, bag: readonly
 - **`loadout/useItem`**: remove first occurrence; heal `min(maxHp − hp, fl(maxHp × bp / 10000))`; emit `ItemUsed {playerId, itemId, healed, hp}`, then `BagUpdated`.
 - Gear is never in the bag; acquiring gear or a spell replaces the equipped one (the old one is discarded; selling is Phase 3). Field-spell scrolls never occupy bag space (cap `maxScrolls = 3`).
 
-**Rewards/loadout golden (W3, 02-04, `core/test/rewards-golden.test.ts`, TEST_RULES)** — settings `{v:2, seed:"rewards-golden", players:[{id:"p1",classId:"fighter"},{id:"p2",classId:"caster"}]}`, these 25 actions, 0 rejections, 84 events, final `hashState = 57da3ea4`:
+**Rewards/loadout golden (W3, 02-04, `core/test/rewards-golden.test.ts`, TEST_RULES)** — settings `{v:2, seed:"rewards-golden", players:[{id:"p1",classId:"fighter"},{id:"p2",classId:"caster"}]}`, these 25 actions, 0 rejections, 84 events, final `hashState = 57da3ea4` (oracle summary `0 rejections ([]), 84 events, final hashState = 57da3ea4`; per-action trace `traces/rewards-golden.trace.json`):
 ```json
 [{"v":2,"type":"system/grant","playerId":"system","target":"p1","grant":{"kind":"item","id":"tonic"}},
  {"v":2,"type":"combat/start","playerId":"system","attacker":"p1","opponent":{"kind":"npc","npc":{"kind":"monster","id":"slime","senior":false}}},
@@ -662,9 +677,25 @@ export function planClassSwitch(rules: Rules, ch: CharacterPublic, bag: readonly
  {"v":2,"type":"loadout/switchClass","playerId":"p2","classId":"fighter","discard":["wig"]},
  {"v":2,"type":"loadout/discard","playerId":"p1","itemId":"tonic"}]
 ```
-Checkpoints: c1 (p1 vs slime, stats `40/12/8/10/9/4`) ends `ko` winner 0 in round 3.2 (the slime's Strike is reflected) → `VictoryRewarded {p1, xp:20, gold:30, classId:"fighter", masteryWins:1}`; `loadout/useItem herb` → `ItemUsed {p1, herb, healed:14, hp:36}` then `BagUpdated`; c2 (p2 vs p1) ends `ko` winner 0 at round 2.1 → `VictoryRewarded {p2, xp:10, gold:0, classId:"caster", masteryWins:1}`; the xp grant emits `LevelUp` 2 and 3 (p2 hp 36 → 50 via `adjustHp`); the scroll grant emits `ScrollsUpdated ["haste"]`; `ClassSwitched {p2, from:"caster", to:"fighter", fee:50, hp:67}` then `BagUpdated ["herb","bomb","antidote"]`; finally `BagUpdated` for p1 (`[]`). Final characters: p1 `{fighter, L1, xp 20, gold 130, hp 0, mastery.fighter 1, bag []}`; p2 `{fighter, L3, xp 160, gold 250, hp 67, weapon "sword", wardSpell "sponge", mastery.caster 1, scrolls ["haste"]}`. Event type sequence: `Granted, BagUpdated, CombatStarted, RoundStarted, (DecisionOpened, PromptOpened, ChoiceCommitted, ChoicesRevealed, ExchangeResolved)×2, RoundEnded, RoundStarted, (…)×2, RoundEnded, RoundStarted, (…)×2, CombatEnded, VictoryRewarded, ItemUsed, BagUpdated, CombatStarted, RoundStarted, (DecisionOpened, PromptOpened×2, ChoiceCommitted×2, ChoicesRevealed, ExchangeResolved)×2, RoundEnded, RoundStarted, DecisionOpened, PromptOpened×2, ChoiceCommitted×2, ChoicesRevealed, ExchangeResolved, CombatEnded, VictoryRewarded, Granted, LevelUp, LevelUp, Granted, Granted, BagUpdated, Granted, BagUpdated, Granted, ScrollsUpdated, Granted, Granted, ClassSwitched, BagUpdated, BagUpdated`.
+Checkpoints: c1 (p1 vs slime, stats `40/12/8/10/9/4`) ends `ko` winner 0 in round 3.2 (the slime's Strike is reflected) → `VictoryRewarded {p1, xp:20, gold:30, classId:"fighter", masteryWins:1}`; `loadout/useItem herb` → `ItemUsed {p1, herb, healed:14, hp:36}` then `BagUpdated`; c2 (p2 vs p1) ends `ko` winner 0 at round 2.1 → `VictoryRewarded {p2, xp:10, gold:0, classId:"caster", masteryWins:1}`; the xp grant emits `LevelUp` 2 and 3 (p2 hp 36 → 50 via `adjustHp`); the scroll grant emits `ScrollsUpdated ["haste"]`; `ClassSwitched {p2, from:"caster", to:"fighter", fee:50, hp:67}` then `BagUpdated ["herb","bomb","antidote"]`; finally `BagUpdated` for p1 (`[]`). Final characters: p1 `{fighter, L1, xp 20, gold 130, hp 0, mastery.fighter 1, bag []}`; p2 `{fighter, L3, xp 160, gold 250, hp 67, weapon "sword", wardSpell "sponge", mastery.caster 1, scrolls ["haste"]}`. Exchange table (same format as the combat golden):
 
-### CPU AI (W3, 02-05: `core/src/ai/{index,combat,opponent-model,tuning}.ts`, subpath `@usurpia/core/ai`)
+| # | c | r.e | att | command / defense | damage | heal | effects | hp after |
+|---|---|---|---|---|---|---|---|---|
+| 1 | c1 | 1.1 | 0 | strike / guard | [0,29] | [0,0] | — | [48,11] |
+| 2 | c1 | 1.2 | 1 | attack / guard | [4,0] | [0,0] | — | [44,11] |
+| 3 | c1 | 2.1 | 0 | strike / counter | [18,0] | [0,0] | `reflected` | [26,11] |
+| 4 | c1 | 2.2 | 1 | attack / guard | [4,0] | [0,0] | — | [22,11] |
+| 5 | c1 | 3.1 | 0 | attack / guard | [0,9] | [0,0] | — | [22,2] |
+| 6 | c1 | 3.2 | 1 | strike / counter | [0,2] | [0,0] | `reflected` | [22,0] |
+| end | c1 | — | — | `CombatEnded ko` winner 0 fled null | | | | [22,0] |
+| 7 | c2 | 1.1 | 1 | strike / counter | [0,17] | [0,0] | `reflected` | [36,19] |
+| 8 | c2 | 1.2 | 0 | spell / guard | [0,11] | [0,0] | — | [36,8] |
+| 9 | c2 | 2.1 | 0 | spell / counter | [0,8] | [0,0] | — | [36,0] |
+| end | c2 | — | — | `CombatEnded ko` winner 0 fled null | | | | [36,0] |
+
+Final `hidden = {combatSeq:2, decisionSeq:9, decision:null, rng:[2320551141,1615250627,3129816856,743918455]}`; `choiceHistory.p1 = {attack:1,strike:3,spell:0,guard:3,counter:2,ward:0}`, `choiceHistory.p2 = {attack:0,strike:0,spell:2,guard:0,counter:1,ward:0}`. Event type sequence (84): `Granted, BagUpdated, CombatStarted, RoundStarted, DecisionOpened, PromptOpened, ChoiceCommitted, ChoicesRevealed, ExchangeResolved, DecisionOpened, PromptOpened, ChoiceCommitted, ChoicesRevealed, ExchangeResolved, RoundEnded, RoundStarted, DecisionOpened, PromptOpened, ChoiceCommitted, ChoicesRevealed, ExchangeResolved, DecisionOpened, PromptOpened, ChoiceCommitted, ChoicesRevealed, ExchangeResolved, RoundEnded, RoundStarted, DecisionOpened, PromptOpened, ChoiceCommitted, ChoicesRevealed, ExchangeResolved, DecisionOpened, PromptOpened, ChoiceCommitted, ChoicesRevealed, ExchangeResolved, CombatEnded, VictoryRewarded, ItemUsed, BagUpdated, CombatStarted, RoundStarted, DecisionOpened, PromptOpened×2, ChoiceCommitted×2, ChoicesRevealed, ExchangeResolved, DecisionOpened, PromptOpened×2, ChoiceCommitted×2, ChoicesRevealed, ExchangeResolved, RoundEnded, RoundStarted, DecisionOpened, PromptOpened×2, ChoiceCommitted×2, ChoicesRevealed, ExchangeResolved, CombatEnded, VictoryRewarded, Granted, LevelUp×2, Granted×2, BagUpdated, Granted, BagUpdated, Granted, ScrollsUpdated, Granted×2, ClassSwitched, BagUpdated×2`.
+
+### CPU AI (W3, 02-05: `core/src/ai/{index,combat,opponent-model,tuning,exp}.ts`, subpath `@usurpia/core/ai`)
 ```ts
 export type Difficulty = "easy" | "normal" | "hard";
 export interface AiState { readonly rng: RngState; readonly playerId: PlayerId; readonly difficulty: Difficulty }
@@ -675,17 +706,19 @@ export function decideCombat(view: PlayerView, rules: Rules, ai: AiState): AiDec
 export interface Policy { readonly commands: readonly Command[]; readonly weights: readonly number[]; readonly ev: readonly number[] | null }
 export function combatPolicy(view: PlayerView, rules: Rules, difficulty: Difficulty): Policy;   // no RNG
 export const AI_TUNING = { healThresholdBp: 3500, easyForgetHealBp: 3000, koBonus: 0.5, normalTemp: 0.15, hardTemp: 0.04, hardPriorStrength: 4, weightScale: 1_000_000 } as const;
+export function expNeg(x: number): number;                        // ai/exp.ts — see step 7
 ```
 `decideCombat` returns `{action: null, ai}` (unchanged `ai`) unless `view.self?.prompt` is non-null, `view.public.pending` is non-null with `kind === "combat/exchange"`, `pending.id === prompt.decisionId` and the viewer has not committed. Otherwise it returns `{v:2, type:"decision/commit", playerId: viewer, decisionId, choice}` and the advanced `ai`. All random draws use `nextInt(ai.rng, …)` and thread the returned state.
 
-**Algorithm** (floats allowed inside AI; evaluate in exactly this order; `fl` = `Math.floor`):
+**Algorithm** (floats allowed inside the AI but only IEEE `+ − × ÷`, comparisons and `Math.floor/round/min/max`; evaluate in exactly this order; `fl` = `Math.floor`):
 1. Sides: `mi` = index of the player side with `playerId === viewer`, `oi = 1 − mi`; `me = snapshot(sides[mi])`, `op = snapshot(sides[oi])` via `snapshotPlayer(rules, public.characters[id], side.mods)` / `snapshotNpc`. Role: `attacker` iff `prompt.options` includes `"attack"`.
 2. **Heal rule** (attacker only): if `me.hp × 10000 <= me.maxHp × healThresholdBp` and some option `item:<id>` has `effect.kind === "heal"`: Easy draws `u = nextInt(1, 10000)` and **forgets** iff `u <= easyForgetHealBp`. If not forgotten: `amount(o) = fl(maxHp × bp / 10000)`; among heal options with `amount ≥ maxHp − hp` pick the smallest amount, else the largest amount (ties: earlier option); commit it. AI never chooses `flee` or non-heal items in Phase 2.
 3. `mine` = `ATTACK_COMMANDS` (attacker) or `DEFEND_COMMANDS` (defender), filtered to those in `prompt.options`, in that order. `base[k] = classes[public.characters[viewer].classId].aiBias[k]`; if all 0 → all 1.
 4. **Easy:** weights = `base`; draw.
 5. **Opponent distribution** `q` over `okeys`: if the opponent is the defender and stunned → `okeys = ["open"]`, `q = [1]`. Else `okeys` = `["attack","strike"]` + `["spell"]` iff `op.spell !== null` (opponent attacker) or `DEFEND_COMMANDS` (opponent defender). Prior weights `w`: opponent player → `classes[opp.classId].aiBias[k]`; npc → its `attackTable[k]` / `defendTable[k]` (flee ignored); all 0 → all 1; `pn = w / Σw`. **Normal:** `q = pn`. **Hard:** opponent player → `q_i = (n_i + α·pn_i) / (N + α)` with `n_i = public.choiceHistory[oppId][okeys_i]`, `N = Σ n_i`, `α = hardPriorStrength`; npc → `q = pn` (tables are public data).
 6. **EV:** for my command `k`: `ev_k = Σ_i q_i × val(pair)` summed in `okeys` order from 0, where the pair is `(k, okeys_i)` if I attack, `(okeys_i, k)` if I defend. `val(a, d)`: `att/def` = the attacking/defending snapshot; `p = isCritEligible(a, d) ? critChanceBp(att) / 10000 : 0`; `r0 = computeCell(…, false)`, `r1 = p > 0 ? computeCell(…, true) : r0`; each of `toDefender, toAttacker, healAttacker, healDefender` is `(1 − p)·r0 + p·r1`; `v = (min(toDef, def.hp) − healDef)/def.maxHp − (min(toAtt, att.hp) − healAtt)/att.maxHp + (toDef ≥ def.hp ? koBonus : 0) − (toAtt ≥ att.hp ? koBonus : 0)`; return `v` if I attack, `−v` if I defend. Spell side effects are ignored by EV.
-7. **Logits:** Normal `ℓ_k = ln(base_k > 0 ? base_k : 1e-9) + ev_k / normalTemp`; Hard `ℓ_k = ev_k / hardTemp`. Softmax: `e_k = exp(ℓ_k − max ℓ)`, `s = Σ e_k`, integer weights `w_k = Math.round(e_k / s × weightScale)`.
+7. **Softmax (engine-independent):** `z_k = ev_k / T` with `T = normalTemp` (Normal) or `hardTemp` (Hard); `M = max z` (`Math.max`); `f_k` = Normal: `base_k > 0 ? base_k : 1e-9`, Hard: `1`; `e_k = f_k × expNeg(z_k − M)`; `s = Σ e_k` (in `mine` order from 0); integer weights `w_k = Math.round(e_k / s × weightScale)`. (Mathematically identical to the softmax of `ln f_k + z_k`, but it needs no `Math.log`.)
+   `expNeg(x)` (`ai/exp.ts`, exported for tests; `x ≤ 0`, else `RangeError`): `if (x < -700) return 0`; `LN2 = 0.6931471805599453`; `k = Math.round(x / LN2)`; `r = x − k × LN2`; `p = 1`; `for (i = 13; i >= 1; i--) p = 1 + r × p / i`; then `-k` times `p = p × 0.5`; return `p`. Only IEEE-754 `+ − × ÷`, comparisons and `Math.round`/`Math.max` (all exactly specified by ECMAScript) are used anywhere in the AI, so every AI golden is identical on every conforming engine. `ai-exp.test.ts` pins `expNeg(0) === 1`, `expNeg(-1) === 0.36787944117144233`, `expNeg(-700.5) === 0`, `|expNeg(x) / Math.exp(x) − 1| < 1e-13` for 1 000 sampled `x ∈ [−40, 0]` (the only place `Math.exp` appears, in a test), and the `RangeError`.
 8. **Draw:** `u = nextInt(1, Σw)`; pick the first `k` whose running sum ≥ `u`.
 
 **AI goldens (`ai.test.ts`, TEST_RULES):** state = `createGame({v:2, seed:"ai", players:[p1 fighter, p2 caster]})` then `combat/start p1 vs player p2` (round 1 first = 0, p1 attacks, prompts `p1: [attack, strike, spell, flee, item:herb]`, `p2: [guard, counter, ward]`). `combatPolicy(viewFor(s, p), TEST_RULES, d)`:
@@ -702,9 +735,9 @@ export const AI_TUNING = { healThresholdBp: 3500, easyForgetHealBp: 3000, koBonu
 | `guard: 20` | p1 | hard | attack, strike, spell | 7, 999993, 0 | 0.260444, 0.737486, 0.027778 |
 | `strike: 20` or `guard: 20` | any | normal | unchanged from the all-0 rows (Normal ignores history) | | |
 
-`decideCombat` with `createAi("ai", p, d)` on the all-0 state chooses: p1 `strike` for easy/normal/hard; p2 `counter` for easy/normal/hard. Resulting `ai.rng`: p1 easy `[3331102407,1535445285,772308753,1112744324]`, p1 normal `[4183196888,813986969,677920980,3243803346]`, p1 hard `[1366581972,206714184,2346612497,1782913445]`, p2 easy `[3836409917,3572200996,801488308,1210260529]`, p2 normal `[91016355,297186996,1934346612,4099156348]`, p2 hard `[1549760109,3612060378,2996506608,524471693]`.
+(Revision 2 recomputed this table with the `expNeg` softmax: every weight and ev is unchanged.) `decideCombat` with `createAi("ai", p, d)` on the all-0 state chooses: p1 easy `strike` / normal `strike` / hard `strike`; p2 easy `counter` / normal `counter` / hard `counter`. Resulting `ai.rng`: p1 easy `[3331102407,1535445285,772308753,1112744324]`, p1 normal `[4183196888,813986969,677920980,3243803346]`, p1 hard `[1366581972,206714184,2346612497,1782913445]`, p2 easy `[3836409917,3572200996,801488308,1210260529]`, p2 normal `[91016355,297186996,1934346612,4099156348]`, p2 hard `[1549760109,3612060378,2996506608,524471693]`.
 
-**Never reads hidden information:** enforced by (a) the signature (`PlayerView` + `Rules` only), (b) lint on `core/src/ai/**` banning imports of `reducer`, `handlers/*` and the `GameState`/`HiddenState` type names, and (c) `ai-hidden.test.ts`: from a PvP state where the opponent has already committed, build variants that differ **only** in `hidden.rng`, `hidden.decision.choices[opponent]` (each of the 3 defend commands) and the opponent's `private` (bag contents and prompt options); assert `viewFor(variant, me)` is deep-equal across variants and `decideCombat` returns identical actions and identical `ai.rng` for all 3 difficulties. The test first asserts the variants really differ (`hashState` pairwise distinct) so it cannot pass vacuously (PIT-001).
+**Never reads hidden information:** enforced by (a) the signature (`PlayerView` + `Rules` only), (b) lint on `core/src/ai/**` banning imports of `reducer`, `handlers/*`, the core barrel `index`, `serialize`, `game`, `replay`, `@usurpia/core`, and the `GameState`/`HiddenState` names from any module (see *Lint and purity probe*), and (c) `ai-hidden.test.ts`: from a PvP state where the opponent has already committed, build variants that differ **only** in `hidden.rng`, `hidden.decision.choices[opponent]` (each of the 3 defend commands) and the opponent's `private` (bag contents and prompt options); assert `viewFor(variant, me)` is deep-equal across variants and `decideCombat` returns identical actions and identical `ai.rng` for all 3 difficulties. The test first asserts the variants really differ (`hashState` pairwise distinct) so it cannot pass vacuously (PIT-001).
 
 ### `@usurpia/content` (W2, 02-02)
 ```ts
@@ -728,8 +761,8 @@ export function loadRules(dir?: string | URL): Rules;    // default dir = ../dat
   - `monsters.json` `{v, curve: StatBlock[5], monsters: (MonsterDef + name, tagline 1..120)[], guardians: (GuardianDef + name, description)[], enforcer: EnforcerDef + name, description}`.
   - `tuning.json` `{v, combat: CombatTuning, progression: ProgressionTuning, economy: EconomyTuning}`.
   - Ranges: `statBp` 1..100000; hook `value` −10000..100000; table weights and `aiBias` 0..1000 / 0..100; prices 0..1_000_000; gear `stats` −999..999; curve stats 0..MAX_STAT with hp ≥ 1; `bagSize` 1..16; `maxRounds` 1..10; `maxLevel` 1..99; bp tuning fields −100000..100000.
-- **Cross-reference rules** (each its own `ContentError` with a unique message; path like `classes.4.parents.1`): duplicate ids per collection; ≥ 1 base class; base ⇒ `parents` null and `starter` non-null; hybrid ⇒ `parents` = two distinct **base** class ids and `starter` null; `passives` length 5 with `rank === index + 1`; starter gear ids exist **with the matching slot**, spell ids exist in the right table, bag ids exist, `bag.length ≤ bagSize`; NPC `battleSpell`/`wardSpell` ids exist; `attackTable.spell === 0` when `battleSpell` is null; attack-table sum > 0 and defend-table sum > 0; `aiBias` attack+strike+spell > 0 and guard+counter+ward > 0; `curve` length 5; `xpCurve.length === maxLevel`, `xpCurve[0] === 0`, strictly increasing, ≤ MAX_COUNTER; `masteryWins` length 5, `[0] === 0`, strictly increasing; `hybridUnlockRank` 1..5; `enforcer.id === "crown-enforcer"`; monster `zone` ∈ `{enchanted-forest, soggy-coast, goblin-mines, bureaucrat-bog}`.
-- **Pinned:** `rulesHash(loadRules()) === "94160b70"` (`data.test.ts`). Any later tuning change must update this pin, the sim fixture, the sim goldens and the gate goldens in the same commit, with a note in the plan summary.
+- **Cross-reference rules** (each its own `ContentError` with a unique message; path like `classes.4.parents.1`): duplicate ids per collection; ≥ 1 base class; base ⇒ `parents` null and `starter` non-null; hybrid ⇒ `parents` = two distinct **base** class ids and `starter` null; `passives` length 5 with `rank === index + 1`; starter gear ids exist **with the matching slot**, spell ids exist in the right table, bag ids exist, `bag.length ≤ bagSize`; NPC `battleSpell`/`wardSpell` ids exist; `attackTable.spell === 0` when `battleSpell` is null; attack-table sum > 0 and defend-table sum > 0; `aiBias` attack+strike+spell > 0 and guard+counter+ward > 0; `curve` length 5; `xpCurve.length === maxLevel`, `xpCurve[0] === 0`, strictly increasing, ≤ MAX_COUNTER; `masteryWins` length 5, `[0] === 0`, strictly increasing; `hybridUnlockRank` 1..5; `enforcer.id === "crown-enforcer"`; NPC (monster, guardian, enforcer) hooks must not be sheet-stat hooks `hpBp`/`atkBp`/`defBp`/`magBp`/`spdBp`/`luckBp` (message "npc sheet-stat hooks are not applied", path e.g. `monsters.monsters.15.hooks.0.hook`); monster `zone` ∈ `{enchanted-forest, soggy-coast, goblin-mines, bureaucrat-bog}`.
+- **Pinned:** `rulesHash(loadRules()) === "84a995db"` (`data.test.ts`). Any later tuning change must update this pin, the sim fixture, the sim goldens and the gate goldens in the same commit, with a note in the plan summary.
 - The CLI build gate (`scripts/validate.ts`) is unchanged in behaviour (exit 0/1/2). Test fixture dirs `test/fixtures/{valid,invalid}` are **deleted**; tests build temp dirs by copying `data/` and corrupting exactly one file (PIT-001).
 
 #### Content data (initial tuning)
@@ -738,9 +771,9 @@ Zones: `enchanted-forest` (T1), `soggy-coast` (T2), `goblin-mines` (T3), `bureau
 ##### Classes (`classes.json`)
 | id | name | kind | parents | statBp hp/atk/def/mag/spd/luck | bagSize | switchFee | aiBias atk/str/spl/grd/ctr/wrd |
 |---|---|---|---|---|---|---|---|
-| `warrior` | Warrior | base | — | 11500/11500/11500/8500/9000/9000 | 5 | 100 | 35/45/20/45/35/20 |
+| `warrior` | Warrior | base | — | 11500/11500/11500/8500/9000/9000 | 5 | 100 | 30/50/20/50/30/20 |
 | `thief` | Thief | base | — | 9500/10000/9000/8000/13000/14000 | 8 | 100 | 50/30/20/35/40/25 |
-| `mage` | Mage | base | — | 8500/7500/8500/13000/10000/10000 | 6 | 100 | 25/15/60/30/25/45 |
+| `mage` | Mage | base | — | 8500/7500/8500/13000/10000/10000 | 6 | 100 | 30/20/50/40/30/30 |
 | `cleric` | Cleric | base | — | 10500/9500/11000/12000/9000/10000 | 6 | 100 | 35/20/45/35/25/40 |
 | `spellblade` | Spellblade | hybrid | warrior + mage | 11000/11500/10000/11500/9500/9000 | 6 | 300 | 30/45/25/40/35/25 |
 | `shadowpriest` | Shadowpriest | hybrid | thief + cleric | 10000/10000/9500/11000/12000/12000 | 7 | 300 | 45/30/25/35/35/30 |
@@ -809,13 +842,13 @@ Starter loadouts (base classes only; hybrids have `starter: null`):
 | id | name | tier | price | powerBp | effect |
 |---|---|---|---|---|---|
 | `spark` | Spark | 1 | 50 | 9000 | `{"kind":"none"}` |
-| `fireball` | Fireball | 2 | 200 | 11000 | `{"kind":"none"}` |
-| `thunderclap` | Thunderclap | 3 | 600 | 13500 | `{"kind":"stun","chanceBp":2500}` |
+| `fireball` | Fireball | 2 | 200 | 14000 | `{"kind":"none"}` |
+| `thunderclap` | Thunderclap | 3 | 600 | 16000 | `{"kind":"stun","chanceBp":2500}` |
 | `frostbite` | Frostbite | 2 | 300 | 10000 | `{"kind":"mod","stat":"spd","bp":-2000}` |
 | `drain` | Drain | 1 | 150 | 9000 | `{"kind":"drain","bp":5000}` |
 | `hex` | Hex | 2 | 300 | 0 | `{"kind":"mod","stat":"atk","bp":-2500}` |
 | `pickpocket-bolt` | Pickpocket Bolt | 2 | 250 | 7000 | `{"kind":"stealGold","bp":500}` |
-| `royal-decree` | Royal Decree | 4 | 1500 | 17000 | `{"kind":"none"}` |
+| `royal-decree` | Royal Decree | 4 | 1500 | 20000 | `{"kind":"none"}` |
 
 ##### Ward spells (`spells.json` → `ward`, 4)
 | id | name | tier | price | mode | valueBp |
@@ -864,7 +897,7 @@ Starter loadouts (base classes only; hybrids have `starter: null`):
 | `swamp-witch-notary` | Swamp Witch Notary | 4 | bureaucrat-bog | 9500/8000/9000/12500/10000/10000 | 25/15/60/0 | 30/30/40 | hex | reflect | — | 160 | 150 | Sign here, here, and in blood. |
 | `bog-troll-bouncer` | Bog Troll Bouncer | 4 | bureaucrat-bog | 15000/11500/10500/6000/7000/8000 | 45/45/10/0 | 50/35/15 | spark | null | — | 170 | 140 | You're not on the list. |
 | `wisp-paperwork-spirit` | Wisp Paperwork Spirit | 4 | bureaucrat-bog | 8000/6000/9000/12500/12000/10000 | 10/10/80/0 | 20/20/60 | frostbite | absorb | `physTakenBp` -5000 | 160 | 130 | Form 27-B, stroke 6. |
-| `ogre-middle-manager` | Ogre Middle Manager | 4 | bureaucrat-bog | 11500/11000/10500/10000/9000/9000 | 40/35/25/0 | 35/35/30 | fireball | barrier | `atkBp` 1000 | 180 | 160 | Let's circle back on your face. |
+| `ogre-middle-manager` | Ogre Middle Manager | 4 | bureaucrat-bog | 11500/11000/10500/10000/9000/9000 | 40/35/25/0 | 35/35/30 | fireball | barrier | `attackDmgBp` 1000 | 180 | 160 | Let's circle back on your face. |
 
 ##### Guardians (`monsters.json` → `guardians`, 3) and Crown Enforcer (`monsters.json` → `enforcer`)
 | id | name | style | statBp | attackTable | defendTable | battle | ward | xpPerTier / xpPerLevel | goldPerTier / goldPerLevel |
@@ -874,10 +907,12 @@ Starter loadouts (base classes only; hybrids have `starter: null`):
 | `knight-of-foreclosure` | Knight of Foreclosure | balanced | 12000/10500/10500/10000/9500/9500 | 40/35/25/0 | 35/35/30 | spark | barrier | 60 | 0 |
 | `crown-enforcer` | Crown Enforcer | — | 9000/12000/10000/8000/10000/10000 | 25/60/15/0 | 35/40/25 | spark | null | 10 | 0 |
 
-##### Tuning (`tuning.json`, shipped values = TEST_RULES values except `progression.maxLevel`/`xpCurve`)
+All three guardians and the Crown Enforcer ship `hooks: []`. The enforcer row's "—" style means the field **does not exist** on `EnforcerDef` (the JSON object has no `style` key; `z.strictObject` rejects one).
+
+##### Tuning (`tuning.json`; differs from TEST_RULES in `combat.kBp` 14500 vs 12500, `combat.jMagBp` 3500 vs 5000, `progression.growth.hp` 9 vs 8, and `progression.maxLevel`/`xpCurve`)
 ```json
 {"v":1,
- "combat":{"kBp":12500,"jBp":5000,"jMagBp":5000,
+ "combat":{"kBp":14500,"jBp":5000,"jMagBp":3500,
    "matrix":{"attack":{"guard":5000,"counter":12500,"ward":10000,"open":10000},
              "strike":{"guard":15000,"counter":10000,"ward":17500,"open":15000},
              "spell":{"guard":10000,"counter":10000,"ward":4000,"open":10000}},
@@ -885,11 +920,13 @@ Starter loadouts (base classes only; hybrids have `starter: null`):
    "fleeBaseBp":5000,"fleePerSpdBp":250,"fleeMinBp":1000,"fleeMaxBp":9000,
    "modMinBp":-5000,"modMaxBp":5000,"poisonBp":800,"seniorRewardBp":15000,"pvpXpPerLevel":10},
  "progression":{"maxLevel":20,"xpCurve":[0,50,150,300,500,750,1050,1400,1800,2250,2750,3300,3900,4550,5250,6000,6800,7650,8550,9500],
-   "baseStats":{"hp":40,"atk":14,"def":10,"mag":12,"spd":10,"luck":5},"growth":{"hp":8,"atk":3,"def":2,"mag":3,"spd":1,"luck":1},
+   "baseStats":{"hp":40,"atk":14,"def":10,"mag":12,"spd":10,"luck":5},"growth":{"hp":9,"atk":3,"def":2,"mag":3,"spd":1,"luck":1},
    "masteryWins":[0,3,7,12,18],"hybridUnlockRank":3},
  "economy":{"startingGold":100,"maxScrolls":3}}
 ```
-(`xpCurve[i] = 25 × i × (i + 1)`.) The design doc's matrix starting values map to bp exactly (Attack 0.5/1.25/1.0, Strike 1.5/reflect 1.0/1.75, Spell 1.0/1.0/0.4); the `open` column (stunned defender) is new: 1.0/1.5/1.0.
+(`xpCurve[i] = 25 × i × (i + 1)`.) The design doc's matrix starting values map to bp exactly (Attack 0.5/1.25/1.0, Strike 1.5/reflect 1.0/1.75, Spell 1.0/1.0/0.4 — the 0.4 Spell×Ward value applies only when the defender has a ward spell, D2); the `open` column (stunned defender) is new: 1.0/1.5/1.0.
+
+**Revision 2 retune (D1), with the class identities kept:** Warrior aiBias leans harder into Strike/Guard (punishing Strike); Mage aiBias spams Spell/Ward less (50/30 instead of 60/45) so mage mirrors resolve; Fireball 11000 → 14000 ("mid" burst for the burst class), Thunderclap 13500 → 16000 and Royal Decree 17000 → 20000 so the damage order of the tiered nukes spark (9000) < fireball (14000) < thunderclap (16000) < royal-decree (20000) is preserved; `kBp` 12500 → 14500 and `jMagBp` 5000 → 3500 raise damage so 3 rounds usually produce a KO; `growth.hp` 8 → 9 keeps the fights long enough for Hard's reads to matter (Thief mirror). Ogre Middle Manager's hook became `attackDmgBp` 1000 (the old `atkBp` was a silent no-op on an NPC). Effect on the gate: see *Hard ≥ 70% gate*.
 
 ##### Display text (content JSON only; not part of `Rules`)
 - **Classes:** warrior "Frontline brawler with a punishing Strike." · thief "Fast, lucky griefer who steals and flees." · mage "Burst Spells and field magic." · cleric "Sustain and support; the Crown hunter." · spellblade "Warrior + Mage: Strikes carry spell power." · shadowpriest "Thief + Cleric: drains HP and outlasts."
@@ -899,7 +936,7 @@ Starter loadouts (base classes only; hybrids have `starter: null`):
 - **Spells:** spark "Low MAG damage, cheap." · fireball "Mid MAG damage." · thunderclap "High damage; 25% chance to stun." · frostbite "Damage and −20% SPD." · drain "Damage; heal half of it." · hex "No damage; −25% ATK for the battle." · pickpocket-bolt "Light damage; steal 5% gold." · royal-decree "Highest damage. Rare." · barrier "Standard spell resistance." · reflect "Reflect 50% of spell damage." · absorb "Heal from spell damage instead of taking it." · counterspell "Negate a Spell; take 1.25× from Attack/Strike." · haste "Spin twice, take the higher." · snare "Target spins max 2 for 2 turns." · usurp "Seize a rival's town (MAG vs MAG); lose 10% gold on failure." · blessing "Full heal and clear status." · fog "Hidden and untargetable for 2 turns." · golden-touch "Your next Gold space pays double." · swap "Swap positions with any player." · silence "Target can't use field spells for 3 turns."
 - **Guardians / Enforcer:** landlord-lich "Magic guardian who collects rent in souls." · tollbridge-troll "Physical guardian; the toll is your teeth." · knight-of-foreclosure "Balanced guardian serving eviction notices." · crown-enforcer "A floating gilded helmet with arms. Strikes often."
 
-### `@usurpia/sim` (W1 replay update in 02-01; duel + content rules in 02-05)
+### `@usurpia/sim` (W1 replay update in 02-01a/02-01b; duel + content rules in 02-05)
 **Replay file v2:** `{ "rulesHash": "<8hex>", "settings": GameSettings, "actions": unknown[] }` (exact keys; actions untrusted, passed through `reduce`).
 ```ts
 export class ReplayFileError extends Error {}                 // exit 2
@@ -909,12 +946,12 @@ export function replayFile(filePath: string, rules: Rules, opts?: { allowRulesMi
   // file rulesHash !== rulesHash(rules): throw RulesMismatchError(`rules mismatch: file ${fileHash}, current ${hash}`)
   // unless allowRulesMismatch, in which case the line gets the suffix ` rules-mismatch=<fileHash>`
 ```
-- `src/rules.ts` exports `replayRules(): Rules` — the **only** place the CLI and tests get rules. W1: returns `KERNEL_RULES` from `kernel-rules.ts` (TEST_RULES copy); fixture `fixtures/kernel-game.json` (the W1 golden). W3 (02-05): returns `loadRules()` from `@usurpia/content/node`; `kernel-rules.ts` and `kernel-game.json` are deleted; fixture `fixtures/combat-game.json`.
-- W1 moves the Phase 1 CLI subprocess tests out of `replay-file.test.ts` into a new `test/cli.test.ts` (function tests stay in `replay-file.test.ts`); the CLI tests write their own temp replay files (valid, invalid JSON, wrong `rulesHash` → exit 3, usage errors) using `replayRules()`/`rulesHash`, so they survive the W3 rules switch unchanged except for fixture names.
+- `src/rules.ts` exports `replayRules(): Rules` — the **only** place the CLI and tests get rules. W1 (created by 02-01a): returns `KERNEL_RULES` from `kernel-rules.ts` (TEST_RULES copy); 02-01a's `replay-file.test.ts` uses a temp file `{rulesHash:"7433ea8b", settings:<W1a golden settings>, actions:[]}` → line `hash=758ef72c rules=7433ea8b turn=1 events=0 rejections=0`; 02-01b adds fixture `fixtures/kernel-game.json` (the W1b golden). W3 (02-05): returns `loadRules()` from `@usurpia/content/node`; `kernel-rules.ts` and `kernel-game.json` are deleted; fixture `fixtures/combat-game.json`.
+- 02-01b moves the Phase 1 CLI subprocess tests out of `replay-file.test.ts` into a new `test/cli.test.ts` (function tests stay in `replay-file.test.ts`); the CLI tests write their own temp replay files (valid, invalid JSON, wrong `rulesHash` → exit 3, usage errors) using `replayRules()`/`rulesHash`, so they survive the W3 rules switch unchanged except for fixture names.
 
-**Sim combat fixture (W3, 02-05, `packages/sim/fixtures/combat-game.json`, content rules; only W1/W2 action types, and no combat is won by a player, so it does not depend on 02-04):** `{"rulesHash":"94160b70","settings":{"v":2,"seed":"sim-fixture","players":[{"id":"a","classId":"warrior"},{"id":"b","classId":"mage"}]},"actions":[…]}` with these 25 actions:
+**Sim combat fixture (W3, 02-05, `packages/sim/fixtures/combat-game.json`, content rules; only W1/W2 action types, and no combat is won by a player — no `VictoryRewarded` is emitted — so it does not depend on 02-04):** `{"rulesHash":"84a995db","settings":{"v":2,"seed":"sim-fixture","players":[{"id":"a","classId":"warrior"},{"id":"b","classId":"mage"}]},"actions":[…]}` with these 23 actions (Revision 2 rebuilt them for the retuned content; `a` has **no ward spell** so d3 exercises D2):
 ```json
-[{"v":2,"type":"system/setCharacter","playerId":"system","target":"a","classId":"warrior","level":5,"weapon":"bronze-blade","shield":"buckler","accessory":"lucky-sock","battleSpell":"spark","wardSpell":"barrier","bag":["herb","smoke-bomb","battle-tonic"]},
+[{"v":2,"type":"system/setCharacter","playerId":"system","target":"a","classId":"warrior","level":5,"weapon":"bronze-blade","shield":"buckler","accessory":"lucky-sock","battleSpell":"spark","wardSpell":null,"bag":["herb","smoke-bomb","battle-tonic"]},
  {"v":2,"type":"system/setCharacter","playerId":"system","target":"b","classId":"mage","level":5,"weapon":"wooden-sword","shield":"buckler","accessory":"mage-ring","battleSpell":"fireball","wardSpell":"barrier","bag":["herb"]},
  {"v":2,"type":"combat/start","playerId":"system","attacker":"a","opponent":{"kind":"npc","npc":{"kind":"monster","id":"seagull-debt-collector","senior":false}}},
  {"v":2,"type":"decision/commit","playerId":"a","decisionId":"d1","choice":"guard"},
@@ -922,25 +959,44 @@ export function replayFile(filePath: string, rules: Rules, opts?: { allowRulesMi
  {"v":2,"type":"combat/start","playerId":"system","attacker":"b","opponent":{"kind":"player","playerId":"a"}},
  {"v":2,"type":"decision/commit","playerId":"b","decisionId":"d3","choice":"spell"},
  {"v":2,"type":"decision/commit","playerId":"a","decisionId":"d3","choice":"ward"},
- {"v":2,"type":"decision/commit","playerId":"a","decisionId":"d4","choice":"strike"},
- {"v":2,"type":"decision/commit","playerId":"b","decisionId":"d4","choice":"counter"},
+ {"v":2,"type":"decision/commit","playerId":"a","decisionId":"d4","choice":"attack"},
+ {"v":2,"type":"decision/commit","playerId":"b","decisionId":"d4","choice":"guard"},
  {"v":2,"type":"decision/commit","playerId":"b","decisionId":"d5","choice":"attack"},
  {"v":2,"type":"decision/commit","playerId":"a","decisionId":"d5","choice":"guard"},
  {"v":2,"type":"decision/commit","playerId":"a","decisionId":"d6","choice":"item:herb"},
  {"v":2,"type":"decision/commit","playerId":"b","decisionId":"d6","choice":"guard"},
  {"v":2,"type":"decision/commit","playerId":"b","decisionId":"d7","choice":"spell"},
- {"v":2,"type":"decision/commit","playerId":"a","decisionId":"d7","choice":"counter"},
+ {"v":2,"type":"decision/commit","playerId":"a","decisionId":"d7","choice":"guard"},
  {"v":2,"type":"decision/commit","playerId":"a","decisionId":"d8","choice":"attack"},
  {"v":2,"type":"timeout","playerId":"system","decisionId":"d8"},
  {"v":2,"type":"combat/start","playerId":"system","attacker":"b","opponent":{"kind":"npc","npc":{"kind":"guardian","id":"landlord-lich","townTier":1}}},
  {"v":2,"type":"decision/commit","playerId":"b","decisionId":"d9","choice":"spell"},
- {"v":2,"type":"decision/commit","playerId":"b","decisionId":"d10","choice":"guard"},
+ {"v":2,"type":"decision/commit","playerId":"b","decisionId":"d10","choice":"ward"},
  {"v":2,"type":"decision/commit","playerId":"b","decisionId":"d11","choice":"strike"},
- {"v":2,"type":"decision/commit","playerId":"b","decisionId":"d12","choice":"counter"},
- {"v":2,"type":"decision/commit","playerId":"b","decisionId":"d13","choice":"attack"},
- {"v":2,"type":"decision/commit","playerId":"b","decisionId":"d14","choice":"ward"}]
+ {"v":2,"type":"decision/commit","playerId":"b","decisionId":"d12","choice":"counter"}]
 ```
-→ 0 rejections, 107 events, final `hashState = 60d64975`; `pnpm sim replay packages/sim/fixtures/combat-game.json` prints exactly `hash=60d64975 rules=94160b70 turn=1 events=107 rejections=0`. Checkpoints: c1 (a vs seagull-debt-collector, stats `85/30/14/19/16/7`, first = 1) — the gull's Attack steals `battle-tonic` (`steal-item:battle-tonic`), then a's `item:smoke-bomb` flees (`CombatEnded fled, fled:0`); c2 (b vs a) ends `draw` after round 3 with hp `[45, 14]` (d8 times out b → `guard`); c3 (b vs guardian `landlord-lich` townTier 1, stats `104/24/15/27/13/6`) ends `ko` winner 1 at round 3.2 (b hp 0; npc win → no reward). Final: a hp 14, bag `[]`; b hp 0, bag `["herb"]`; `choiceHistory.a = {attack:1,strike:1,spell:0,guard:2,counter:1,ward:1}`, `choiceHistory.b = {attack:2,strike:1,spell:3,guard:2,counter:2,ward:1}`; `hidden = {combatSeq:3, decisionSeq:14, decision:null, rng:[3523559772,2254657508,341100899,733868244]}`.
+→ 0 rejections ([]), 95 events, final hashState = 0483c0fa; `pnpm sim replay packages/sim/fixtures/combat-game.json` prints exactly `hash=0483c0fa rules=84a995db turn=1 events=95 rejections=0`.
+
+| # | c | r.e | att | command / defense | damage | heal | effects | hp after |
+|---|---|---|---|---|---|---|---|---|
+| 1 | c1 | 1.1 | 1 | attack / guard | [15,0] | [0,0] | `steal-item:battle-tonic` | [72,85] |
+| 2 | c1 | 1.2 | 0 | item:smoke-bomb / null | [0,0] | [0,0] | `item:smoke-bomb`, `fled` | [72,85] |
+| end | c1 | — | — | `CombatEnded fled` winner null fled 0 | | | | [72,85] |
+| 3 | c2 | 1.1 | 0 | spell / ward | [0,44] | [0,0] | — | [64,28] |
+| 4 | c2 | 1.2 | 1 | attack / guard | [19,0] | [0,0] | — | [45,28] |
+| 5 | c2 | 2.1 | 0 | attack / guard | [0,8] | [0,0] | — | [45,20] |
+| 6 | c2 | 2.2 | 1 | item:herb / null | [0,0] | [0,26] | `item:herb` | [45,46] |
+| 7 | c2 | 3.1 | 0 | spell / guard | [0,44] | [0,0] | — | [45,2] |
+| 8 | c2 | 3.2 | 1 | attack / guard | [19,0] | [0,0] | — | [26,2] |
+| end | c2 | — | — | `CombatEnded draw` winner null fled null | | | | [26,2] |
+| 9 | c3 | 1.1 | 0 | spell / counter | [0,42] | [0,0] | — | [26,62] |
+| 10 | c3 | 1.2 | 1 | spell / ward | [9,0] | [0,0] | — | [17,62] |
+| 11 | c3 | 2.1 | 0 | strike / guard | [0,33] | [0,0] | — | [17,29] |
+| 12 | c3 | 2.2 | 1 | spell / counter | [17,0] | [0,0] | — | [0,29] |
+| end | c3 | — | — | `CombatEnded ko` winner 1 fled null | | | | [0,29] |
+
+Checkpoints: c1 (a vs `seagull-debt-collector`, stats `85/30/14/19/16/7`, first = 1) — the gull's Attack steals `battle-tonic`, then a's `item:smoke-bomb` flees; c2 (b vs a; b first every round because b's SPD 14 > a's 12) — #3 is **Spell×Ward with no ward spell** (Guard multiplier: 44, not 17), #6 heals 26, d8 times out b → `guard`, ends `draw` after round 3; c3 (b vs guardian `landlord-lich` townTier 1, stats `104/24/15/27/13/6`, lich commands drawn) — #10 is Spell×Ward **with** Barrier (0.4×: 9), ends `ko` winner 1 at round 2.2 (b hp 0; npc win → no reward). Round starts: c1 `first` = 1; c2 `first` = 0, 0, 0; c3 `first` = 0, 0. Final: a `warrior L5 xp 500 gold 100 hp 2`, bag `[]`; b `mage L5 xp 500 gold 100 hp 0`, bag `["herb"]`; `choiceHistory.a = {attack:2,strike:0,spell:0,guard:3,counter:0,ward:1}`, `choiceHistory.b = {attack:1,strike:1,spell:3,guard:2,counter:1,ward:1}`; `hidden = {combatSeq:3, decisionSeq:12, decision:null, rng:[1644771214,1962754076,1815850500,733868240]}`. Event type sequence (95):
+`CharacterSet, BagUpdated, CharacterSet, BagUpdated, CombatStarted, RoundStarted, DecisionOpened, PromptOpened, ChoiceCommitted, ChoicesRevealed, ExchangeResolved, BagUpdated, DecisionOpened, PromptOpened, ChoiceCommitted, ChoicesRevealed, ExchangeResolved, BagUpdated, CombatEnded, CombatStarted, RoundStarted, DecisionOpened, PromptOpened×2, ChoiceCommitted×2, ChoicesRevealed, ExchangeResolved, DecisionOpened, PromptOpened×2, ChoiceCommitted×2, ChoicesRevealed, ExchangeResolved, RoundEnded, RoundStarted, DecisionOpened, PromptOpened×2, ChoiceCommitted×2, ChoicesRevealed, ExchangeResolved, DecisionOpened, PromptOpened×2, ChoiceCommitted×2, ChoicesRevealed, ExchangeResolved, BagUpdated, RoundEnded, RoundStarted, DecisionOpened, PromptOpened×2, ChoiceCommitted×2, ChoicesRevealed, ExchangeResolved, DecisionOpened, PromptOpened×2, ChoiceCommitted, ChoiceTimedOut, ChoicesRevealed, ExchangeResolved, RoundEnded, CombatEnded, CombatStarted, RoundStarted, DecisionOpened, PromptOpened, ChoiceCommitted, ChoicesRevealed, ExchangeResolved, DecisionOpened, PromptOpened, ChoiceCommitted, ChoicesRevealed, ExchangeResolved, RoundEnded, RoundStarted, DecisionOpened, PromptOpened, ChoiceCommitted, ChoicesRevealed, ExchangeResolved, DecisionOpened, PromptOpened, ChoiceCommitted, ChoicesRevealed, ExchangeResolved, CombatEnded`.
 
 **CLI** (`pnpm sim <cmd>`, run from the repo root via tsx):
 ```
@@ -964,7 +1020,9 @@ export interface DuelResult { outcome: "ko" | "fled" | "draw"; winner: 0 | 1 | n
 3. `system/setCharacter` for `a` (then `b`) with `classId`, `level`, the kit row below and `bag: ["herb", "herb"]`.
 4. `combat/start` attacker `a`, opponent player `b` or `{kind:"npc", npc:{kind:"monster", id, senior:false}}`.
 5. `ai = {a: createAi(seed, "a", dA), b: createAi(seed, "b", dB)}`; loop while `phase === "decision"` (guard: > 100 iterations → throw): for each `pid` in `pending.required` order, skipping committed players and stopping if the decision changed: `decideCombat(viewFor(state, pid), rules, ai[pid])` → apply the action (a rejection throws — it is a bug).
-6. Result from the last `CombatEnded`.
+6. Result: `outcome`/`winner`/`fled` from the last `CombatEnded`; `events` = total number of events returned by **all** `reduce` calls of the duel (setCharacter events included); `hash = hashState(final state)`.
+
+**Reward coupling (critique #5):** after 02-04 lands, a KO won by a player appends `VictoryRewarded` (+ `LevelUp`/`MasteryRankUp`) and changes xp/gold/mastery, so `DuelResult.events` and `DuelResult.hash` of such duels differ between the W2 engine and the final W3 engine; `outcome`/`winner`/`fled` never do (the reward runs after `CombatEnded`; the reference proves it for all 2 400 gate duels). Therefore **02-05 must not pin `DuelResult.events` or `DuelResult.hash` in its W3 tasks 1–2**; the only reward-dependent goldens are the per-duel `events`/`hash` values in `traces/gate.trace.json`, pinned by the **W3 closing step** (02-05 task 3, after the 02-04 commit). Every stdout golden, the gate counts and the sim fixture are reward-independent and computed for the final W3 state.
 
 **Report (stdout, deterministic; timing goes to stderr as `elapsed_ms=<n>`)**:
 ```
@@ -988,35 +1046,37 @@ total n=<n> a=<Σ> b=<Σ> draw=<Σ> fled=<Σ>
 | `shadowpriest` | wooden-sword, pot-lid, lucky-sock, drain, null | bronze-blade, buckler, speed-anklet, drain, barrier | goblin-cleaver, mirror-shield, speed-anklet, drain, absorb | royal-claymore, aegis-of-usurpia, speed-anklet, drain, counterspell |
 
 
-**Sim goldens (`sim/test/duel.test.ts`, content rules):** `pnpm sim duel --n 60 --matchup mirrors --difficulty hard:easy --seed golden` prints exactly:
+**Sim goldens (`sim/test/duel.test.ts`, content rules; reward-independent):** `pnpm sim duel --n 60 --matchup mirrors --difficulty hard:easy --seed golden` prints exactly:
 ```
-duel n=60 seed=golden level=5 difficulty=hard:easy rules=94160b70
+duel n=60 seed=golden level=5 difficulty=hard:easy rules=84a995db
 # class-vs-class
-cleric:cleric n=10 a=5 b=3 draw=2 fled=0 aRate=0.625
-mage:mage n=10 a=2 b=0 draw=8 fled=0 aRate=1.000
-shadowpriest:shadowpriest n=10 a=5 b=0 draw=5 fled=0 aRate=1.000
-spellblade:spellblade n=10 a=7 b=2 draw=1 fled=0 aRate=0.778
-thief:thief n=10 a=4 b=3 draw=3 fled=0 aRate=0.571
-warrior:warrior n=10 a=8 b=1 draw=1 fled=0 aRate=0.889
-total n=60 a=31 b=9 draw=20 fled=0
+cleric:cleric n=10 a=7 b=2 draw=1 fled=0 aRate=0.778
+mage:mage n=10 a=5 b=0 draw=5 fled=0 aRate=1.000
+shadowpriest:shadowpriest n=10 a=6 b=1 draw=3 fled=0 aRate=0.857
+spellblade:spellblade n=10 a=9 b=1 draw=0 fled=0 aRate=0.900
+thief:thief n=10 a=6 b=3 draw=1 fled=0 aRate=0.667
+warrior:warrior n=10 a=9 b=1 draw=0 fled=0 aRate=0.900
+total n=60 a=42 b=8 draw=10 fled=0
 ```
-and `--n 36 --matchup classes --seed golden` ends with `total n=36 a=12 b=11 draw=13 fled=0`. Running any command twice yields byte-identical stdout (determinism test).
+and `--n 36 --matchup classes --seed golden` ends with `total n=36 a=14 b=11 draw=11 fled=0`; the CI smoke `pnpm sim duel --n 264 --seed ci` ends with `total n=264 a=154 b=57 draw=51 fled=2`. Running any command twice yields byte-identical stdout (determinism test).
 
-**Hard ≥ 70% gate (`sim/test/gate.test.ts`, Vitest timeout 120 s):** for each class `c` (6 classes), `j = 0..399`: `runDuel(rules, {seed: "gate/" + c + "/" + j, a: {c, j even ? "hard" : "easy"}, b: {kind:"class", c, j even ? "easy" : "hard"}, level: 5})`. Count `hardWins`, `easyWins` (KO wins by the hard/easy side), draws. **Requirement:** for every class `hardWins / (hardWins + easyWins) ≥ 0.70` and `(hardWins + easyWins) ≥ 80` (≥ 20% decisive). **Reference golden** (asserted exactly as a determinism check):
+**Hard ≥ 70% gate (`sim/test/gate.test.ts`, Vitest timeout 120 s; user decision D1):** for each class `c` of the 6 classes (ascending id), `j = 0..399`: `runDuel(rules, {seed: "gate/" + c + "/" + j, a: {classId: c, difficulty: j even ? "hard" : "easy"}, b: {kind:"class", classId: c, difficulty: j even ? "easy" : "hard"}, level: 5})`; the hard side is `j even ? 0 : 1`. Per class: `hardWins` = KO wins by the hard side, `easyWins` = KO wins by the easy side, `draws` = `outcome === "draw"`, `fled` = `outcome === "fled"`; `decisive = hardWins + easyWins`; `rate = hardWins / decisive`; `drawRate = draws / 400`. **Requirement (asserted per class):** `decisive > 0`, `rate ≥ 0.70` **and** `drawRate ≤ 0.40`. **Reference golden** (asserted exactly — all four counts per class — as a determinism check; the rate columns are derived):
 
-| class | hardWins | easyWins | draws | hard rate |
-|---|---|---|---|---|
-| cleric | 193 | 44 | 163 | 0.814 |
-| mage | 89 | 28 | 283 | 0.761 |
-| shadowpriest | 215 | 38 | 147 | 0.850 |
-| spellblade | 272 | 51 | 77 | 0.842 |
-| thief | 232 | 83 | 85 | 0.737 |
-| warrior | 268 | 38 | 94 | 0.876 |
+| class | hardWins | easyWins | draws | fled | decisive | Hard-decisive rate | draw rate |
+|---|---|---|---|---|---|---|---|
+| cleric | 221 | 65 | 114 | 0 | 286 | 0.773 | 0.285 |
+| mage | 248 | 45 | 107 | 0 | 293 | 0.846 | 0.268 |
+| shadowpriest | 247 | 67 | 86 | 0 | 314 | 0.787 | 0.215 |
+| spellblade | 310 | 67 | 23 | 0 | 377 | 0.822 | 0.058 |
+| thief | 263 | 68 | 69 | 0 | 331 | 0.795 | 0.172 |
+| warrior | 306 | 60 | 34 | 0 | 366 | 0.836 | 0.085 |
 
-**Performance budget:** `pnpm sim duel --n 10000` (matchup `all`) ≤ 60 s wall on GitHub `ubuntu-latest`; CI runs the smoke `pnpm sim duel --n 264 --seed ci` (2 duels per matchup). The reference implementation ran 10 000 duels in 1.9 s.
+Every mirror clears the D1 requirement with margin (min Hard-decisive rate 0.773 — cleric; max draw rate 0.285 — cleric). The four base-class mirrors named by D1 (warrior, thief, mage, cleric) are included; the two hybrid mirrors are kept as extra coverage. The first 20 duels per class are pinned per duel in `traces/gate.trace.json` as `{j, seed, hardSide, outcome, winner, fled, hp, events, hash, eventsPreRewards, hashPreRewards}`; `gate.test.ts` asserts `(outcome, winner)` of those 20 per class in task 2 and `(events, hash)` in the W3 closing step.
 
-### `@usurpia/client` (W1, 02-01)
-`main.ts`: `createGame({v:2, seed:"demo", players:[{id:"p1",classId:"fighter"},{id:"p2",classId:"caster"}]}, DEMO_RULES)`, then `decision/open` (system) with prompts `p1: ["yes","no"]/"no"` and `p2: ["red","green","blue"]/"red"`, then `decision/commit p1 "yes"`; render `renderView(viewFor(state,"p2"), eventsFor(events,"p2"))` into `<pre id="app">`. `DEMO_RULES` = `src/demo-rules.ts`, a verbatim `TEST_RULES` copy typed `Rules`.
+**Performance budget (critique #12, owner 02-05):** `pnpm sim duel --n 10000` (matchup `all`) ≤ 60 s wall on GitHub `ubuntu-latest`. Automated by `packages/sim/test/perf.test.ts` (Vitest timeout 180 s): spawns `pnpm sim duel --n 10000 --seed perf` from the repo root, measures wall time around the subprocess, asserts exit code 0, wall ≤ 60 000 ms, stdout contains `# class-vs-class` and `# class-vs-monster`, and the last stdout line is exactly `total n=10000 a=5411 b=2370 draw=2118 fled=101`. The CI smoke step (`pnpm sim duel --n 264 --seed ci`, after `pnpm build`) stays separate. The reference implementation ran 10 000 duels in 2.2 s.
+
+### `@usurpia/client` (W1: 02-01a shell, 02-01b demo decision)
+`main.ts`: `createGame({v:2, seed:"demo", players:[{id:"p1",classId:"fighter"},{id:"p2",classId:"caster"}]}, DEMO_RULES)`, then `decision/open` (system) with prompts `p1: ["yes","no"]/"no"` and `p2: ["red","green","blue"]/"red"`, then `decision/commit p1 "yes"`; render `renderView(viewFor(state,"p2"), eventsFor(events,"p2"))` into `<pre id="app">`. `DEMO_RULES` = `src/demo-rules.ts`, a verbatim `TEST_RULES` copy typed `Rules`. **02-01a interim:** no actions exist yet, so `main.ts` only creates the game and renders with `events = []`, and the player line omits the ` bag <counts[id].bag>` suffix (no `counts` yet); 02-01b adds the decision demo, the bag suffix and the pending/options lines as below.
 `renderView(view, events)` returns lines joined with `\n`:
 ```
 Usurpia — viewer: <viewer>
@@ -1099,26 +1159,52 @@ export const TEST_RULES: Rules = { v: 1,
 ### Lint and purity probe (W3, 02-05)
 - `eslint.config.js`: hoist the existing core `no-restricted-imports` options into a `CORE_IMPORT_RESTRICTIONS` constant (paths + patterns) and reuse it. Add two flat-config objects **after** the core override (a later object replaces the rule's options for its files, so each repeats the core restrictions):
   1. `files: ["packages/core/src/**/*.ts"], ignores: ["packages/core/src/ai/**"]`: core restrictions + pattern `{ regex: "(^|/)ai(/|$)", message: "reducer/handlers/core must not import the CPU AI (ai/ runs outside reduce)" }`.
-  2. `files: ["packages/core/src/ai/**/*.ts"]`: core restrictions + patterns `{ regex: "(^|/)(reducer|handlers)(/|$)", message: "the AI must not call the reducer or handlers" }` and `{ regex: "(^|/)types$", importNames: ["GameState", "HiddenState"], message: "the AI reads PlayerView only" }`.
-- `scripts/check-core-purity.mjs`: cases gain an optional `path` (default `packages/core/src/__purity_probe__.ts`); add `import "./ai/index";` (expects `no-restricted-imports`) and, at `packages/core/src/ai/__purity_probe__.ts`, `import type { GameState } from "../types";` and `import { reduce } from "../reducer";` (each expects `no-restricted-imports`). Every probe file is deleted in `finally`.
+  2. `files: ["packages/core/src/ai/**/*.ts"]`: core restrictions + patterns (critique #9 closes the re-export loophole):
+     - `{ regex: "(^|/)(reducer|handlers|index|serialize|game|replay)(/|$)", message: "the AI reads PlayerView + Rules only (no reducer, handlers, or modules exposing GameState)" }` — `index` is the core barrel (re-exports `GameState`/`reduce`), `serialize`/`game`/`replay` return `GameState`;
+     - `{ regex: "^@usurpia/core(/|$)", message: "the AI must use relative imports" }`;
+     - `{ regex: ".*", importNames: ["GameState", "HiddenState"], message: "the AI reads PlayerView only" }` — the type names are banned from **every** module path.
+     It also extends `no-restricted-properties` with `{ object: "Math", property: "exp" | "log" | "pow", message: "AI arithmetic must be engine-independent; use expNeg" }` (three entries) in addition to the core `Math.random` entry (critique #10). The existing core rule banning aliasing of `Math` makes this complete.
+- `scripts/check-core-purity.mjs`: cases gain an optional `path` (default `packages/core/src/__purity_probe__.ts`); add `import "./ai/index";` (expects `no-restricted-imports`) and, at `packages/core/src/ai/__purity_probe__.ts`, each of `import type { GameState } from "../types";`, `import type { GameState } from "../views";` (name ban via any path), `import { reduce } from "../reducer";`, `import { createGame } from "../index";`, `import { deserialize } from "../serialize";` (each expects `no-restricted-imports`) and `export const e = Math.exp(1);` (expects `no-restricted-properties`). Every probe file is deleted in `finally`.
 
 ### Golden summary
-| Golden | Value | Pinned in |
-|---|---|---|
-| `rulesHash(TEST_RULES)` | `7433ea8b` | `core/test/rules.test.ts` (W1) |
-| `createGame(fixture settings, TEST_RULES)` | `758ef72c` + canonical JSON above | `core/test/game.test.ts` (W1) |
-| Poll replay (W1 fixture) | `9616698e`, 10 events, rejections at 2 and 5 | `core/test/replay.test.ts`, `sim/test/replay-file.test.ts` (W1) |
-| Sheet/NPC stats | table above | `core/test/stats.test.ts` (W1); `core/test/npc.test.ts` (W2) pins `drawNpcCommand`/`drawNpcDefense` mapping (e.g. slime table 60/20/20/0: `u` 1–60 attack, 61–80 strike, 81–100 spell; flee never) |
-| Damage matrix + variants | tables above | `core/test/resolve.test.ts` (W2) |
-| Combat golden replay | `ec0c3508`, 80 events | `core/test/combat-golden.test.ts` (W2) |
-| `rulesHash(loadRules())` | `94160b70` | `content/test/data.test.ts` (W2) |
-| Rewards/loadout replay | `57da3ea4`, 84 events | `core/test/rewards-golden.test.ts` (W3, 02-04) |
-| Sim combat fixture | `hash=60d64975 rules=94160b70 turn=1 events=107 rejections=0` | `sim/test/replay-file.test.ts` (W3, 02-05) |
-| AI policy weights / rng | tables above | `core/test/ai.test.ts` (W3) |
-| Sim duel stdout | mirrors block above; classes total line | `sim/test/duel.test.ts` (W3) |
-| Hard vs Easy gate counts | table above | `sim/test/gate.test.ts` (W3) |
+| Golden | Value | Pinned in (plan, task) | Reward-dependent? |
+|---|---|---|---|
+| `rulesHash(TEST_RULES)` | `7433ea8b` | `core/test/rules.test.ts` (02-01a T1) | no |
+| `createGame(fixture settings, TEST_RULES)` | `758ef72c` + canonical JSON above | `core/test/game.test.ts` (02-01a T2) | no |
+| Empty replay file (W1a) | `hash=758ef72c rules=7433ea8b turn=1 events=0 rejections=0` | `sim/test/replay-file.test.ts` (02-01a T3) | no |
+| Poll replay (W1b fixture) | `9616698e`, 10 events, rejections at 2 and 5 | `core/test/replay.test.ts`, `sim/test/replay-file.test.ts` (02-01b T3) | no |
+| Sheet/NPC stats (TEST_RULES) | table above | `core/test/stats.test.ts` (02-01a T1); `core/test/npc.test.ts` (02-03 T1) pins `drawNpcCommand`/`drawNpcDefense` mapping (e.g. slime table 60/20/20/0: `u` 1–60 attack, 61–80 strike, 81–100 spell; flee never) | no |
+| Content NPC spot stats | table below | `sim/test/content-stats.test.ts` (02-05 T2) | no |
+| Damage matrix + variants | tables above | `core/test/resolve.test.ts` (02-03 T1) | no |
+| Combat golden replay | `ec0c3508`, 80 events, exchange table | `core/test/combat-golden.test.ts` (02-03 T3) | no (no player KO win) |
+| `rulesHash(loadRules())` | `84a995db` | `content/test/data.test.ts` (02-02 T3) | no |
+| Rewards/loadout replay | `57da3ea4`, 84 events | `core/test/rewards-golden.test.ts` (02-04 T3) | — (it *is* the reward golden) |
+| Sim combat fixture | `hash=0483c0fa rules=84a995db turn=1 events=95 rejections=0` | `sim/test/replay-file.test.ts` (02-05 T2) | no (no `VictoryRewarded`) |
+| AI policy weights / rng / `expNeg` | tables above | `core/test/ai.test.ts`, `core/test/ai-exp.test.ts` (02-05 T1) | no |
+| Sim duel stdout (mirrors block, classes total, CI smoke total) | blocks above | `sim/test/duel.test.ts` (02-05 T2) | no (outcomes only) |
+| 10k perf run total line | `total n=10000 …` above | `sim/test/perf.test.ts` (02-05 T2) | no |
+| Hard vs Easy gate counts | table above | `sim/test/gate.test.ts` (02-05 T2) | no |
+| Gate per-duel `(outcome, winner)` (first 20 per class) | `traces/gate.trace.json` | `sim/test/gate.test.ts` (02-05 T2) | no |
+| Gate per-duel `(events, hash)` (first 20 per class) | `traces/gate.trace.json` (`events`, `hash`) | `sim/test/gate.test.ts` (02-05 **T3 = W3 closing step**) | **yes** |
 
-If an implementation disagrees with a composite golden (hash, stdout, gate counts) while all component goldens (stats, matrix, AI policy) pass, the executor diffs its behaviour against the prose of this spec, fixes the implementation, and only if the spec itself is ambiguous escalates to the orchestrator; any golden change needs a Revision History row.
+Content NPC spot stats (content rules, `npcStats`; pins the Ogre fix — its hook is combat-time and does not change these numbers):
+
+| NPC | Result |
+|---|---|
+| monster `ogre-middle-manager` (T4) | 218/63/33/42/17/9 |
+| monster `slime-intern`, senior (T2 curve) | 76/24/12/17/10/4 |
+| guardian `landlord-lich`, townTier 1 (T2 curve) | 104/24/15/27/13/6 |
+| enforcer level 10 | 108/49/28/31/19/14 |
+
+### Golden oracle and traces (critique #1)
+- **Location:** `.planning/reference/phase-02/` — the reference implementation that computed every golden: `kernel.mjs` (rng/hash, identical to Phase 1), `engine.mjs` (createGame/reduce/stats/computeCell/rewards; reduced validation), `ai.mjs`, `sim.mjs`, `content-rules.mjs` (the content data incl. display text), `spec-test-rules.mjs` (TEST_RULES), `goldens.mjs` (scenarios + every snippet), `gen-goldens.mjs`, `verify-spec.mjs`, `parse-spec.py` (spec content tables → `spec-rules.json`), `gate.mjs`/`matrix.mjs`/`tune.mjs` (exploration), and `traces/`. It is **planning material, not product code**: no package imports it, no committed test reads it, and plans never edit it (a golden change goes through the spec author: Revision History row + `gen-goldens.mjs` + `verify-spec.mjs`).
+- **Verification:** `node .planning/reference/phase-02/verify-spec.mjs` (needs `python3`) re-parses this spec's content tables and TEST_RULES literal, checks every action block against the reference scenarios, checks every golden snippet appears verbatim in this spec, checks `traces/*.json` are current, and checks the D1 margins; it prints `verify-spec: N passed, 0 failed`.
+- **Tool exclusions (owner: 02-01a, T3):** the directory must stay outside every repo tool. Today no edit is needed and 02-01a must keep exactly these entries: `eslint.config.js` top-level `ignores` contains `".planning/**"`; `.prettierignore` contains the line `.planning/`; root `tsconfig.json` has `"files": []` and only `packages/*` references (tsc never sees `.planning`); `vitest.config.ts` `projects` only lists `packages/*`. If any entry is missing at execution time, 02-01a adds exactly that entry and nothing else. Acceptance: `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test` pass with the directory present.
+- **Traces** (`traces/*.json`, regenerated by `gen-goldens.mjs`):
+  - `kernel-game.trace.json`, `combat-golden.trace.json`, `rewards-golden.trace.json`, `combat-game.trace.json` (the sim fixture): `{scenario, rules, rulesHash, settings, initialHash, steps: [{i, type, ok, error, hash, events}], finalHash, finalState}` — one step per action; `hash` = `hashState` after the action (the unchanged input hash on a rejection); `events` = the full events that `reduce` returned (with `visibility`).
+  - Trace values are goldens of this spec **by reference**: a test that pins them transcribes the values into the test source (committed tests never read `.planning/` at runtime).
+  - `gate.trace.json`: per class, the first 20 gate duels `{j, seed, hardSide, outcome, winner, fled, hp, events, hash, eventsPreRewards, hashPreRewards}`; `events`/`hash` are for the final W3 engine (rewards on), the `…PreRewards` pair is the same duel with the 02-04 reward hook disabled (what 02-05 sees before the 02-04 commit).
+- **Mismatch localisation protocol (binding for executors):** when a composite golden (hash, event count, stdout, gate count) disagrees, the executor must (1) write a throwaway script or `it.only` debug test (never committed) that replays the scenario action by action and prints `hashState` + events per step, (2) diff it against the corresponding `traces/*.json` and find the **first** differing step, (3) diff that step's events field by field to find the rule at fault, (4) fix the implementation against this spec's prose. For gate/stdout mismatches, diff per-duel `(outcome, winner)` against `gate.trace.json` first. Only if the spec prose is ambiguous is the orchestrator escalated; any golden change needs a Revision History row.
 
 ## File Placement
 | Artifact | Path | Placement Rationale | Existing Pattern |
@@ -1128,11 +1214,12 @@ If an implementation disagrees with a composite golden (hash, stdout, gate count
 | Pure combat math | `packages/core/src/combat/{passives,stats,options,resolve}.ts` | No `GameState` imports; unit-testable; reused by the AI | New subfolder |
 | Handlers | `packages/core/src/handlers/{index,shared,decision,combat,system,loadout}.ts` | Replaces `handlers.ts`; one file per concern for wave-parallel ownership | Phase 1 handler map |
 | Progression / inventory | `packages/core/src/{progression,inventory}.ts` | Pure domain helpers | — |
-| CPU AI | `packages/core/src/ai/*.ts` → `@usurpia/core/ai` | Headless, in core per design doc; lint-isolated | Design doc CPU AI Spec |
+| CPU AI | `packages/core/src/ai/{index,combat,opponent-model,tuning,exp}.ts` → `@usurpia/core/ai` | Headless, in core per design doc; lint-isolated; `exp.ts` holds the engine-independent `expNeg` | Design doc CPU AI Spec |
 | Core test fixture | `packages/core/test/fixtures/test-rules.ts` | User decision: core tests without content | Phase 1 `test/` layout |
 | Content data | `packages/content/data/*.json` (6 files) | Data separate from schemas | Phase 1 `items.json` |
 | Content build | `packages/content/src/{build-rules,node}.ts`, `src/schemas/*.ts` | Browser-safe index + Node-only loader | Phase 1 `load.ts` |
-| Sim | `packages/sim/src/{cli,replay-file,duel,kits,report,rules}.ts`, `fixtures/combat-game.json` | CLI package | Phase 1 sim |
+| Sim | `packages/sim/src/{cli,replay-file,duel,kits,report,rules}.ts`, `fixtures/combat-game.json`, `test/{duel,gate,perf,content-stats,cli,replay-file}.test.ts` | CLI package | Phase 1 sim |
+| Golden oracle | `.planning/reference/phase-02/**` (incl. `traces/*.json`) | Planning material; excluded from every tool; spec-author owned | — |
 | Client text shell | `packages/client/src/{main,render,demo-rules}.ts` | Phase 4 replaces it | Phase 1 client |
 
 ## Data and Control Flow
@@ -1143,15 +1230,16 @@ If an implementation disagrees with a composite golden (hash, stdout, gate count
 5. **CPU:** host loop calls `decideCombat(viewFor(state, cpuId), rules, ai)` → `action` → `reduce`; the AI's own RNG state is kept by the host (sim) and never enters `GameState`.
 6. **Replay/sim files:** `{rulesHash, settings, actions}`; replay checks the hash first (mismatch → exit 3 unless allowed), then folds `reduce`.
 7. **Views:** clients and (later) the server only ever send `viewFor`/`eventsFor` projections; prompts and bag/scroll events are private.
-8. **CI:** install → lint → lint:purity → format:check → typecheck → test (includes the gate) → build → `pnpm sim duel --n 264 --seed ci`.
+8. **CI:** install → lint → lint:purity → format:check → typecheck → test (includes the gate and the 10k perf test) → build → `pnpm sim duel --n 264 --seed ci`.
 
 ## Compatibility Constraints
 - Everything from Phase 1 (Node ≥ 22.13 per root `engines`, pnpm 10.33.0, TypeScript ~6.0.3, ESM, strict tsconfig options, pinned versions). **No new third-party dependencies** in Phase 2; only workspace links (`@usurpia/content` → `@usurpia/core`, `@usurpia/sim` → `@usurpia/content`), added in W1 so later waves never touch `pnpm-lock.yaml`.
-- Core stays pure: the AI may use `Math.exp`/`Math.log`/`Math.round` (allowed members), never `Math.random`.
+- Core stays pure: never `Math.random`. The AI additionally never uses `Math.exp`/`Math.log`/`Math.pow` (lint-enforced); it uses `expNeg` and only exactly-specified IEEE-754 operations, so **AI goldens are engine-independent**, not merely V8/Node-exact. (Floats never enter `GameState`: the AI's only output is a choice token.)
 - State, actions and events contain only JSON values; all state numbers are integers (property test: every number in every reachable state satisfies `Number.isSafeInteger`).
 - `@usurpia/core` gains `exports["./ai"] = "./src/ai/index.ts"`; `@usurpia/content` gains `exports["./node"] = "./src/node.ts"`. Package `index.ts` files stay browser-safe.
 - Save/replay compatibility: v1 saves are rejected (`SchemaVersionError`); there is no v1 → v2 migration (no users yet).
-- Tuning changes after Phase 2 must update `94160b70`, the sim fixture, sim stdout goldens and gate counts in one commit.
+- Tuning changes after Phase 2 must update `84a995db`, the sim fixture, sim stdout goldens, the perf total line, gate counts and `traces/` in one commit (regenerate with the golden oracle).
+- The golden oracle requires Node ≥ 22.13 and `python3` (planning-time only; not a repo/CI dependency).
 
 ## Failure Modes
 Every negative test is built from a **known-valid** fixture with **exactly one** mutation and asserts the **exact** code and message, so a test cannot pass because an earlier check fired (PIT-001). Records keyed by ids are exercised with `toString`/`valueOf`/`hasOwnProperty`/`constructor`-like ids where the pattern allows (PIT-002).
@@ -1159,6 +1247,7 @@ Every negative test is built from a **known-valid** fixture with **exactly one**
 | Failure Mode | Expected Behavior | Verification (single-mutation design) |
 |--------------|-------------------|---------------------------------------|
 | Commit a choice not in the player's own options (e.g. defender commits `"attack"`, or `"item:bomb"` without a bomb) | `INVALID_PAYLOAD` "choice is not one of your options"; state `===` input | `decision.test.ts`: open fixture decision, uncommitted player, valid decision id, token-shaped choice ∉ options |
+| Token length (critique #6) | `CHOICE_PATTERN` accepts 1..64 chars: `"item:" + <48-char content id>` (53 chars) and a 64-char token are valid options/choices; a 65-char token fails the shape guard (`INVALID_PAYLOAD`) | `decision.test.ts` (poll with the 53- and 64-char options, commit them; 65-char option rejected); `combat-flow.test.ts` (02-03): a bag item with a 48-char id yields option `item:<id>` and committing it resolves |
 | Commit stale / twice | `STALE_DECISION` / `ALREADY_COMMITTED` (checked before the options check) | `decision.test.ts`: the double commit reuses an **in-options** choice |
 | Poll with duplicate players, unseated player, duplicate options, default ∉ options | `INVALID_PAYLOAD` with the four distinct messages | `decision.test.ts`, each from the same valid prompt list with one field changed |
 | `combat/start` invalid (unseated attacker, KO'd attacker, self-duel, KO'd opponent, unknown monster/guardian, enforcer level > max, seq overflow) | `INVALID_PAYLOAD`, unique messages | `combat-flow.test.ts`, one mutation each from a valid start |
@@ -1188,74 +1277,111 @@ Every negative test is built from a **known-valid** fixture with **exactly one**
 | Limits and overflow (R7) | `pnpm vitest run packages/core/test/inventory.test.ts packages/core/test/loadout.test.ts` | true |
 | Content loads with tiered curves (R8) | `pnpm vitest run packages/content/test/data.test.ts packages/content/test/build-rules.test.ts packages/core/test/npc.test.ts` | true |
 | Kernel v2 properties (≥ 200 runs each: determinism, never throws, no mutation of frozen input, rejection identity, split-replay via `deserialize(serialize(s), rules)`, integers only, leak/structural redaction) | `pnpm vitest run packages/core/test/replay.test.ts packages/core/test/views.test.ts packages/core/test/serialize.test.ts` | true |
-| Sim 10k duels (R9) | `time pnpm sim duel --n 10000` exits 0, ≤ 60 s, stdout has `# class-vs-class` and `# class-vs-monster` sections and a `total n=10000` line | true |
-| Hard ≥ 70% vs Easy (R9/R14 prep) | `pnpm vitest run packages/sim/test/gate.test.ts` | true |
+| Sim 10k duels (R9, critique #12; owner 02-05) | `pnpm vitest run packages/sim/test/perf.test.ts` — spawns `pnpm sim duel --n 10000 --seed perf`, asserts exit 0, wall ≤ 60 000 ms, both section headers, last line `total n=10000 a=5411 b=2370 draw=2118 fled=101` (also runs inside `pnpm test` in CI) | true |
+| CI smoke (separate from the perf test) | CI step `pnpm sim duel --n 264 --seed ci` after `pnpm build`; last line `total n=264 a=154 b=57 draw=51 fled=2` (pinned in `duel.test.ts`) | true |
+| Hard ≥ 70% vs Easy **and** draw rate ≤ 40% in every gate mirror (R9/R14 prep, D1) | `pnpm vitest run packages/sim/test/gate.test.ts` (exact counts per class; in the W3 closing step also the per-duel hashes) | true |
+| Ward without a ward spell (D2) | `resolve.test.ts` Spell×Ward base cell = 18 with `ward: null` and 7 with Barrier; sim fixture row #3 | true |
+| Golden oracle consistent with this spec | `node .planning/reference/phase-02/verify-spec.mjs` prints `0 failed` (spec author / orchestrator; not a plan task) | true |
 | AI never reads hidden info | `pnpm vitest run packages/core/test/ai-hidden.test.ts` and `pnpm lint:purity` | true |
-| Replay fixture | `pnpm sim replay packages/sim/fixtures/combat-game.json` prints `hash=60d64975 rules=94160b70 turn=1 events=107 rejections=0` | true |
-| Sample module gone | `! grep -rnE "sample/|setSecret|lastRoll|defaultChoice|sample-game" packages/*/src packages/*/test packages/sim/fixtures` (no matches) | true |
+| Replay fixture | `pnpm sim replay packages/sim/fixtures/combat-game.json` prints `hash=0483c0fa rules=84a995db turn=1 events=95 rejections=0` | true |
+| Sample module gone, README current (critique #13) | `! grep -rnE "sample/|setSecret|lastRoll|defaultChoice|sample-game|\{ settings, actions \}" packages/*/src packages/*/test packages/sim/fixtures README.md` (no matches) and `grep -q "rulesHash" README.md` — run at the end of 02-01a, 02-01b and 02-05 | true |
 | CI green on `dev` with the sim smoke step | GitHub Actions run on the final W3 commit | true |
 
 ## Deliverables
-Five plans in three waves. Same-wave plans own **disjoint** files (listed exhaustively; "C" create, "M" modify, "D" delete). Every plan also owns its own `SUMMARY.md`, runs package-scoped lint/typecheck/test while parallel, and ends with a commit on `dev` (no `.tsbuild`/`dist`/`node_modules`). Agents per PRF-003: executors `sonnet`, the mandatory testing role `testing-qa-verification-specialist` on every plan.
+**Six plans in four waves** (critique #4): **W1a** 02-01a → **W1b** 02-01b (sequential) → **W2** 02-02 ∥ 02-03 → **W3** 02-04 ∥ 02-05, where 02-05's task 3 is the **W3 closing step** that runs only after 02-04 is committed. Every plan has ≤ 3 tasks; each task is a coherent unit with its own verification command and ends green (`pnpm lint`, package-scoped `typecheck`/`test`). Same-wave plans own **disjoint** files (listed exhaustively; "C" create, "M" modify, "D" delete); sequential plans may touch the same file. Every plan also owns its own `SUMMARY.md`, runs package-scoped lint/typecheck/test while parallel, and ends with a commit on `dev` (no `.tsbuild`/`dist`/`node_modules`). No plan edits `.planning/reference/**`. Agents per PRF-003: executors `sonnet`, the mandatory testing role `testing-qa-verification-specialist` on every plan.
 
-### Wave 1 — Plan 02-01: Kernel v2 (Rules threading, generic decisions, sample removal, schema v2)
-- **Paths:**
-  - C: `packages/core/src/rules.ts`, `packages/core/src/combat/passives.ts`, `packages/core/src/combat/stats.ts`, `packages/core/src/handlers/{index,shared,decision}.ts`, `packages/core/test/fixtures/test-rules.ts`, `packages/core/test/fixtures/build.ts` (state/action builders for tests), `packages/core/test/{rules,stats}.test.ts`, `packages/sim/src/{kernel-rules,rules}.ts`, `packages/sim/fixtures/kernel-game.json`, `packages/sim/test/cli.test.ts`, `packages/client/src/demo-rules.ts`
-  - M: `packages/core/src/{types,actions,events,reducer,validation,serialize,game,replay,views,index}.ts`, `packages/core/test/{arbitraries,reducer.test,decision.test,views.test,serialize.test,replay.test,counter-bounds.test,game.test}.ts`, `packages/sim/src/{cli,replay-file}.ts`, `packages/sim/test/replay-file.test.ts`, `packages/sim/{package.json,tsconfig.json}` (+`@usurpia/content` dep/reference), `packages/content/{package.json,tsconfig.json}` (+`@usurpia/core` dep/reference), `packages/client/src/{main,render}.ts`, `packages/client/test/render.test.ts`, `pnpm-lock.yaml`
-  - D: `packages/core/src/handlers.ts`, `packages/sim/fixtures/sample-game.json`
-- **Purpose:** binding decisions OQ5a–c; everything later waves build on (full v2 state shape incl. combat types, `deserialize(json, rules)` with combat rejected, `reduce(…, rules)`, poll decisions, `viewFor.counts`, stats/passives).
-- **Key content:** kernel goldens (`7433ea8b`, `758ef72c`, `9616698e`), stats goldens, arbitraries over the W1 action set with `PROTO_IDS` seats, the Phase 1 property suite re-pointed at v2 (≥ 200 runs), client/sim shells on v2.
-- **Dependencies:** none (Phase 1 complete).
-- **Estimated size:** ~1 100 lines src, ~1 300 lines tests.
+### Wave 1a — Plan 02-01a: Kernel v2 data model and Rules threading
+- **Purpose:** binding decision OQ5a (content injection) and the v2 state shape; everything compiles and tests pass on v2, but the kernel has **no actions yet** (`Action` is the empty union, `ACTION_TYPES = []`, handler map `{}`: every versioned object is `UNKNOWN_ACTION`, every non-object/`v ≠ 2` is `UNSUPPORTED_VERSION`). Sample module removed.
+- **Task 1 — Rules contract + TEST_RULES + stats.** C: `packages/core/src/rules.ts`, `packages/core/src/combat/{passives,stats}.ts`, `packages/core/test/fixtures/test-rules.ts`, `packages/core/test/{rules,stats}.test.ts`. Verify: `pnpm vitest run packages/core/test/rules.test.ts packages/core/test/stats.test.ts` (`rulesHash(TEST_RULES) = 7433ea8b`, the stats table, `applyPassives` exhaustiveness, `adjustHp`).
+- **Task 2 — State v2 + reducer threading.** C: `packages/core/src/handlers/{index,shared}.ts` (empty exhaustive map, guards, `reject`, `overflow`), `packages/core/test/fixtures/build.ts`. M: `packages/core/src/{types,actions,events,reducer,validation,serialize,game,replay,views,index}.ts` — `serialize.ts` is a **compile shim** in W1a: `deserialize(json, rules)` does `JSON.parse`, plain-object and `v === 2` (`SchemaVersionError`) checks, then the root exact-key check, and otherwise throws `TypeError("deserialize: v2 validation lands in 02-01b")`; `views.ts` builds `{v, viewer, public, self}` (no `counts` yet). M tests (trimmed to what W1a can reach): `reducer.test.ts` (UNSUPPORTED_VERSION incl. `v:1` actions and Phase 1 sample types → UNKNOWN_ACTION with `v:2`, canonicalize-once, rejection identity, frozen input), `game.test.ts` (createGame golden `758ef72c` + canonical JSON, every `SettingsError` case incl. hybrid seat class), `views.test.ts` (`self` for seated players, `null` for spectators/unknown/prototype-like ids; never another player's private), `serialize.test.ts` (shim behaviour), `replay.test.ts` (empty replay, junk actions rejected and replay continues, determinism). D: `packages/core/src/handlers.ts`, `packages/core/test/{decision.test,counter-bounds.test,arbitraries}.ts` (they only exercise v1 sample/decision actions; 02-01b re-creates them for v2). Verify: `pnpm --filter @usurpia/core test && pnpm --filter @usurpia/core typecheck` (or `tsc -b packages/core`).
+- **Task 3 — Workspace links, sim/client compile shims, README, tool exclusions.** C: `packages/sim/src/{kernel-rules,rules}.ts`, `packages/client/src/demo-rules.ts`. M: `packages/sim/src/{cli,replay-file}.ts` (v2 replay file with `rulesHash`, exit 3 on mismatch, `--allow-rules-mismatch`), `packages/sim/test/replay-file.test.ts` (function + Phase 1 CLI subprocess tests re-pointed at temp files; empty-replay line `hash=758ef72c rules=7433ea8b turn=1 events=0 rejections=0`; mismatch exit 3), `packages/sim/{package.json,tsconfig.json}` (+`@usurpia/content` dep/reference), `packages/content/{package.json,tsconfig.json}` (+`@usurpia/core` dep/reference), `packages/client/src/{main,render}.ts` (W1a: `createGame` with `DEMO_RULES` and render only; player line without the ` bag <n>` suffix, no pending/options lines), `packages/client/test/render.test.ts`, `pnpm-lock.yaml`, `README.md` (critique #13: replay file is `{ rulesHash, settings, actions }`, `--allow-rules-mismatch`, exit codes 0/1/2/3; no sample references). D: `packages/sim/fixtures/sample-game.json`. Also checks (no edit expected) the golden-oracle exclusions listed in *Golden oracle and traces*. Verify: full pipeline + the sample/README grep acceptance check.
+- **Dependencies:** none (Phase 1 complete). **Estimated size:** ~650 lines src, ~600 lines tests.
+
+### Wave 1b — Plan 02-01b: Generic decisions, deserialize v2, views counts, property suite
+- **Purpose:** binding decisions OQ5b–c; the W1 action set, full `deserialize(json, rules)` (combat still rejected), `viewFor.counts`, the Phase 1 property suite on v2, the kernel-game fixture and the sim CLI tests.
+- **Task 1 — Decision module.** C: `packages/core/src/handlers/decision.ts` (`decision/open` poll, `decision/commit`, `timeout`, `openDecision`, reveal + resolver dispatch with `resolveUnsupported` for `combat/exchange`), `packages/core/test/decision.test.ts` (incl. the `CHOICE_PATTERN` 53/64/65-char cases). M: `packages/core/src/{actions,events}.ts` (W1 union, `ACTION_TYPES`, guards), `packages/core/src/handlers/{index,shared}.ts`, `packages/core/test/reducer.test.ts` (WRONG_PHASE / WRONG_ACTOR / state-validation precedence). Verify: `pnpm vitest run packages/core/test/decision.test.ts packages/core/test/reducer.test.ts`.
+- **Task 2 — deserialize v2 + views counts.** M: `packages/core/src/{serialize,views}.ts`, `packages/core/test/{serialize,views}.test.ts` (single-mutation table, uniqueness meta-test, redaction/leak properties). Verify: `pnpm vitest run packages/core/test/serialize.test.ts packages/core/test/views.test.ts`.
+- **Task 3 — Property suite, kernel fixture, CLI tests, client demo.** C: `packages/core/test/{arbitraries,counter-bounds.test}.ts`, `packages/sim/fixtures/kernel-game.json`, `packages/sim/test/cli.test.ts`. M: `packages/core/test/replay.test.ts` (≥ 200 runs per property; kernel golden `9616698e`), `packages/sim/test/replay-file.test.ts` (fixture line), `packages/client/src/{main,render}.ts` + `packages/client/test/render.test.ts` (demo decision; ` bag <n>` suffix, pending and options lines). Verify: full pipeline + sample/README grep.
+- **Dependencies:** 02-01a. **Estimated size:** ~550 lines src, ~800 lines tests.
 
 ### Wave 2 — Plan 02-02: Content (schemas, data, `buildRules`)
-- **Paths (all under `packages/content/`):**
-  - C: `src/schemas/{classes,gear,spells,monsters,tuning}.ts`, `src/{build-rules,node}.ts`, `data/{classes,gear,spells,monsters,tuning}.json`, `test/{build-rules,data}.test.ts`, `test/helpers.ts`
-  - M: `src/{index,registry,validate}.ts`, `src/schemas/{common,items}.ts`, `data/items.json`, `test/validate.test.ts`, `package.json` (`exports["./node"]`, no dependency changes)
-  - D: `test/fixtures/**`
-- **Purpose:** R5/R7/R8 data; the only producer of `Rules`.
-- **Key content:** every table in *Content data* transcribed exactly (pinned by `rulesHash === "94160b70"`), display text, cross-ref rules with unique messages, temp-dir CLI gate test.
-- **Dependencies:** 02-01 (type imports from `@usurpia/core`). **Parallel with 02-03** (no shared files).
-- **Estimated size:** ~500 lines src, ~900 lines JSON, ~500 lines tests.
+- **Task 1 — Schemas + registry + validate.** C: `packages/content/src/schemas/{classes,gear,spells,monsters,tuning}.ts`. M: `packages/content/src/{index,registry,validate}.ts`, `packages/content/src/schemas/{common,items}.ts`. Verify: package typecheck.
+- **Task 2 — Data + `buildRules` + Node loader.** C: `packages/content/src/{build-rules,node}.ts`, `packages/content/data/{classes,gear,spells,monsters,tuning}.json`. M: `packages/content/data/items.json`, `packages/content/package.json` (`exports["./node"]`, no dependency changes). Verify: `pnpm validate:content` exits 0.
+- **Task 3 — Tests.** C: `packages/content/test/{build-rules,data}.test.ts`, `packages/content/test/helpers.ts`. M: `packages/content/test/validate.test.ts`. D: `packages/content/test/fixtures/**`. Verify: `pnpm --filter @usurpia/content test` (`rulesHash === "84a995db"`, counts, every cross-ref message incl. "npc sheet-stat hooks are not applied", reserved id).
+- **Purpose:** R5/R7/R8 data; the only producer of `Rules`. **Dependencies:** 02-01b. **Parallel with 02-03** (no shared files). **Estimated size:** ~500 lines src, ~900 lines JSON, ~500 lines tests.
 
-### Wave 2 — Plan 02-03: Combat engine
-- **Paths (all under `packages/core/`):**
-  - C: `src/combat/{options,resolve}.ts`, `src/handlers/{combat,system}.ts`, `test/{resolve,npc,combat-flow,combat-golden}.test.ts`
-  - M: `src/{actions,events,serialize,index}.ts`, `src/handlers/index.ts` (register `combat/start`, `system/setCharacter`, the `combat/exchange` resolver), `test/{arbitraries,serialize.test,views.test,replay.test,counter-bounds.test}.ts`
-- **Purpose:** R6 and the NPC half of R8.
-- **Key content:** `computeCell`/`resolveExchange` exactly as specified, state machine, draw order, deserialize combat checks, matrix + variant goldens, combat golden `ec0c3508`, arbitraries extended with `combat/start`, `system/setCharacter` and combat-token commits.
-- **Dependencies:** 02-01. **Parallel with 02-02.**
-- **Estimated size:** ~900 lines src, ~1 000 lines tests.
+### Wave 2 — Plan 02-03: Combat engine (resolve → flow → golden)
+- **Task 1 — Resolve (pure math).** C: `packages/core/src/combat/{options,resolve}.ts`, `packages/core/test/{resolve,npc}.test.ts`. M: `packages/core/src/index.ts` (exports). Verify: `pnpm vitest run packages/core/test/resolve.test.ts packages/core/test/npc.test.ts` (every matrix cell incl. D2, every variant row).
+- **Task 2 — Flow (state machine, handlers, deserialize combat).** C: `packages/core/src/handlers/{combat,system}.ts`, `packages/core/test/combat-flow.test.ts`. M: `packages/core/src/{actions,events,serialize}.ts`, `packages/core/src/handlers/index.ts` (register `combat/start`, `system/setCharacter`, the `combat/exchange` resolver), `packages/core/test/{arbitraries,serialize.test,views.test,replay.test,counter-bounds.test}.ts`. Verify: `pnpm vitest run packages/core/test/combat-flow.test.ts packages/core/test/serialize.test.ts packages/core/test/replay.test.ts`.
+- **Task 3 — Golden.** C: `packages/core/test/combat-golden.test.ts` (hash `ec0c3508`, 80 events, the exchange table, the type sequence, final hidden/choiceHistory; a mismatch is localised with `traces/combat-golden.trace.json`). Verify: `pnpm --filter @usurpia/core test`.
+- **Purpose:** R6 and the NPC half of R8. **Dependencies:** 02-01b. **Parallel with 02-02.** **Estimated size:** ~900 lines src, ~1 000 lines tests.
 
 ### Wave 3 — Plan 02-04: Progression + inventory
-- **Paths:**
-  - C: `packages/core/src/{progression,inventory}.ts`, `packages/core/src/handlers/loadout.ts`, `packages/core/test/{progression,inventory,loadout,rewards,rewards-golden}.test.ts`
-  - M: `packages/core/src/{actions,events,index}.ts`, `packages/core/src/handlers/{index,combat}.ts` (reward hook in `endCombat`), `packages/core/test/{arbitraries,counter-bounds.test,views.test}.ts` (loadout actions; grant overflow; private `Granted`/`ScrollsUpdated` redaction)
-  - (no files outside `packages/core/`)
-- **Purpose:** R5 progression/hybrids/portable, R7 limits and class-switch overflow, rewards.
-- **Key content:** reward formulas, events order, `adjustHp`, exact-discard rule, rewards/loadout golden `57da3ea4`.
-- **Dependencies:** 02-02, 02-03. **Parallel with 02-05.**
-- **Estimated size:** ~600 lines src, ~800 lines tests.
+- **Task 1 — Progression + reward hook.** C: `packages/core/src/progression.ts`, `packages/core/test/{progression,rewards}.test.ts`. M: `packages/core/src/handlers/combat.ts` (reward hook in `endCombat`), `packages/core/src/events.ts`. Verify: `pnpm vitest run packages/core/test/progression.test.ts packages/core/test/rewards.test.ts`.
+- **Task 2 — Inventory + loadout handlers.** C: `packages/core/src/inventory.ts`, `packages/core/src/handlers/loadout.ts`, `packages/core/test/{inventory,loadout}.test.ts`. M: `packages/core/src/{actions,index}.ts`, `packages/core/src/handlers/index.ts`. Verify: `pnpm vitest run packages/core/test/inventory.test.ts packages/core/test/loadout.test.ts`.
+- **Task 3 — Rewards golden + suites.** C: `packages/core/test/rewards-golden.test.ts` (`57da3ea4`, 84 events). M: `packages/core/test/{arbitraries,counter-bounds.test,views.test}.ts` (loadout actions; grant overflow; private `Granted`/`ScrollsUpdated` redaction). Verify: `pnpm --filter @usurpia/core test`.
+- (no files outside `packages/core/`). **Purpose:** R5 progression/hybrids/portable, R7 limits and class-switch overflow, rewards. **Dependencies:** 02-02, 02-03. **Parallel with 02-05.** **Estimated size:** ~600 lines src, ~800 lines tests.
 
-### Wave 3 — Plan 02-05: CPU AI + balance sim
-- **Paths:**
-  - C: `packages/core/src/ai/{index,combat,opponent-model,tuning}.ts`, `packages/core/test/{ai,ai-hidden}.test.ts`, `packages/sim/src/{duel,kits,report}.ts`, `packages/sim/test/{duel,gate}.test.ts`, `packages/sim/fixtures/combat-game.json`
-  - M: `packages/core/package.json` (`exports["./ai"]`), `eslint.config.js`, `scripts/check-core-purity.mjs`, `packages/sim/src/{cli,index,rules}.ts` (`duel` subcommand; `replayRules()` → `loadRules()`), `packages/sim/test/{cli,replay-file}.test.ts`, `.github/workflows/ci.yml` (smoke step after `pnpm build`), `README.md` (sim commands)
-  - D: `packages/sim/src/kernel-rules.ts`, `packages/sim/fixtures/kernel-game.json`
-- **Purpose:** R9 and the combat half of R14 (binding OQ5d).
-- **Key content:** AI algorithm and goldens, hidden-info test, lint isolation, CLI contract/report, stdout goldens, the Hard ≥ 70% gate, performance budget.
-- **Dependencies:** 02-02, 02-03 (not 02-04: duel outcomes are decided before rewards, duel goldens contain no state hash, and the sim fixture uses only W1/W2 actions with no player KO win). **Parallel with 02-04.**
-- **Estimated size:** ~900 lines src, ~700 lines tests.
+### Wave 3 — Plan 02-05: CPU AI + balance sim (+ W3 closing step)
+- **Task 1 — CPU AI.** C: `packages/core/src/ai/{index,combat,opponent-model,tuning,exp}.ts`, `packages/core/test/{ai,ai-hidden,ai-exp}.test.ts`. M: `packages/core/package.json` (`exports["./ai"]`), `eslint.config.js`, `scripts/check-core-purity.mjs`. Verify: `pnpm vitest run packages/core/test/ai.test.ts packages/core/test/ai-hidden.test.ts packages/core/test/ai-exp.test.ts && pnpm lint && pnpm lint:purity`.
+- **Task 2 — Sim duel, report, fixture, gate counts, perf.** C: `packages/sim/src/{duel,kits,report}.ts`, `packages/sim/test/{duel,gate,perf,content-stats}.test.ts`, `packages/sim/fixtures/combat-game.json`. M: `packages/sim/src/{cli,index,rules}.ts` (`duel` subcommand; `replayRules()` → `loadRules()`), `packages/sim/test/{cli,replay-file}.test.ts`, `.github/workflows/ci.yml` (smoke step after `pnpm build`), `README.md` (sim commands). D: `packages/sim/src/kernel-rules.ts`, `packages/sim/fixtures/kernel-game.json`. Pins **only reward-independent goldens**: stdout blocks, gate counts, gate per-duel `(outcome, winner)`, sim fixture line, content NPC spot stats, perf total line. **Must not** pin `DuelResult.events`/`hash`. Verify: `pnpm --filter @usurpia/sim test` + the sample/README grep.
+- **Task 3 — W3 closing step (runs after the 02-04 commit is on `dev`; 02-05 rebases onto it first).** M: `packages/sim/test/gate.test.ts` only — add the per-duel `(events, hash)` pins for the first 20 gate duels per class (the `events`/`hash` fields of `traces/gate.trace.json`, i.e. with rewards). Then rerun **every composite golden** on the merged W3 state: `pnpm test` (all packages: combat golden, rewards golden, sim fixture, stdout, gate, perf), `pnpm sim replay packages/sim/fixtures/combat-game.json`, the full pipeline and CI. Any change to a reward-independent golden is a bug (stop and escalate); only the task-3 pins may depend on rewards. Commit; W3 (and Phase 2 execution) is complete only after this commit.
+- **Purpose:** R9 and the combat half of R14 (binding OQ5d). **Dependencies:** 02-02, 02-03 (tasks 1–2); 02-04 (task 3 only). **Parallel with 02-04** for tasks 1–2 (disjoint files: 02-05 never touches `packages/core/src/**` outside `ai/`, nor `packages/core/test/{arbitraries,counter-bounds.test,views.test}.ts`, nor `packages/core/src/index.ts`). **Estimated size:** ~950 lines src, ~800 lines tests.
+
+### File ownership matrix
+| Path | 02-01a (W1a) | 02-01b (W1b) | 02-02 (W2) | 02-03 (W2) | 02-04 (W3) | 02-05 (W3) |
+|---|---|---|---|---|---|---|
+| `core/src/rules.ts`, `core/src/combat/{passives,stats}.ts` | C | | | | | |
+| `core/src/{types,validation,game,replay}.ts` | M | | | | | |
+| `core/src/reducer.ts` | M | | | | | |
+| `core/src/actions.ts`, `core/src/events.ts` | M | M | | M | M | |
+| `core/src/serialize.ts` | M (shim) | M | | M | | |
+| `core/src/views.ts` | M | M | | | | |
+| `core/src/index.ts` | M | | | M | M | |
+| `core/src/handlers.ts` | D | | | | | |
+| `core/src/handlers/{index,shared}.ts` | C | M | | M (index) | M (index) | |
+| `core/src/handlers/decision.ts` | | C | | | | |
+| `core/src/handlers/{combat,system}.ts` | | | | C | M (combat) | |
+| `core/src/combat/{options,resolve}.ts` | | | | C | | |
+| `core/src/{progression,inventory}.ts`, `core/src/handlers/loadout.ts` | | | | | C | |
+| `core/src/ai/*.ts`, `core/package.json` | | | | | | C / M |
+| `core/test/fixtures/{test-rules,build}.ts` | C | | | | | |
+| `core/test/{rules,stats}.test.ts` | C | | | | | |
+| `core/test/{reducer,game}.test.ts` | M | M (reducer) | | | | |
+| `core/test/{views,serialize,replay}.test.ts` | M | M | | M | M (views) | |
+| `core/test/{decision.test,counter-bounds.test,arbitraries}.ts` | D | C | | M (counter-bounds, arbitraries) | M (counter-bounds, arbitraries) | |
+| `core/test/{resolve,npc,combat-flow,combat-golden}.test.ts` | | | | C | | |
+| `core/test/{progression,inventory,loadout,rewards,rewards-golden}.test.ts` | | | | | C | |
+| `core/test/{ai,ai-hidden,ai-exp}.test.ts` | | | | | | C |
+| `content/**` except `package.json`/`tsconfig.json` | | | C/M/D | | | |
+| `content/{package.json,tsconfig.json}` | M | | M (package.json) | | | |
+| `sim/src/{kernel-rules,rules}.ts` | C | | | | | D / M |
+| `sim/src/{cli,replay-file}.ts` | M | | | | | M (cli) |
+| `sim/src/{duel,kits,report}.ts`, `sim/src/index.ts` | | | | | | C / M |
+| `sim/test/replay-file.test.ts` | M | M | | | | M |
+| `sim/test/cli.test.ts` | | C | | | | M |
+| `sim/test/{duel,gate,perf,content-stats}.test.ts` | | | | | | C (gate also T3) |
+| `sim/fixtures/sample-game.json` | D | | | | | |
+| `sim/fixtures/kernel-game.json` | | C | | | | D |
+| `sim/fixtures/combat-game.json` | | | | | | C |
+| `sim/{package.json,tsconfig.json}`, `pnpm-lock.yaml` | M | | | | | |
+| `client/src/demo-rules.ts` | C | | | | | |
+| `client/src/{main,render}.ts`, `client/test/render.test.ts` | M | M | | | | |
+| `README.md` | M | | | | | M |
+| `eslint.config.js`, `scripts/check-core-purity.mjs`, `.github/workflows/ci.yml` | (check only) | | | | | M |
+| `.planning/reference/phase-02/**` | — spec author only — | | | | | |
+
+W2 columns (02-02, 02-03) and W3 columns (02-04, 02-05) share no path.
 
 ## Path Validation
-**Status:** All paths valid. Verified against the working tree on `dev` (2026-09-29): every "M"/"D" path exists (`packages/core/src/handlers.ts`, `packages/sim/fixtures/sample-game.json`, `packages/content/test/fixtures/{valid,invalid}/items.json`, `scripts/check-core-purity.mjs`, `.github/workflows/ci.yml`, …); every "C" path's parent directory exists or is created by the owning plan (`core/src/combat/`, `core/src/handlers/`, `core/src/ai/`, `core/test/fixtures/`). No `.planning/config/directory-mappings.yaml` exists.
+**Status:** All paths valid. Re-verified against the working tree on `dev` (2026-09-29, Revision 2): every "M"/"D" path exists (`packages/core/src/handlers.ts`, `packages/core/test/{decision.test,counter-bounds.test,arbitraries}.ts`, `packages/sim/fixtures/sample-game.json`, `packages/sim/src/index.ts`, `packages/content/test/fixtures/{valid,invalid}/items.json`, `scripts/check-core-purity.mjs`, `.github/workflows/ci.yml`, `README.md`, `eslint.config.js`, …); every "C" path's parent directory exists or is created by the owning plan (`core/src/combat/`, `core/src/handlers/`, `core/src/ai/`, `core/test/fixtures/`). Paths deleted by 02-01a and re-created by 02-01b (`core/test/{decision.test,counter-bounds.test,arbitraries}.ts`) are sequential, not a conflict. The golden oracle `.planning/reference/phase-02/` (incl. `traces/`) exists; its tool exclusions (`eslint.config.js` `ignores: [".planning/**"]`, `.prettierignore` `.planning/`) are already present. No `.planning/config/directory-mappings.yaml` exists.
 
 ## Open Questions
 | # | Question | Impact | Default Chosen by Spec | Planning Effect |
 |---|----------|--------|------------------------|-----------------|
 | 1 | Keep a generic `decision/open` system action after the sample removal? | Non-blocking | Yes, as kind `poll` (per-player options/defaults), satisfying "opened by system actions"; it gives W1 a testable decision flow and Phase 3 a generic prompt | Use the default |
-| 2 | Draws dominate some mirrors (Mage mirror ~70% draws at L5) | Non-blocking | Accept for Phase 2; draw rate is reported by the sim; tuning is Phase 3/7 work | Use the default |
-| 3 | Initial class balance (e.g. Mage beats Warrior at L5, Cleric low KO rate) | Non-blocking | Numbers are **initial tuning**; the sim's job is to report it; no balance gate in Phase 2 except Hard ≥ 70% | Use the default |
+| 2 | Draws dominate some mirrors (Mage mirror ~70% draws at L5) | Resolved (D1) | Retuned (Revision 2); the gate now caps draws at 40% per mirror (max observed 28.5%) | Use the default |
+| 3 | Initial class balance (e.g. Mage beats Warrior at L5) | Non-blocking | Numbers are **initial tuning**; the sim's job is to report it; no balance gate in Phase 2 except the Hard-vs-Easy gate (≥ 70% decisive, ≤ 40% draws) | Use the default |
 | 4 | Where do KO'd players go / how do they revive? | Non-blocking | Phase 2 leaves hp 0 (combat/start rejects KO'd fighters); `system/setCharacter` fully heals for sims/tests; Temple revival is Phase 3 | Use the default |
 | 5 | PvP spoils (steal gold/item, seize, humiliate) and Thief/Shadowpriest board passives | Non-blocking | Phase 5 / Phase 3; PvP KO grants only `pvpXpPerLevel × loser level` XP and a mastery win | Use the default |
 | 6 | Class switching location/fee timing | Non-blocking | Allowed in phase `turn` anywhere, fee charged; Phase 3 restricts to the Castle | Use the default |
@@ -1263,6 +1389,12 @@ Five plans in three waves. Same-wave plans own **disjoint** files (listed exhaus
 | 8 | Damage variance roll | Non-blocking | None in Phase 2; adding one later is a tuning-contract change (new field + revision row) | Use the default |
 | 9 | Temporary `TEST_RULES` copies in sim (W1–W2) and client (until Phase 4) | Non-blocking | Accept; both are typed `Rules`, the sim copy is deleted in 02-05; the client copy is replaced when Phase 4 wires content | Use the default |
 | 10 | Fixture/golden churn on every content tuning change | Non-blocking | Accept (explicit rehash in the same commit); keeps "the sim ran on exactly these rules" provable | Use the default |
+| 11 | Gate scope: D1 names the four base-class mirrors; should the two hybrid mirrors also be gated? | Non-blocking | Yes — all 6 mirrors are gated (all pass: min 0.773 / max draw 0.285); dropping hybrids later is a one-line test change | Use the default |
+| 12 | D2 details: does Ward with no ward spell still block spell side effects, and does Cleric's `wardReflectBp` still reflect? | Non-blocking | Yes to both — D2 changes only the step-3 multiplier (Spell×Ward = Guard multiplier); the Ward command still blocks effects and the reflect hook still reflects (variant rows pin 18/9) | Use the default |
+| 13 | 02-01a leaves an action-less kernel between W1a and W1b | Non-blocking | Accept: W1a/W1b are sequential, `dev` stays green, the v1 behavioural suites are deleted in 02-01a and re-created in 02-01b | Use the default |
+| 14 | `perf.test.ts` runs 10 000 duels inside `pnpm test` (~3–20 s) | Non-blocking | Accept (critique #12 asks for automation); it is a single test with a 180 s timeout, separate from the n=264 CI smoke | Use the default |
+| 15 | Sim kits keep two Herbs; heals prolong fights | Non-blocking | Keep; D1 was met by tuning content only (kits unchanged) | Use the default |
+| 16 | Should NPC sheet-stat hooks be supported instead of rejected (critique #7)? | Non-blocking | Rejected by a content cross-ref rule; the Ogre uses `attackDmgBp` 1000. Supporting them later means applying `*Bp` hooks in `npcStats` + a revision row | Use the default |
 
 No blocking questions.
 
@@ -1273,16 +1405,36 @@ No blocking questions.
 | Metric | Value |
 |--------|-------|
 | Requirements | 5 (R5–R9) |
-| Deliverables | 5 plans, ~95 files (new ~55, modify ~40, delete ~4) |
-| Estimated waves | 3 (kernel v2 → content ∥ combat → progression/inventory ∥ AI/sim) |
-| Estimated plans | 5 |
+| Deliverables | 6 plans, 18 tasks (3 per plan), ~100 files (new ~60, modify ~42, delete ~7) |
+| Estimated waves | 4: W1a (02-01a) → W1b (02-01b) → W2 (02-02 ∥ 02-03) → W3 (02-04 ∥ 02-05, then the 02-05 closing step) |
+| Estimated plans | 6 |
 | Competing proposals | Already run: "Hybrid: Pragmatic-based" selected by the user |
 
-**Rationale:** Phase 2 replaces the kernel's gameplay layer while keeping every Phase 1 contract, introduces the first real rule data flow across packages, and pins integer combat math, AI behaviour and simulator output with golden values from a reference implementation. The wave split keeps the one cross-cutting change (schema v2 + `Rules` threading) in a single plan and gives later parallel plans disjoint files.
+**Rationale:** Phase 2 replaces the kernel's gameplay layer while keeping every Phase 1 contract, introduces the first real rule data flow across packages, and pins integer combat math, AI behaviour and simulator output with golden values from a committed reference implementation (the golden oracle). The cross-cutting kernel change is split into two sequential plans (data model/threading, then behaviour/persistence/properties); later parallel plans own disjoint files; the only W3 cross-plan coupling (reward events inside duel hashes) is isolated in the 02-05 closing step.
 
-**Recommended next step:** Decompose into the 5 plans above using this spec as the primary source; run a plan critique focused on the W1 size and the golden-value protocol.
+**Recommended next step:** Decompose into the 6 plans above using this spec as the primary source; the orchestrator applies the follow-ups below.
+
+## Orchestrator follow-ups
+- **ROADMAP:** change Phase 2's plan count **5 → 6** (02-01 split into 02-01a and 02-01b; 4 waves: W1a → W1b → W2 → W3). Do not change anything else in Phase 2's scope.
+- **ROADMAP:** note that "~20 monsters" is satisfied as **20 NPC definitions** = 16 zone monsters (4 per zone/tier) + 3 town guardians + the Crown Enforcer (plus data-only Senior variants).
+- Keep `.planning/reference/phase-02/` in the repository (it is the golden oracle referenced by the plans); rerun `node .planning/reference/phase-02/verify-spec.mjs` after any spec edit.
+- W3 is complete only after the 02-05 closing step (task 3) is committed on top of 02-04.
 
 ## Revision History
 | # | Section | Change | Reason |
 |---|---------|--------|--------|
 | 1 | All | Initial Phase 2 spec: binding OQ5 decisions encoded; Rules/state/actions/events/deserialize contracts; integer damage math with golden matrix; combat state machine and draw order; content data (initial tuning, pinned by `rulesHash 94160b70`); AI algorithm with policy goldens; sim CLI/report/gate goldens; 5-plan wave split with disjoint ownership. All goldens computed by the planner's reference implementation (Node scratch scripts, 2026-09-29) | Phase 2 planning (user-approved architecture "Hybrid: Pragmatic-based") |
+| 2.1 | Key Decisions, R6, `computeCell` step 3/15, `DEFENDER_OPTIONS`, matrix + variants, combat golden #9–#10, content matrix note | **Ward without a ward spell uses the Guard multiplier** (`matrix.spell.guard`) for Spell×Ward; Barrier (`valueBp 0`) is the 0.4× baseline; the Ward command still blocks spell effects. Matrix base Spell×Ward 7 → **18**; new variant rows (Barrier Attack×Ward, `wardReflectBp` with/without Barrier, Hex/Leech vs Ward); combat golden row #9 damage 4 → 12 (hash `ec0c3508` unchanged: gull hp is not in the final state) | User decision D2; critique #3 |
+| 2.2 | R9, Key Decisions, Content data (classes, battle spells, tuning), gate | **Gate = Hard ≥ 70% of decisive duels AND draw rate ≤ 40% in every mirror**, `decisive = hardWins + easyWins`, `rate = hardWins/decisive`, `drawRate = draws/400`, exact counts pinned. Retune: warrior aiBias 30/50/20/50/30/20, mage aiBias 30/20/50/40/30/30, fireball 14000, thunderclap 16000, royal-decree 20000, `kBp` 14500, `jMagBp` 3500, `growth.hp` 9. New gate table (min Hard-decisive 0.773, max draw 0.285) | User decision D1; critique #2 |
+| 2.3 | Content data (monsters), `rules.ts` notes, cross-ref rules | Ogre Middle Manager hook `atkBp` → **`attackDmgBp` 1000**; new content rule "npc sheet-stat hooks are not applied"; content NPC spot-stat golden table | Critique #7 |
+| 2.4 | Content hash and every content-derived golden | `rulesHash(loadRules())` `94160b70` → **`84a995db`**; sim fixture rebuilt (23 actions, `a` has no ward spell) → **`hash=0483c0fa rules=84a995db turn=1 events=95 rejections=0`**; mirrors stdout, classes total, CI smoke total and a new perf total line re-pinned | Consequence of 2.1–2.3 |
+| 2.5 | Overview, Key Decisions, new *Golden oracle and traces*, Golden summary | Reference implementation committed at `.planning/reference/phase-02/` and named the golden oracle; tool exclusions stated (owner 02-01a, no edit needed today); per-action traces for kernel, combat, rewards and sim-fixture replays and per-duel traces for the first 20 gate duels per class under `traces/`; binding mismatch-localisation protocol; `verify-spec.mjs` | Critique #1 |
+| 2.6 | `runDuel`, Golden summary, Deliverables (02-05 task 3) | `DuelResult.events`/`hash` defined and declared reward-dependent; 02-05 may pin them only in the **W3 closing step** after the 02-04 commit, which also reruns every composite golden | Critique #5 |
+| 2.7 | Deliverables, ownership matrix, Complexity, follow-ups | 02-01 split into **02-01a** (rules/types/TEST_RULES/stats/createGame/reducer threading + sim/client shims + README) and **02-01b** (decision module, deserialize v2, views counts, property suite, kernel fixture, CLI tests); 6 plans, 4 waves, every plan ≤ 3 tasks (02-03: resolve → flow → golden); explicit per-path ownership matrix | Critique #4 |
+| 2.8 | `types.ts`, Failure Modes | `CHOICE_PATTERN` `{0,47}` → **`{0,63}`** (fits `item:` + 48-char id) with 53/64/65-char tests | Critique #6 |
+| 2.9 | `rules.ts` notes, guardians table | Guardians and enforcer ship `hooks: []`; `EnforcerDef` has no `style` | Critique #8 |
+| 2.10 | Architecture dependency rules, Lint and purity probe | AI import ban extended to `index`/`serialize`/`game`/`replay`/`@usurpia/core` and the `GameState`/`HiddenState` names from any path; new probe cases | Critique #9 |
+| 2.11 | AI algorithm step 7, Compatibility | Softmax via `expNeg` (no `Math.exp`/`log`/`pow`, lint-banned in `ai/`); AI goldens engine-independent; `ai-exp.test.ts`; every AI weight/ev/rng golden unchanged | Critique #10 |
+| 2.12 | Overview, R8 | 20 NPC definitions = 16 zone monsters + 4 special NPCs, stated as the roadmap's "~20 monsters" | Critique #11 |
+| 2.13 | R9, Performance, Acceptance | `perf.test.ts` (owner 02-05) runs `pnpm sim duel --n 10000 --seed perf` with exit/wall/total-line asserts; CI smoke n=264 kept separately and pinned | Critique #12 |
+| 2.14 | Deliverables (02-01a), Acceptance | `README.md` updated in 02-01a (v2 replay file); README included in the sample-removal grep | Critique #13 |

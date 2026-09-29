@@ -1,0 +1,1593 @@
+{
+ "scenario": "combat-golden",
+ "rules": "TEST_RULES",
+ "rulesHash": "7433ea8b",
+ "settings": {
+  "v": 2,
+  "seed": "combat-golden",
+  "players": [
+   {
+    "id": "p1",
+    "classId": "fighter"
+   },
+   {
+    "id": "p2",
+    "classId": "caster"
+   }
+  ]
+ },
+ "initialHash": "a53e747c",
+ "steps": [
+  {
+   "i": 0,
+   "type": "system/setCharacter",
+   "ok": true,
+   "error": null,
+   "hash": "54470f85",
+   "events": [
+    {
+     "v": 2,
+     "type": "CharacterSet",
+     "visibility": {
+      "kind": "public"
+     },
+     "playerId": "p1",
+     "classId": "battlemage",
+     "level": 1,
+     "hp": 44
+    },
+    {
+     "v": 2,
+     "type": "BagUpdated",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p1"
+      ]
+     },
+     "playerId": "p1",
+     "bag": [
+      "herb",
+      "tonic"
+     ]
+    }
+   ]
+  },
+  {
+   "i": 1,
+   "type": "combat/start",
+   "ok": true,
+   "error": null,
+   "hash": "f8c8f59c",
+   "events": [
+    {
+     "v": 2,
+     "type": "CombatStarted",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c1",
+     "sides": [
+      {
+       "kind": "player",
+       "playerId": "p1",
+       "mods": {
+        "atk": 0,
+        "def": 0,
+        "mag": 0,
+        "spd": 0,
+        "poison": false,
+        "stun": false
+       }
+      },
+      {
+       "kind": "player",
+       "playerId": "p2",
+       "mods": {
+        "atk": 0,
+        "def": 0,
+        "mag": 0,
+        "spd": 0,
+        "poison": false,
+        "stun": false
+       }
+      }
+     ]
+    },
+    {
+     "v": 2,
+     "type": "RoundStarted",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c1",
+     "round": 1,
+     "first": 0
+    },
+    {
+     "v": 2,
+     "type": "DecisionOpened",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d1",
+     "kind": "combat/exchange",
+     "required": [
+      "p1",
+      "p2"
+     ]
+    },
+    {
+     "v": 2,
+     "type": "PromptOpened",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p1"
+      ]
+     },
+     "decisionId": "d1",
+     "playerId": "p1",
+     "options": [
+      "attack",
+      "strike",
+      "spell",
+      "flee",
+      "item:herb",
+      "item:tonic"
+     ],
+     "default": "attack"
+    },
+    {
+     "v": 2,
+     "type": "PromptOpened",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p2"
+      ]
+     },
+     "decisionId": "d1",
+     "playerId": "p2",
+     "options": [
+      "guard",
+      "counter",
+      "ward"
+     ],
+     "default": "guard"
+    }
+   ]
+  },
+  {
+   "i": 2,
+   "type": "decision/commit",
+   "ok": true,
+   "error": null,
+   "hash": "33b5b8c4",
+   "events": [
+    {
+     "v": 2,
+     "type": "ChoiceCommitted",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d1",
+     "playerId": "p1"
+    }
+   ]
+  },
+  {
+   "i": 3,
+   "type": "decision/commit",
+   "ok": true,
+   "error": null,
+   "hash": "34143f79",
+   "events": [
+    {
+     "v": 2,
+     "type": "ChoiceCommitted",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d1",
+     "playerId": "p2"
+    },
+    {
+     "v": 2,
+     "type": "ChoicesRevealed",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d1",
+     "kind": "combat/exchange",
+     "choices": {
+      "p1": "spell",
+      "p2": "counter"
+     },
+     "timedOut": []
+    },
+    {
+     "v": 2,
+     "type": "ExchangeResolved",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c1",
+     "round": 1,
+     "exchange": 1,
+     "attacker": 0,
+     "command": "spell",
+     "defense": "counter",
+     "crit": false,
+     "damage": [
+      0,
+      8
+     ],
+     "heal": [
+      0,
+      0
+     ],
+     "effects": [
+      "stun"
+     ],
+     "hp": [
+      44,
+      28
+     ]
+    },
+    {
+     "v": 2,
+     "type": "ExchangeSkipped",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c1",
+     "round": 1,
+     "exchange": 2,
+     "attacker": 1,
+     "reason": "stunned"
+    },
+    {
+     "v": 2,
+     "type": "RoundEnded",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c1",
+     "round": 1,
+     "poison": [
+      0,
+      0
+     ],
+     "regen": [
+      0,
+      0
+     ],
+     "hp": [
+      44,
+      28
+     ]
+    },
+    {
+     "v": 2,
+     "type": "RoundStarted",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c1",
+     "round": 2,
+     "first": 0
+    },
+    {
+     "v": 2,
+     "type": "DecisionOpened",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d2",
+     "kind": "combat/exchange",
+     "required": [
+      "p1",
+      "p2"
+     ]
+    },
+    {
+     "v": 2,
+     "type": "PromptOpened",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p1"
+      ]
+     },
+     "decisionId": "d2",
+     "playerId": "p1",
+     "options": [
+      "attack",
+      "strike",
+      "spell",
+      "flee",
+      "item:herb",
+      "item:tonic"
+     ],
+     "default": "attack"
+    },
+    {
+     "v": 2,
+     "type": "PromptOpened",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p2"
+      ]
+     },
+     "decisionId": "d2",
+     "playerId": "p2",
+     "options": [
+      "guard",
+      "counter",
+      "ward"
+     ],
+     "default": "guard"
+    }
+   ]
+  },
+  {
+   "i": 4,
+   "type": "decision/commit",
+   "ok": true,
+   "error": null,
+   "hash": "83c779d3",
+   "events": [
+    {
+     "v": 2,
+     "type": "ChoiceCommitted",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d2",
+     "playerId": "p1"
+    }
+   ]
+  },
+  {
+   "i": 5,
+   "type": "timeout",
+   "ok": true,
+   "error": null,
+   "hash": "c9372f12",
+   "events": [
+    {
+     "v": 2,
+     "type": "ChoiceTimedOut",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d2",
+     "playerId": "p2"
+    },
+    {
+     "v": 2,
+     "type": "ChoicesRevealed",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d2",
+     "kind": "combat/exchange",
+     "choices": {
+      "p1": "item:tonic",
+      "p2": "guard"
+     },
+     "timedOut": [
+      "p2"
+     ]
+    },
+    {
+     "v": 2,
+     "type": "ExchangeResolved",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c1",
+     "round": 2,
+     "exchange": 1,
+     "attacker": 0,
+     "command": "item:tonic",
+     "defense": null,
+     "crit": false,
+     "damage": [
+      0,
+      0
+     ],
+     "heal": [
+      0,
+      0
+     ],
+     "effects": [
+      "item:tonic"
+     ],
+     "hp": [
+      44,
+      28
+     ]
+    },
+    {
+     "v": 2,
+     "type": "BagUpdated",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p1"
+      ]
+     },
+     "playerId": "p1",
+     "bag": [
+      "herb"
+     ]
+    },
+    {
+     "v": 2,
+     "type": "DecisionOpened",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d3",
+     "kind": "combat/exchange",
+     "required": [
+      "p2",
+      "p1"
+     ]
+    },
+    {
+     "v": 2,
+     "type": "PromptOpened",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p2"
+      ]
+     },
+     "decisionId": "d3",
+     "playerId": "p2",
+     "options": [
+      "attack",
+      "strike",
+      "spell",
+      "flee",
+      "item:herb",
+      "item:bomb"
+     ],
+     "default": "attack"
+    },
+    {
+     "v": 2,
+     "type": "PromptOpened",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p1"
+      ]
+     },
+     "decisionId": "d3",
+     "playerId": "p1",
+     "options": [
+      "guard",
+      "counter",
+      "ward"
+     ],
+     "default": "guard"
+    }
+   ]
+  },
+  {
+   "i": 6,
+   "type": "decision/commit",
+   "ok": true,
+   "error": null,
+   "hash": "c18c10ce",
+   "events": [
+    {
+     "v": 2,
+     "type": "ChoiceCommitted",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d3",
+     "playerId": "p2"
+    }
+   ]
+  },
+  {
+   "i": 7,
+   "type": "decision/commit",
+   "ok": true,
+   "error": null,
+   "hash": "4f5d3bbc",
+   "events": [
+    {
+     "v": 2,
+     "type": "ChoiceCommitted",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d3",
+     "playerId": "p1"
+    },
+    {
+     "v": 2,
+     "type": "ChoicesRevealed",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d3",
+     "kind": "combat/exchange",
+     "choices": {
+      "p2": "spell",
+      "p1": "ward"
+     },
+     "timedOut": []
+    },
+    {
+     "v": 2,
+     "type": "ExchangeResolved",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c1",
+     "round": 2,
+     "exchange": 2,
+     "attacker": 1,
+     "command": "spell",
+     "defense": "ward",
+     "crit": false,
+     "damage": [
+      2,
+      4
+     ],
+     "heal": [
+      0,
+      0
+     ],
+     "effects": [
+      "reflected"
+     ],
+     "hp": [
+      42,
+      24
+     ]
+    },
+    {
+     "v": 2,
+     "type": "RoundEnded",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c1",
+     "round": 2,
+     "poison": [
+      0,
+      0
+     ],
+     "regen": [
+      0,
+      0
+     ],
+     "hp": [
+      42,
+      24
+     ]
+    },
+    {
+     "v": 2,
+     "type": "RoundStarted",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c1",
+     "round": 3,
+     "first": 0
+    },
+    {
+     "v": 2,
+     "type": "DecisionOpened",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d4",
+     "kind": "combat/exchange",
+     "required": [
+      "p1",
+      "p2"
+     ]
+    },
+    {
+     "v": 2,
+     "type": "PromptOpened",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p1"
+      ]
+     },
+     "decisionId": "d4",
+     "playerId": "p1",
+     "options": [
+      "attack",
+      "strike",
+      "spell",
+      "flee",
+      "item:herb"
+     ],
+     "default": "attack"
+    },
+    {
+     "v": 2,
+     "type": "PromptOpened",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p2"
+      ]
+     },
+     "decisionId": "d4",
+     "playerId": "p2",
+     "options": [
+      "guard",
+      "counter",
+      "ward"
+     ],
+     "default": "guard"
+    }
+   ]
+  },
+  {
+   "i": 8,
+   "type": "decision/commit",
+   "ok": true,
+   "error": null,
+   "hash": "126574a6",
+   "events": [
+    {
+     "v": 2,
+     "type": "ChoiceCommitted",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d4",
+     "playerId": "p1"
+    }
+   ]
+  },
+  {
+   "i": 9,
+   "type": "decision/commit",
+   "ok": true,
+   "error": null,
+   "hash": "c87abeaa",
+   "events": [
+    {
+     "v": 2,
+     "type": "ChoiceCommitted",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d4",
+     "playerId": "p2"
+    },
+    {
+     "v": 2,
+     "type": "ChoicesRevealed",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d4",
+     "kind": "combat/exchange",
+     "choices": {
+      "p1": "strike",
+      "p2": "counter"
+     },
+     "timedOut": []
+    },
+    {
+     "v": 2,
+     "type": "ExchangeResolved",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c1",
+     "round": 3,
+     "exchange": 1,
+     "attacker": 0,
+     "command": "strike",
+     "defense": "counter",
+     "crit": false,
+     "damage": [
+      20,
+      0
+     ],
+     "heal": [
+      0,
+      0
+     ],
+     "effects": [
+      "reflected"
+     ],
+     "hp": [
+      22,
+      24
+     ]
+    },
+    {
+     "v": 2,
+     "type": "DecisionOpened",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d5",
+     "kind": "combat/exchange",
+     "required": [
+      "p2",
+      "p1"
+     ]
+    },
+    {
+     "v": 2,
+     "type": "PromptOpened",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p2"
+      ]
+     },
+     "decisionId": "d5",
+     "playerId": "p2",
+     "options": [
+      "attack",
+      "strike",
+      "spell",
+      "flee",
+      "item:herb",
+      "item:bomb"
+     ],
+     "default": "attack"
+    },
+    {
+     "v": 2,
+     "type": "PromptOpened",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p1"
+      ]
+     },
+     "decisionId": "d5",
+     "playerId": "p1",
+     "options": [
+      "guard",
+      "counter",
+      "ward"
+     ],
+     "default": "guard"
+    }
+   ]
+  },
+  {
+   "i": 10,
+   "type": "decision/commit",
+   "ok": true,
+   "error": null,
+   "hash": "b1fdf883",
+   "events": [
+    {
+     "v": 2,
+     "type": "ChoiceCommitted",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d5",
+     "playerId": "p2"
+    }
+   ]
+  },
+  {
+   "i": 11,
+   "type": "decision/commit",
+   "ok": true,
+   "error": null,
+   "hash": "65cf76d4",
+   "events": [
+    {
+     "v": 2,
+     "type": "ChoiceCommitted",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d5",
+     "playerId": "p1"
+    },
+    {
+     "v": 2,
+     "type": "ChoicesRevealed",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d5",
+     "kind": "combat/exchange",
+     "choices": {
+      "p2": "item:bomb",
+      "p1": "guard"
+     },
+     "timedOut": []
+    },
+    {
+     "v": 2,
+     "type": "ExchangeResolved",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c1",
+     "round": 3,
+     "exchange": 2,
+     "attacker": 1,
+     "command": "item:bomb",
+     "defense": null,
+     "crit": false,
+     "damage": [
+      0,
+      0
+     ],
+     "heal": [
+      0,
+      0
+     ],
+     "effects": [
+      "item:bomb",
+      "fled"
+     ],
+     "hp": [
+      22,
+      24
+     ]
+    },
+    {
+     "v": 2,
+     "type": "BagUpdated",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p2"
+      ]
+     },
+     "playerId": "p2",
+     "bag": [
+      "herb"
+     ]
+    },
+    {
+     "v": 2,
+     "type": "CombatEnded",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c1",
+     "outcome": "fled",
+     "winner": null,
+     "fled": 1,
+     "hp": [
+      22,
+      24
+     ]
+    }
+   ]
+  },
+  {
+   "i": 12,
+   "type": "combat/start",
+   "ok": true,
+   "error": null,
+   "hash": "69ff96dd",
+   "events": [
+    {
+     "v": 2,
+     "type": "CombatStarted",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c2",
+     "sides": [
+      {
+       "kind": "player",
+       "playerId": "p2",
+       "mods": {
+        "atk": 0,
+        "def": 0,
+        "mag": 0,
+        "spd": 0,
+        "poison": false,
+        "stun": false
+       }
+      },
+      {
+       "kind": "npc",
+       "npc": {
+        "kind": "monster",
+        "id": "gull",
+        "senior": false
+       },
+       "stats": {
+        "hp": 36,
+        "atk": 12,
+        "def": 7,
+        "mag": 8,
+        "spd": 10,
+        "luck": 4
+       },
+       "hp": 36,
+       "mods": {
+        "atk": 0,
+        "def": 0,
+        "mag": 0,
+        "spd": 0,
+        "poison": false,
+        "stun": false
+       }
+      }
+     ]
+    },
+    {
+     "v": 2,
+     "type": "RoundStarted",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c2",
+     "round": 1,
+     "first": 1
+    },
+    {
+     "v": 2,
+     "type": "DecisionOpened",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d6",
+     "kind": "combat/exchange",
+     "required": [
+      "p2"
+     ]
+    },
+    {
+     "v": 2,
+     "type": "PromptOpened",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p2"
+      ]
+     },
+     "decisionId": "d6",
+     "playerId": "p2",
+     "options": [
+      "guard",
+      "counter",
+      "ward"
+     ],
+     "default": "guard"
+    }
+   ]
+  },
+  {
+   "i": 13,
+   "type": "decision/commit",
+   "ok": true,
+   "error": null,
+   "hash": "67abe62a",
+   "events": [
+    {
+     "v": 2,
+     "type": "ChoiceCommitted",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d6",
+     "playerId": "p2"
+    },
+    {
+     "v": 2,
+     "type": "ChoicesRevealed",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d6",
+     "kind": "combat/exchange",
+     "choices": {
+      "p2": "guard"
+     },
+     "timedOut": []
+    },
+    {
+     "v": 2,
+     "type": "ExchangeResolved",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c2",
+     "round": 1,
+     "exchange": 1,
+     "attacker": 1,
+     "command": "strike",
+     "defense": "guard",
+     "crit": false,
+     "damage": [
+      13,
+      0
+     ],
+     "heal": [
+      0,
+      0
+     ],
+     "effects": [
+      "steal-gold:10",
+      "steal-item:herb"
+     ],
+     "hp": [
+      11,
+      36
+     ]
+    },
+    {
+     "v": 2,
+     "type": "BagUpdated",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p2"
+      ]
+     },
+     "playerId": "p2",
+     "bag": []
+    },
+    {
+     "v": 2,
+     "type": "DecisionOpened",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d7",
+     "kind": "combat/exchange",
+     "required": [
+      "p2"
+     ]
+    },
+    {
+     "v": 2,
+     "type": "PromptOpened",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p2"
+      ]
+     },
+     "decisionId": "d7",
+     "playerId": "p2",
+     "options": [
+      "attack",
+      "strike",
+      "spell",
+      "flee"
+     ],
+     "default": "attack"
+    }
+   ]
+  },
+  {
+   "i": 14,
+   "type": "decision/commit",
+   "ok": true,
+   "error": null,
+   "hash": "7be77857",
+   "events": [
+    {
+     "v": 2,
+     "type": "ChoiceCommitted",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d7",
+     "playerId": "p2"
+    },
+    {
+     "v": 2,
+     "type": "ChoicesRevealed",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d7",
+     "kind": "combat/exchange",
+     "choices": {
+      "p2": "attack"
+     },
+     "timedOut": []
+    },
+    {
+     "v": 2,
+     "type": "ExchangeResolved",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c2",
+     "round": 1,
+     "exchange": 2,
+     "attacker": 0,
+     "command": "attack",
+     "defense": "guard",
+     "crit": false,
+     "damage": [
+      0,
+      6
+     ],
+     "heal": [
+      0,
+      0
+     ],
+     "effects": [],
+     "hp": [
+      11,
+      30
+     ]
+    },
+    {
+     "v": 2,
+     "type": "RoundEnded",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c2",
+     "round": 1,
+     "poison": [
+      0,
+      0
+     ],
+     "regen": [
+      0,
+      0
+     ],
+     "hp": [
+      11,
+      30
+     ]
+    },
+    {
+     "v": 2,
+     "type": "RoundStarted",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c2",
+     "round": 2,
+     "first": 1
+    },
+    {
+     "v": 2,
+     "type": "DecisionOpened",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d8",
+     "kind": "combat/exchange",
+     "required": [
+      "p2"
+     ]
+    },
+    {
+     "v": 2,
+     "type": "PromptOpened",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p2"
+      ]
+     },
+     "decisionId": "d8",
+     "playerId": "p2",
+     "options": [
+      "guard",
+      "counter",
+      "ward"
+     ],
+     "default": "guard"
+    }
+   ]
+  },
+  {
+   "i": 15,
+   "type": "decision/commit",
+   "ok": true,
+   "error": null,
+   "hash": "38a4f593",
+   "events": [
+    {
+     "v": 2,
+     "type": "ChoiceCommitted",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d8",
+     "playerId": "p2"
+    },
+    {
+     "v": 2,
+     "type": "ChoicesRevealed",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d8",
+     "kind": "combat/exchange",
+     "choices": {
+      "p2": "counter"
+     },
+     "timedOut": []
+    },
+    {
+     "v": 2,
+     "type": "ExchangeResolved",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c2",
+     "round": 2,
+     "exchange": 1,
+     "attacker": 1,
+     "command": "flee",
+     "defense": null,
+     "crit": false,
+     "damage": [
+      0,
+      0
+     ],
+     "heal": [
+      0,
+      0
+     ],
+     "effects": [
+      "flee-failed"
+     ],
+     "hp": [
+      11,
+      30
+     ]
+    },
+    {
+     "v": 2,
+     "type": "DecisionOpened",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d9",
+     "kind": "combat/exchange",
+     "required": [
+      "p2"
+     ]
+    },
+    {
+     "v": 2,
+     "type": "PromptOpened",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p2"
+      ]
+     },
+     "decisionId": "d9",
+     "playerId": "p2",
+     "options": [
+      "attack",
+      "strike",
+      "spell",
+      "flee"
+     ],
+     "default": "attack"
+    }
+   ]
+  },
+  {
+   "i": 16,
+   "type": "decision/commit",
+   "ok": true,
+   "error": null,
+   "hash": "ad08922d",
+   "events": [
+    {
+     "v": 2,
+     "type": "ChoiceCommitted",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d9",
+     "playerId": "p2"
+    },
+    {
+     "v": 2,
+     "type": "ChoicesRevealed",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d9",
+     "kind": "combat/exchange",
+     "choices": {
+      "p2": "spell"
+     },
+     "timedOut": []
+    },
+    {
+     "v": 2,
+     "type": "ExchangeResolved",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c2",
+     "round": 2,
+     "exchange": 2,
+     "attacker": 0,
+     "command": "spell",
+     "defense": "ward",
+     "crit": false,
+     "damage": [
+      0,
+      12
+     ],
+     "heal": [
+      0,
+      0
+     ],
+     "effects": [],
+     "hp": [
+      11,
+      18
+     ]
+    },
+    {
+     "v": 2,
+     "type": "RoundEnded",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c2",
+     "round": 2,
+     "poison": [
+      0,
+      0
+     ],
+     "regen": [
+      0,
+      0
+     ],
+     "hp": [
+      11,
+      18
+     ]
+    },
+    {
+     "v": 2,
+     "type": "RoundStarted",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c2",
+     "round": 3,
+     "first": 0
+    },
+    {
+     "v": 2,
+     "type": "DecisionOpened",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d10",
+     "kind": "combat/exchange",
+     "required": [
+      "p2"
+     ]
+    },
+    {
+     "v": 2,
+     "type": "PromptOpened",
+     "visibility": {
+      "kind": "players",
+      "ids": [
+       "p2"
+      ]
+     },
+     "decisionId": "d10",
+     "playerId": "p2",
+     "options": [
+      "attack",
+      "strike",
+      "spell",
+      "flee"
+     ],
+     "default": "attack"
+    }
+   ]
+  },
+  {
+   "i": 17,
+   "type": "decision/commit",
+   "ok": true,
+   "error": null,
+   "hash": "ec0c3508",
+   "events": [
+    {
+     "v": 2,
+     "type": "ChoiceCommitted",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d10",
+     "playerId": "p2"
+    },
+    {
+     "v": 2,
+     "type": "ChoicesRevealed",
+     "visibility": {
+      "kind": "public"
+     },
+     "decisionId": "d10",
+     "kind": "combat/exchange",
+     "choices": {
+      "p2": "strike"
+     },
+     "timedOut": []
+    },
+    {
+     "v": 2,
+     "type": "ExchangeResolved",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c2",
+     "round": 3,
+     "exchange": 1,
+     "attacker": 0,
+     "command": "strike",
+     "defense": "counter",
+     "crit": false,
+     "damage": [
+      11,
+      0
+     ],
+     "heal": [
+      0,
+      0
+     ],
+     "effects": [
+      "reflected"
+     ],
+     "hp": [
+      0,
+      18
+     ]
+    },
+    {
+     "v": 2,
+     "type": "CombatEnded",
+     "visibility": {
+      "kind": "public"
+     },
+     "combatId": "c2",
+     "outcome": "ko",
+     "winner": 1,
+     "fled": null,
+     "hp": [
+      0,
+      18
+     ]
+    }
+   ]
+  }
+ ],
+ "finalHash": "ec0c3508",
+ "finalState": {
+  "hidden": {
+   "combatSeq": 2,
+   "decision": null,
+   "decisionSeq": 10,
+   "rng": [
+    3200512360,
+    239253250,
+    3363130012,
+    583700052
+   ]
+  },
+  "private": {
+   "p1": {
+    "bag": [
+     "herb"
+    ],
+    "prompt": null,
+    "scrolls": []
+   },
+   "p2": {
+    "bag": [],
+    "prompt": null,
+    "scrolls": []
+   }
+  },
+  "public": {
+   "activePlayer": "p1",
+   "characters": {
+    "p1": {
+     "accessory": "band",
+     "battleSpell": "jolt",
+     "classId": "battlemage",
+     "gold": 100,
+     "hp": 22,
+     "level": 1,
+     "mastery": {
+      "battlemage": 0,
+      "caster": 0,
+      "fighter": 0
+     },
+     "portable": null,
+     "shield": "mirror",
+     "wardSpell": "mirror-ward",
+     "weapon": "stick",
+     "xp": 0
+    },
+    "p2": {
+     "accessory": "charm",
+     "battleSpell": "zap",
+     "classId": "caster",
+     "gold": 90,
+     "hp": 0,
+     "level": 1,
+     "mastery": {
+      "battlemage": 0,
+      "caster": 0,
+      "fighter": 0
+     },
+     "portable": null,
+     "shield": "lid",
+     "wardSpell": "shell",
+     "weapon": "stick",
+     "xp": 0
+    }
+   },
+   "choiceHistory": {
+    "p1": {
+     "attack": 0,
+     "counter": 0,
+     "guard": 1,
+     "spell": 1,
+     "strike": 1,
+     "ward": 1
+    },
+    "p2": {
+     "attack": 1,
+     "counter": 3,
+     "guard": 1,
+     "spell": 2,
+     "strike": 1,
+     "ward": 0
+    }
+   },
+   "combat": null,
+   "lastReveal": {
+    "choices": {
+     "p2": "strike"
+    },
+    "decisionId": "d10",
+    "kind": "combat/exchange",
+    "timedOut": []
+   },
+   "pending": null,
+   "phase": "turn",
+   "players": [
+    "p1",
+    "p2"
+   ],
+   "turn": 1
+  },
+  "v": 2
+ }
+}

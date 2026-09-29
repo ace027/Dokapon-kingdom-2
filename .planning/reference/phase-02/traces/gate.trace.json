@@ -1,0 +1,1940 @@
+{
+ "rulesHash": "84a995db",
+ "n": 400,
+ "level": 5,
+ "note": "first 20 duels per class; hash = hashState of the final duel state with 02-04 rewards (W3 final); hashPreRewards = same duel with the reward hook disabled (W2 engine)",
+ "classes": {
+  "cleric": [
+   {
+    "j": 0,
+    "seed": "gate/cleric/0",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     61,
+     0
+    ],
+    "events": 31,
+    "hash": "4a4be739",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "552fa6cf"
+   },
+   {
+    "j": 1,
+    "seed": "gate/cleric/1",
+    "hardSide": 1,
+    "outcome": "draw",
+    "winner": null,
+    "fled": null,
+    "hp": [
+     51,
+     29
+    ],
+    "events": 55,
+    "hash": "aade8c5d",
+    "eventsPreRewards": 55,
+    "hashPreRewards": "aade8c5d"
+   },
+   {
+    "j": 2,
+    "seed": "gate/cleric/2",
+    "hardSide": 0,
+    "outcome": "draw",
+    "winner": null,
+    "fled": null,
+    "hp": [
+     33,
+     79
+    ],
+    "events": 56,
+    "hash": "7803483b",
+    "eventsPreRewards": 56,
+    "hashPreRewards": "7803483b"
+   },
+   {
+    "j": 3,
+    "seed": "gate/cleric/3",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     64,
+     0
+    ],
+    "events": 47,
+    "hash": "630d59ee",
+    "eventsPreRewards": 46,
+    "hashPreRewards": "c3f1d5a0"
+   },
+   {
+    "j": 4,
+    "seed": "gate/cleric/4",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     43,
+     0
+    ],
+    "events": 38,
+    "hash": "8a9c8124",
+    "eventsPreRewards": 37,
+    "hashPreRewards": "9e960732"
+   },
+   {
+    "j": 5,
+    "seed": "gate/cleric/5",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     42
+    ],
+    "events": 31,
+    "hash": "b29683ab",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "678aea81"
+   },
+   {
+    "j": 6,
+    "seed": "gate/cleric/6",
+    "hardSide": 0,
+    "outcome": "draw",
+    "winner": null,
+    "fled": null,
+    "hp": [
+     36,
+     7
+    ],
+    "events": 55,
+    "hash": "294e5371",
+    "eventsPreRewards": 55,
+    "hashPreRewards": "294e5371"
+   },
+   {
+    "j": 7,
+    "seed": "gate/cleric/7",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     79
+    ],
+    "events": 32,
+    "hash": "de98e204",
+    "eventsPreRewards": 31,
+    "hashPreRewards": "c47bb6fe"
+   },
+   {
+    "j": 8,
+    "seed": "gate/cleric/8",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     43,
+     0
+    ],
+    "events": 48,
+    "hash": "1dc58ec1",
+    "eventsPreRewards": 47,
+    "hashPreRewards": "ad277bff"
+   },
+   {
+    "j": 9,
+    "seed": "gate/cleric/9",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     42
+    ],
+    "events": 31,
+    "hash": "bb698c5d",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "cb495fef"
+   },
+   {
+    "j": 10,
+    "seed": "gate/cleric/10",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     43
+    ],
+    "events": 31,
+    "hash": "d750e0c8",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "0d88f9a6"
+   },
+   {
+    "j": 11,
+    "seed": "gate/cleric/11",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     42
+    ],
+    "events": 39,
+    "hash": "052b791f",
+    "eventsPreRewards": 38,
+    "hashPreRewards": "1dd56221"
+   },
+   {
+    "j": 12,
+    "seed": "gate/cleric/12",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     64
+    ],
+    "events": 47,
+    "hash": "84015468",
+    "eventsPreRewards": 46,
+    "hashPreRewards": "c10be87e"
+   },
+   {
+    "j": 13,
+    "seed": "gate/cleric/13",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     34,
+     0
+    ],
+    "events": 38,
+    "hash": "3271b102",
+    "eventsPreRewards": 37,
+    "hashPreRewards": "7cec666c"
+   },
+   {
+    "j": 14,
+    "seed": "gate/cleric/14",
+    "hardSide": 0,
+    "outcome": "draw",
+    "winner": null,
+    "fled": null,
+    "hp": [
+     32,
+     79
+    ],
+    "events": 56,
+    "hash": "74cb8890",
+    "eventsPreRewards": 56,
+    "hashPreRewards": "74cb8890"
+   },
+   {
+    "j": 15,
+    "seed": "gate/cleric/15",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     61
+    ],
+    "events": 39,
+    "hash": "b7ff2c4e",
+    "eventsPreRewards": 38,
+    "hashPreRewards": "118331bc"
+   },
+   {
+    "j": 16,
+    "seed": "gate/cleric/16",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     61,
+     0
+    ],
+    "events": 31,
+    "hash": "06244bde",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "1f17ddbc"
+   },
+   {
+    "j": 17,
+    "seed": "gate/cleric/17",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     49
+    ],
+    "events": 31,
+    "hash": "2aded3d8",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "e7dcd072"
+   },
+   {
+    "j": 18,
+    "seed": "gate/cleric/18",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     42,
+     0
+    ],
+    "events": 56,
+    "hash": "aa773085",
+    "eventsPreRewards": 55,
+    "hashPreRewards": "499a2f77"
+   },
+   {
+    "j": 19,
+    "seed": "gate/cleric/19",
+    "hardSide": 1,
+    "outcome": "draw",
+    "winner": null,
+    "fled": null,
+    "hp": [
+     4,
+     28
+    ],
+    "events": 55,
+    "hash": "d26de8b0",
+    "eventsPreRewards": 55,
+    "hashPreRewards": "d26de8b0"
+   }
+  ],
+  "mage": [
+   {
+    "j": 0,
+    "seed": "gate/mage/0",
+    "hardSide": 0,
+    "outcome": "draw",
+    "winner": null,
+    "fled": null,
+    "hp": [
+     25,
+     30
+    ],
+    "events": 56,
+    "hash": "ec7ceacc",
+    "eventsPreRewards": 56,
+    "hashPreRewards": "ec7ceacc"
+   },
+   {
+    "j": 1,
+    "seed": "gate/mage/1",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     29
+    ],
+    "events": 38,
+    "hash": "2e63508a",
+    "eventsPreRewards": 37,
+    "hashPreRewards": "eee1c742"
+   },
+   {
+    "j": 2,
+    "seed": "gate/mage/2",
+    "hardSide": 0,
+    "outcome": "draw",
+    "winner": null,
+    "fled": null,
+    "hp": [
+     29,
+     15
+    ],
+    "events": 55,
+    "hash": "35657c0f",
+    "eventsPreRewards": 55,
+    "hashPreRewards": "35657c0f"
+   },
+   {
+    "j": 3,
+    "seed": "gate/mage/3",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     44
+    ],
+    "events": 31,
+    "hash": "5480073f",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "d1f80f1f"
+   },
+   {
+    "j": 4,
+    "seed": "gate/mage/4",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     49,
+     0
+    ],
+    "events": 31,
+    "hash": "453a6119",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "ff6ce431"
+   },
+   {
+    "j": 5,
+    "seed": "gate/mage/5",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     29
+    ],
+    "events": 38,
+    "hash": "dc961d48",
+    "eventsPreRewards": 37,
+    "hashPreRewards": "de1c0428"
+   },
+   {
+    "j": 6,
+    "seed": "gate/mage/6",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     33,
+     0
+    ],
+    "events": 48,
+    "hash": "0fbbcd36",
+    "eventsPreRewards": 47,
+    "hashPreRewards": "63830696"
+   },
+   {
+    "j": 7,
+    "seed": "gate/mage/7",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     49
+    ],
+    "events": 31,
+    "hash": "bc5c6f3d",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "dc4f171d"
+   },
+   {
+    "j": 8,
+    "seed": "gate/mage/8",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     49
+    ],
+    "events": 39,
+    "hash": "4650ccc6",
+    "eventsPreRewards": 38,
+    "hashPreRewards": "c4364fe6"
+   },
+   {
+    "j": 9,
+    "seed": "gate/mage/9",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     29
+    ],
+    "events": 47,
+    "hash": "f433f10b",
+    "eventsPreRewards": 46,
+    "hashPreRewards": "b9cbb813"
+   },
+   {
+    "j": 10,
+    "seed": "gate/mage/10",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     34,
+     0
+    ],
+    "events": 47,
+    "hash": "b9f7441e",
+    "eventsPreRewards": 46,
+    "hashPreRewards": "8e5892b6"
+   },
+   {
+    "j": 11,
+    "seed": "gate/mage/11",
+    "hardSide": 1,
+    "outcome": "draw",
+    "winner": null,
+    "fled": null,
+    "hp": [
+     34,
+     28
+    ],
+    "events": 55,
+    "hash": "e15bc377",
+    "eventsPreRewards": 55,
+    "hashPreRewards": "e15bc377"
+   },
+   {
+    "j": 12,
+    "seed": "gate/mage/12",
+    "hardSide": 0,
+    "outcome": "draw",
+    "winner": null,
+    "fled": null,
+    "hp": [
+     24,
+     26
+    ],
+    "events": 56,
+    "hash": "e6fd69f8",
+    "eventsPreRewards": 56,
+    "hashPreRewards": "e6fd69f8"
+   },
+   {
+    "j": 13,
+    "seed": "gate/mage/13",
+    "hardSide": 1,
+    "outcome": "draw",
+    "winner": null,
+    "fled": null,
+    "hp": [
+     30,
+     33
+    ],
+    "events": 56,
+    "hash": "4c900939",
+    "eventsPreRewards": 56,
+    "hashPreRewards": "4c900939"
+   },
+   {
+    "j": 14,
+    "seed": "gate/mage/14",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     34,
+     0
+    ],
+    "events": 38,
+    "hash": "3a801c04",
+    "eventsPreRewards": 37,
+    "hashPreRewards": "ffa0aa6c"
+   },
+   {
+    "j": 15,
+    "seed": "gate/mage/15",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     34
+    ],
+    "events": 55,
+    "hash": "b684064a",
+    "eventsPreRewards": 54,
+    "hashPreRewards": "d3c8c3e2"
+   },
+   {
+    "j": 16,
+    "seed": "gate/mage/16",
+    "hardSide": 0,
+    "outcome": "draw",
+    "winner": null,
+    "fled": null,
+    "hp": [
+     38,
+     34
+    ],
+    "events": 55,
+    "hash": "0e535cad",
+    "eventsPreRewards": 55,
+    "hashPreRewards": "0e535cad"
+   },
+   {
+    "j": 17,
+    "seed": "gate/mage/17",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     29
+    ],
+    "events": 31,
+    "hash": "93f86b66",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "8b8f5fbe"
+   },
+   {
+    "j": 18,
+    "seed": "gate/mage/18",
+    "hardSide": 0,
+    "outcome": "draw",
+    "winner": null,
+    "fled": null,
+    "hp": [
+     25,
+     25
+    ],
+    "events": 56,
+    "hash": "68c422ac",
+    "eventsPreRewards": 56,
+    "hashPreRewards": "68c422ac"
+   },
+   {
+    "j": 19,
+    "seed": "gate/mage/19",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     64
+    ],
+    "events": 48,
+    "hash": "470b9d01",
+    "eventsPreRewards": 47,
+    "hashPreRewards": "25dfb549"
+   }
+  ],
+  "shadowpriest": [
+   {
+    "j": 0,
+    "seed": "gate/shadowpriest/0",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     53,
+     0
+    ],
+    "events": 55,
+    "hash": "dc593c4b",
+    "eventsPreRewards": 54,
+    "hashPreRewards": "57d1231d"
+   },
+   {
+    "j": 1,
+    "seed": "gate/shadowpriest/1",
+    "hardSide": 1,
+    "outcome": "draw",
+    "winner": null,
+    "fled": null,
+    "hp": [
+     76,
+     47
+    ],
+    "events": 56,
+    "hash": "36c06351",
+    "eventsPreRewards": 56,
+    "hashPreRewards": "36c06351"
+   },
+   {
+    "j": 2,
+    "seed": "gate/shadowpriest/2",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     47,
+     0
+    ],
+    "events": 31,
+    "hash": "74940151",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "055c027f"
+   },
+   {
+    "j": 3,
+    "seed": "gate/shadowpriest/3",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     76
+    ],
+    "events": 22,
+    "hash": "a7f0eb93",
+    "eventsPreRewards": 21,
+    "hashPreRewards": "77c843e9"
+   },
+   {
+    "j": 4,
+    "seed": "gate/shadowpriest/4",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     53,
+     0
+    ],
+    "events": 31,
+    "hash": "3b33d290",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "1ccd6ef6"
+   },
+   {
+    "j": 5,
+    "seed": "gate/shadowpriest/5",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     47
+    ],
+    "events": 38,
+    "hash": "583a8b26",
+    "eventsPreRewards": 37,
+    "hashPreRewards": "58721dd0"
+   },
+   {
+    "j": 6,
+    "seed": "gate/shadowpriest/6",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     76,
+     0
+    ],
+    "events": 55,
+    "hash": "ddc83c5b",
+    "eventsPreRewards": 54,
+    "hashPreRewards": "5a82ef2d"
+   },
+   {
+    "j": 7,
+    "seed": "gate/shadowpriest/7",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     74
+    ],
+    "events": 38,
+    "hash": "39984b50",
+    "eventsPreRewards": 37,
+    "hashPreRewards": "811cedc6"
+   },
+   {
+    "j": 8,
+    "seed": "gate/shadowpriest/8",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     76
+    ],
+    "events": 32,
+    "hash": "06d292e7",
+    "eventsPreRewards": 31,
+    "hashPreRewards": "8dd23e6d"
+   },
+   {
+    "j": 9,
+    "seed": "gate/shadowpriest/9",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     76
+    ],
+    "events": 55,
+    "hash": "2b711917",
+    "eventsPreRewards": 54,
+    "hashPreRewards": "6f021409"
+   },
+   {
+    "j": 10,
+    "seed": "gate/shadowpriest/10",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     55,
+     0
+    ],
+    "events": 31,
+    "hash": "08ff049e",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "9b817570"
+   },
+   {
+    "j": 11,
+    "seed": "gate/shadowpriest/11",
+    "hardSide": 1,
+    "outcome": "draw",
+    "winner": null,
+    "fled": null,
+    "hp": [
+     65,
+     31
+    ],
+    "events": 55,
+    "hash": "1859c325",
+    "eventsPreRewards": 55,
+    "hashPreRewards": "1859c325"
+   },
+   {
+    "j": 12,
+    "seed": "gate/shadowpriest/12",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     76,
+     0
+    ],
+    "events": 22,
+    "hash": "8eb0ddf4",
+    "eventsPreRewards": 21,
+    "hashPreRewards": "8e70d32a"
+   },
+   {
+    "j": 13,
+    "seed": "gate/shadowpriest/13",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     76
+    ],
+    "events": 22,
+    "hash": "c5e74c2b",
+    "eventsPreRewards": 21,
+    "hashPreRewards": "6ac0c161"
+   },
+   {
+    "j": 14,
+    "seed": "gate/shadowpriest/14",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     76
+    ],
+    "events": 38,
+    "hash": "9399fed1",
+    "eventsPreRewards": 37,
+    "hashPreRewards": "b953a61f"
+   },
+   {
+    "j": 15,
+    "seed": "gate/shadowpriest/15",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     76,
+     0
+    ],
+    "events": 31,
+    "hash": "1b00a1bf",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "41035125"
+   },
+   {
+    "j": 16,
+    "seed": "gate/shadowpriest/16",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     58,
+     0
+    ],
+    "events": 31,
+    "hash": "6de3456c",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "f86abc6e"
+   },
+   {
+    "j": 17,
+    "seed": "gate/shadowpriest/17",
+    "hardSide": 1,
+    "outcome": "draw",
+    "winner": null,
+    "fled": null,
+    "hp": [
+     3,
+     47
+    ],
+    "events": 55,
+    "hash": "7502f10f",
+    "eventsPreRewards": 55,
+    "hashPreRewards": "7502f10f"
+   },
+   {
+    "j": 18,
+    "seed": "gate/shadowpriest/18",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     47
+    ],
+    "events": 55,
+    "hash": "8746ebf0",
+    "eventsPreRewards": 54,
+    "hashPreRewards": "1b99d7da"
+   },
+   {
+    "j": 19,
+    "seed": "gate/shadowpriest/19",
+    "hardSide": 1,
+    "outcome": "draw",
+    "winner": null,
+    "fled": null,
+    "hp": [
+     15,
+     70
+    ],
+    "events": 55,
+    "hash": "535bf1ac",
+    "eventsPreRewards": 55,
+    "hashPreRewards": "535bf1ac"
+   }
+  ],
+  "spellblade": [
+   {
+    "j": 0,
+    "seed": "gate/spellblade/0",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     49,
+     0
+    ],
+    "events": 31,
+    "hash": "55b5cbaf",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "e4503903"
+   },
+   {
+    "j": 1,
+    "seed": "gate/spellblade/1",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     37
+    ],
+    "events": 31,
+    "hash": "d2fddbe1",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "6808e61d"
+   },
+   {
+    "j": 2,
+    "seed": "gate/spellblade/2",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     65
+    ],
+    "events": 31,
+    "hash": "3cb9930b",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "a8b22be7"
+   },
+   {
+    "j": 3,
+    "seed": "gate/spellblade/3",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     83
+    ],
+    "events": 31,
+    "hash": "822ef720",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "663d12a4"
+   },
+   {
+    "j": 4,
+    "seed": "gate/spellblade/4",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     37,
+     0
+    ],
+    "events": 31,
+    "hash": "2355ac9f",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "c30b1f9b"
+   },
+   {
+    "j": 5,
+    "seed": "gate/spellblade/5",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     49
+    ],
+    "events": 56,
+    "hash": "f6a6d6c9",
+    "eventsPreRewards": 55,
+    "hashPreRewards": "2f10c295"
+   },
+   {
+    "j": 6,
+    "seed": "gate/spellblade/6",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     83,
+     0
+    ],
+    "events": 39,
+    "hash": "3035b763",
+    "eventsPreRewards": 38,
+    "hashPreRewards": "86116597"
+   },
+   {
+    "j": 7,
+    "seed": "gate/spellblade/7",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     83,
+     0
+    ],
+    "events": 22,
+    "hash": "22de8b9e",
+    "eventsPreRewards": 21,
+    "hashPreRewards": "01850dc2"
+   },
+   {
+    "j": 8,
+    "seed": "gate/spellblade/8",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     37,
+     0
+    ],
+    "events": 38,
+    "hash": "245a369a",
+    "eventsPreRewards": 37,
+    "hashPreRewards": "f4772dde"
+   },
+   {
+    "j": 9,
+    "seed": "gate/spellblade/9",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     83
+    ],
+    "events": 40,
+    "hash": "0967c631",
+    "eventsPreRewards": 39,
+    "hashPreRewards": "e83444f5"
+   },
+   {
+    "j": 10,
+    "seed": "gate/spellblade/10",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     83,
+     0
+    ],
+    "events": 22,
+    "hash": "0e87a775",
+    "eventsPreRewards": 21,
+    "hashPreRewards": "3481a109"
+   },
+   {
+    "j": 11,
+    "seed": "gate/spellblade/11",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     37
+    ],
+    "events": 31,
+    "hash": "31f07fc8",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "baef251c"
+   },
+   {
+    "j": 12,
+    "seed": "gate/spellblade/12",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     37,
+     0
+    ],
+    "events": 31,
+    "hash": "cc34a9f8",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "36af461c"
+   },
+   {
+    "j": 13,
+    "seed": "gate/spellblade/13",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     65,
+     0
+    ],
+    "events": 31,
+    "hash": "72e81f6c",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "945e1128"
+   },
+   {
+    "j": 14,
+    "seed": "gate/spellblade/14",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     83,
+     0
+    ],
+    "events": 31,
+    "hash": "8e79f780",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "7a43e21c"
+   },
+   {
+    "j": 15,
+    "seed": "gate/spellblade/15",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     83
+    ],
+    "events": 22,
+    "hash": "f71f3a6b",
+    "eventsPreRewards": 21,
+    "hashPreRewards": "a952329f"
+   },
+   {
+    "j": 16,
+    "seed": "gate/spellblade/16",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     83,
+     0
+    ],
+    "events": 39,
+    "hash": "bf770a91",
+    "eventsPreRewards": 38,
+    "hashPreRewards": "089f0035"
+   },
+   {
+    "j": 17,
+    "seed": "gate/spellblade/17",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     83
+    ],
+    "events": 32,
+    "hash": "b8f97105",
+    "eventsPreRewards": 31,
+    "hashPreRewards": "06ac8bd1"
+   },
+   {
+    "j": 18,
+    "seed": "gate/spellblade/18",
+    "hardSide": 0,
+    "outcome": "draw",
+    "winner": null,
+    "fled": null,
+    "hp": [
+     27,
+     27
+    ],
+    "events": 56,
+    "hash": "ca39c097",
+    "eventsPreRewards": 56,
+    "hashPreRewards": "ca39c097"
+   },
+   {
+    "j": 19,
+    "seed": "gate/spellblade/19",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     46
+    ],
+    "events": 31,
+    "hash": "9e652be6",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "4b77408a"
+   }
+  ],
+  "thief": [
+   {
+    "j": 0,
+    "seed": "gate/thief/0",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     72,
+     0
+    ],
+    "events": 32,
+    "hash": "01a067ec",
+    "eventsPreRewards": 31,
+    "hashPreRewards": "edff945c"
+   },
+   {
+    "j": 1,
+    "seed": "gate/thief/1",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     72
+    ],
+    "events": 22,
+    "hash": "1fb0bf51",
+    "eventsPreRewards": 21,
+    "hashPreRewards": "69673d31"
+   },
+   {
+    "j": 2,
+    "seed": "gate/thief/2",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     72,
+     0
+    ],
+    "events": 22,
+    "hash": "173843ab",
+    "eventsPreRewards": 21,
+    "hashPreRewards": "21ddb053"
+   },
+   {
+    "j": 3,
+    "seed": "gate/thief/3",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     72
+    ],
+    "events": 39,
+    "hash": "ac5e11df",
+    "eventsPreRewards": 38,
+    "hashPreRewards": "10d8813f"
+   },
+   {
+    "j": 4,
+    "seed": "gate/thief/4",
+    "hardSide": 0,
+    "outcome": "draw",
+    "winner": null,
+    "fled": null,
+    "hp": [
+     34,
+     42
+    ],
+    "events": 56,
+    "hash": "9213a4f2",
+    "eventsPreRewards": 56,
+    "hashPreRewards": "9213a4f2"
+   },
+   {
+    "j": 5,
+    "seed": "gate/thief/5",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     42,
+     0
+    ],
+    "events": 48,
+    "hash": "c05e9543",
+    "eventsPreRewards": 47,
+    "hashPreRewards": "5687ad33"
+   },
+   {
+    "j": 6,
+    "seed": "gate/thief/6",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     30
+    ],
+    "events": 31,
+    "hash": "680d50f3",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "a26833d3"
+   },
+   {
+    "j": 7,
+    "seed": "gate/thief/7",
+    "hardSide": 1,
+    "outcome": "draw",
+    "winner": null,
+    "fled": null,
+    "hp": [
+     13,
+     34
+    ],
+    "events": 56,
+    "hash": "4e77d5cc",
+    "eventsPreRewards": 56,
+    "hashPreRewards": "4e77d5cc"
+   },
+   {
+    "j": 8,
+    "seed": "gate/thief/8",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     30,
+     0
+    ],
+    "events": 31,
+    "hash": "3dc8bb7f",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "a168e9a7"
+   },
+   {
+    "j": 9,
+    "seed": "gate/thief/9",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     38
+    ],
+    "events": 48,
+    "hash": "19bb1b72",
+    "eventsPreRewards": 47,
+    "hashPreRewards": "f0ced092"
+   },
+   {
+    "j": 10,
+    "seed": "gate/thief/10",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     45,
+     0
+    ],
+    "events": 55,
+    "hash": "9ddbdafa",
+    "eventsPreRewards": 54,
+    "hashPreRewards": "21d4145a"
+   },
+   {
+    "j": 11,
+    "seed": "gate/thief/11",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     30
+    ],
+    "events": 31,
+    "hash": "2b62e4bd",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "cf3ebadd"
+   },
+   {
+    "j": 12,
+    "seed": "gate/thief/12",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     30
+    ],
+    "events": 31,
+    "hash": "b6001d16",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "314f74f6"
+   },
+   {
+    "j": 13,
+    "seed": "gate/thief/13",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     55,
+     0
+    ],
+    "events": 31,
+    "hash": "127fbf6f",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "f8477a17"
+   },
+   {
+    "j": 14,
+    "seed": "gate/thief/14",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     72,
+     0
+    ],
+    "events": 49,
+    "hash": "8a676493",
+    "eventsPreRewards": 48,
+    "hashPreRewards": "d894a503"
+   },
+   {
+    "j": 15,
+    "seed": "gate/thief/15",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     66
+    ],
+    "events": 31,
+    "hash": "c1b661db",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "ba7cb633"
+   },
+   {
+    "j": 16,
+    "seed": "gate/thief/16",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     45,
+     0
+    ],
+    "events": 48,
+    "hash": "3bfd8cb4",
+    "eventsPreRewards": 47,
+    "hashPreRewards": "2b9860d4"
+   },
+   {
+    "j": 17,
+    "seed": "gate/thief/17",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     72
+    ],
+    "events": 31,
+    "hash": "ee10cc8f",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "94398d2f"
+   },
+   {
+    "j": 18,
+    "seed": "gate/thief/18",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     30,
+     0
+    ],
+    "events": 31,
+    "hash": "4db67a1f",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "dfa27f0f"
+   },
+   {
+    "j": 19,
+    "seed": "gate/thief/19",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     30
+    ],
+    "events": 56,
+    "hash": "612aeb78",
+    "eventsPreRewards": 55,
+    "hashPreRewards": "f4369be8"
+   }
+  ],
+  "warrior": [
+   {
+    "j": 0,
+    "seed": "gate/warrior/0",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     32,
+     0
+    ],
+    "events": 48,
+    "hash": "058ba6df",
+    "eventsPreRewards": 47,
+    "hashPreRewards": "00f2d53f"
+   },
+   {
+    "j": 1,
+    "seed": "gate/warrior/1",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     51,
+     0
+    ],
+    "events": 48,
+    "hash": "0b62c658",
+    "eventsPreRewards": 47,
+    "hashPreRewards": "1a1809d0"
+   },
+   {
+    "j": 2,
+    "seed": "gate/warrior/2",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     32,
+     0
+    ],
+    "events": 55,
+    "hash": "83db33af",
+    "eventsPreRewards": 54,
+    "hashPreRewards": "88a1c82f"
+   },
+   {
+    "j": 3,
+    "seed": "gate/warrior/3",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     51
+    ],
+    "events": 38,
+    "hash": "a15e737a",
+    "eventsPreRewards": 37,
+    "hashPreRewards": "4b4a7842"
+   },
+   {
+    "j": 4,
+    "seed": "gate/warrior/4",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     87,
+     0
+    ],
+    "events": 39,
+    "hash": "6eb4f9e0",
+    "eventsPreRewards": 38,
+    "hashPreRewards": "165637f0"
+   },
+   {
+    "j": 5,
+    "seed": "gate/warrior/5",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     42
+    ],
+    "events": 38,
+    "hash": "af88e446",
+    "eventsPreRewards": 37,
+    "hashPreRewards": "297a12a6"
+   },
+   {
+    "j": 6,
+    "seed": "gate/warrior/6",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     69
+    ],
+    "events": 38,
+    "hash": "0d50a26a",
+    "eventsPreRewards": 37,
+    "hashPreRewards": "344fa7d2"
+   },
+   {
+    "j": 7,
+    "seed": "gate/warrior/7",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     51
+    ],
+    "events": 31,
+    "hash": "a9984693",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "9bd09ffb"
+   },
+   {
+    "j": 8,
+    "seed": "gate/warrior/8",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     51,
+     0
+    ],
+    "events": 38,
+    "hash": "b0c615b4",
+    "eventsPreRewards": 37,
+    "hashPreRewards": "8dd7835c"
+   },
+   {
+    "j": 9,
+    "seed": "gate/warrior/9",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     87
+    ],
+    "events": 22,
+    "hash": "b8960f4f",
+    "eventsPreRewards": 21,
+    "hashPreRewards": "946868ef"
+   },
+   {
+    "j": 10,
+    "seed": "gate/warrior/10",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     32,
+     0
+    ],
+    "events": 55,
+    "hash": "de03e177",
+    "eventsPreRewards": 54,
+    "hashPreRewards": "f59da7e7"
+   },
+   {
+    "j": 11,
+    "seed": "gate/warrior/11",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     76
+    ],
+    "events": 31,
+    "hash": "72b8aac6",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "fbbef046"
+   },
+   {
+    "j": 12,
+    "seed": "gate/warrior/12",
+    "hardSide": 0,
+    "outcome": "draw",
+    "winner": null,
+    "fled": null,
+    "hp": [
+     55,
+     33
+    ],
+    "events": 55,
+    "hash": "895448cb",
+    "eventsPreRewards": 55,
+    "hashPreRewards": "895448cb"
+   },
+   {
+    "j": 13,
+    "seed": "gate/warrior/13",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     51
+    ],
+    "events": 31,
+    "hash": "4ac80c1e",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "d0f7d69e"
+   },
+   {
+    "j": 14,
+    "seed": "gate/warrior/14",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     42,
+     0
+    ],
+    "events": 39,
+    "hash": "bbd03686",
+    "eventsPreRewards": 38,
+    "hashPreRewards": "0681f4e6"
+   },
+   {
+    "j": 15,
+    "seed": "gate/warrior/15",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     87
+    ],
+    "events": 31,
+    "hash": "2cd89470",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "9bb36cc0"
+   },
+   {
+    "j": 16,
+    "seed": "gate/warrior/16",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     87,
+     0
+    ],
+    "events": 31,
+    "hash": "c5c3485a",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "10e099ba"
+   },
+   {
+    "j": 17,
+    "seed": "gate/warrior/17",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     87
+    ],
+    "events": 22,
+    "hash": "76fa36e3",
+    "eventsPreRewards": 21,
+    "hashPreRewards": "d8ee51b3"
+   },
+   {
+    "j": 18,
+    "seed": "gate/warrior/18",
+    "hardSide": 0,
+    "outcome": "ko",
+    "winner": 0,
+    "fled": null,
+    "hp": [
+     42,
+     0
+    ],
+    "events": 31,
+    "hash": "b2168a80",
+    "eventsPreRewards": 30,
+    "hashPreRewards": "54e14608"
+   },
+   {
+    "j": 19,
+    "seed": "gate/warrior/19",
+    "hardSide": 1,
+    "outcome": "ko",
+    "winner": 1,
+    "fled": null,
+    "hp": [
+     0,
+     40
+    ],
+    "events": 38,
+    "hash": "dc15f688",
+    "eventsPreRewards": 37,
+    "hashPreRewards": "5d18dda0"
+   }
+  ]
+ }
+}
