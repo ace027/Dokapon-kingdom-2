@@ -1,0 +1,71 @@
+{
+  "v": 1,
+  "combat": {
+    "kBp": 14500,
+    "jBp": 5000,
+    "jMagBp": 3500,
+    "matrix": {
+      "attack": {
+        "guard": 5000,
+        "counter": 12500,
+        "ward": 10000,
+        "open": 10000
+      },
+      "strike": {
+        "guard": 15000,
+        "counter": 10000,
+        "ward": 17500,
+        "open": 15000
+      },
+      "spell": {
+        "guard": 10000,
+        "counter": 10000,
+        "ward": 4000,
+        "open": 10000
+      }
+    },
+    "critBaseBp": 300,
+    "critPerLuckBp": 25,
+    "critCapBp": 2000,
+    "critMultBp": 15000,
+    "maxRounds": 3,
+    "fleeBaseBp": 5000,
+    "fleePerSpdBp": 250,
+    "fleeMinBp": 1000,
+    "fleeMaxBp": 9000,
+    "modMinBp": -5000,
+    "modMaxBp": 5000,
+    "poisonBp": 800,
+    "seniorRewardBp": 15000,
+    "pvpXpPerLevel": 10
+  },
+  "progression": {
+    "maxLevel": 20,
+    "xpCurve": [
+      0, 50, 150, 300, 500, 750, 1050, 1400, 1800, 2250, 2750, 3300, 3900, 4550, 5250, 6000, 6800,
+      7650, 8550, 9500
+    ],
+    "baseStats": {
+      "hp": 40,
+      "atk": 14,
+      "def": 10,
+      "mag": 12,
+      "spd": 10,
+      "luck": 5
+    },
+    "growth": {
+      "hp": 9,
+      "atk": 3,
+      "def": 2,
+      "mag": 3,
+      "spd": 1,
+      "luck": 1
+    },
+    "masteryWins": [0, 3, 7, 12, 18],
+    "hybridUnlockRank": 3
+  },
+  "economy": {
+    "startingGold": 100,
+    "maxScrolls": 3
+  }
+}

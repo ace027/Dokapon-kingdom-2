@@ -1,0 +1,220 @@
+{
+  "v": 1,
+  "battle": [
+    {
+      "id": "spark",
+      "name": "Spark",
+      "description": "Low MAG damage, cheap.",
+      "tier": 1,
+      "price": 50,
+      "powerBp": 9000,
+      "effect": {
+        "kind": "none"
+      }
+    },
+    {
+      "id": "fireball",
+      "name": "Fireball",
+      "description": "Mid MAG damage.",
+      "tier": 2,
+      "price": 200,
+      "powerBp": 14000,
+      "effect": {
+        "kind": "none"
+      }
+    },
+    {
+      "id": "thunderclap",
+      "name": "Thunderclap",
+      "description": "High damage; 25% chance to stun.",
+      "tier": 3,
+      "price": 600,
+      "powerBp": 16000,
+      "effect": {
+        "kind": "stun",
+        "chanceBp": 2500
+      }
+    },
+    {
+      "id": "frostbite",
+      "name": "Frostbite",
+      "description": "Damage and −20% SPD.",
+      "tier": 2,
+      "price": 300,
+      "powerBp": 10000,
+      "effect": {
+        "kind": "mod",
+        "stat": "spd",
+        "bp": -2000
+      }
+    },
+    {
+      "id": "drain",
+      "name": "Drain",
+      "description": "Damage; heal half of it.",
+      "tier": 1,
+      "price": 150,
+      "powerBp": 9000,
+      "effect": {
+        "kind": "drain",
+        "bp": 5000
+      }
+    },
+    {
+      "id": "hex",
+      "name": "Hex",
+      "description": "No damage; −25% ATK for the battle.",
+      "tier": 2,
+      "price": 300,
+      "powerBp": 0,
+      "effect": {
+        "kind": "mod",
+        "stat": "atk",
+        "bp": -2500
+      }
+    },
+    {
+      "id": "pickpocket-bolt",
+      "name": "Pickpocket Bolt",
+      "description": "Light damage; steal 5% gold.",
+      "tier": 2,
+      "price": 250,
+      "powerBp": 7000,
+      "effect": {
+        "kind": "stealGold",
+        "bp": 500
+      }
+    },
+    {
+      "id": "royal-decree",
+      "name": "Royal Decree",
+      "description": "Highest damage. Rare.",
+      "tier": 4,
+      "price": 1500,
+      "powerBp": 20000,
+      "effect": {
+        "kind": "none"
+      }
+    }
+  ],
+  "ward": [
+    {
+      "id": "barrier",
+      "name": "Barrier",
+      "description": "Standard spell resistance.",
+      "tier": 1,
+      "price": 100,
+      "mode": "barrier",
+      "valueBp": 0
+    },
+    {
+      "id": "reflect",
+      "name": "Reflect",
+      "description": "Reflect 50% of spell damage.",
+      "tier": 2,
+      "price": 400,
+      "mode": "reflect",
+      "valueBp": 5000
+    },
+    {
+      "id": "absorb",
+      "name": "Absorb",
+      "description": "Heal from spell damage instead of taking it.",
+      "tier": 3,
+      "price": 500,
+      "mode": "absorb",
+      "valueBp": 0
+    },
+    {
+      "id": "counterspell",
+      "name": "Counterspell",
+      "description": "Negate a Spell; take 1.25× from Attack/Strike.",
+      "tier": 3,
+      "price": 450,
+      "mode": "counterspell",
+      "valueBp": 12500
+    }
+  ],
+  "field": [
+    {
+      "id": "haste",
+      "name": "Haste",
+      "description": "Spin twice, take the higher.",
+      "tier": 1,
+      "price": 120,
+      "tag": "spinTwiceHigher",
+      "value": 0,
+      "duration": 1
+    },
+    {
+      "id": "snare",
+      "name": "Snare",
+      "description": "Target spins max 2 for 2 turns.",
+      "tier": 2,
+      "price": 180,
+      "tag": "spinCap",
+      "value": 2,
+      "duration": 2
+    },
+    {
+      "id": "usurp",
+      "name": "Usurp",
+      "description": "Seize a rival's town (MAG vs MAG); lose 10% gold on failure.",
+      "tier": 4,
+      "price": 600,
+      "tag": "seizeTown",
+      "value": 1000,
+      "duration": 0
+    },
+    {
+      "id": "blessing",
+      "name": "Blessing",
+      "description": "Full heal and clear status.",
+      "tier": 2,
+      "price": 250,
+      "tag": "fullHealCleanse",
+      "value": 0,
+      "duration": 0
+    },
+    {
+      "id": "fog",
+      "name": "Fog",
+      "description": "Hidden and untargetable for 2 turns.",
+      "tier": 3,
+      "price": 300,
+      "tag": "hideAndImmune",
+      "value": 0,
+      "duration": 2
+    },
+    {
+      "id": "golden-touch",
+      "name": "Golden Touch",
+      "description": "Your next Gold space pays double.",
+      "tier": 2,
+      "price": 200,
+      "tag": "doubleGoldSpace",
+      "value": 0,
+      "duration": 1
+    },
+    {
+      "id": "swap",
+      "name": "Swap",
+      "description": "Swap positions with any player.",
+      "tier": 3,
+      "price": 350,
+      "tag": "swapPositions",
+      "value": 0,
+      "duration": 0
+    },
+    {
+      "id": "silence",
+      "name": "Silence",
+      "description": "Target can't use field spells for 3 turns.",
+      "tier": 3,
+      "price": 300,
+      "tag": "blockFieldSpells",
+      "value": 0,
+      "duration": 3
+    }
+  ]
+}

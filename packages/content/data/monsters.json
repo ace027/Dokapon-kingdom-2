@@ -1,0 +1,704 @@
+{
+  "v": 1,
+  "curve": [
+    {
+      "hp": 48,
+      "atk": 15,
+      "def": 9,
+      "mag": 11,
+      "spd": 9,
+      "luck": 4
+    },
+    {
+      "hp": 95,
+      "atk": 30,
+      "def": 16,
+      "mag": 22,
+      "spd": 13,
+      "luck": 6
+    },
+    {
+      "hp": 140,
+      "atk": 44,
+      "def": 24,
+      "mag": 32,
+      "spd": 16,
+      "luck": 8
+    },
+    {
+      "hp": 190,
+      "atk": 58,
+      "def": 32,
+      "mag": 42,
+      "spd": 19,
+      "luck": 10
+    },
+    {
+      "hp": 245,
+      "atk": 72,
+      "def": 40,
+      "mag": 52,
+      "spd": 22,
+      "luck": 12
+    }
+  ],
+  "monsters": [
+    {
+      "id": "slime-intern",
+      "name": "Slime Intern",
+      "tagline": "Unpaid, unbothered, unarmed.",
+      "tier": 1,
+      "zone": "enchanted-forest",
+      "statBp": {
+        "hp": 8000,
+        "atk": 8000,
+        "def": 8000,
+        "mag": 8000,
+        "spd": 8000,
+        "luck": 8000
+      },
+      "attackTable": {
+        "attack": 60,
+        "strike": 20,
+        "spell": 20,
+        "flee": 0
+      },
+      "defendTable": {
+        "guard": 40,
+        "counter": 30,
+        "ward": 30
+      },
+      "battleSpell": "spark",
+      "wardSpell": null,
+      "hooks": [],
+      "xp": 15,
+      "gold": 20
+    },
+    {
+      "id": "mushroom-mail-carrier",
+      "name": "Mushroom Mail Carrier",
+      "tagline": "Neither rain nor spores.",
+      "tier": 1,
+      "zone": "enchanted-forest",
+      "statBp": {
+        "hp": 9500,
+        "atk": 9500,
+        "def": 9000,
+        "mag": 9000,
+        "spd": 9000,
+        "luck": 10000
+      },
+      "attackTable": {
+        "attack": 50,
+        "strike": 30,
+        "spell": 20,
+        "flee": 0
+      },
+      "defendTable": {
+        "guard": 40,
+        "counter": 30,
+        "ward": 30
+      },
+      "battleSpell": "spark",
+      "wardSpell": null,
+      "hooks": [
+        {
+          "hook": "poisonOnHit",
+          "value": 1
+        }
+      ],
+      "xp": 20,
+      "gold": 25
+    },
+    {
+      "id": "squirrel-pickpocket",
+      "name": "Squirrel Pickpocket",
+      "tagline": "Takes a cut. Runs.",
+      "tier": 1,
+      "zone": "enchanted-forest",
+      "statBp": {
+        "hp": 8000,
+        "atk": 9000,
+        "def": 8000,
+        "mag": 8000,
+        "spd": 14000,
+        "luck": 14000
+      },
+      "attackTable": {
+        "attack": 50,
+        "strike": 20,
+        "spell": 10,
+        "flee": 20
+      },
+      "defendTable": {
+        "guard": 30,
+        "counter": 40,
+        "ward": 30
+      },
+      "battleSpell": "spark",
+      "wardSpell": null,
+      "hooks": [
+        {
+          "hook": "stealGoldOnHitBp",
+          "value": 500
+        }
+      ],
+      "xp": 20,
+      "gold": 40
+    },
+    {
+      "id": "treant-groundskeeper",
+      "name": "Treant Groundskeeper",
+      "tagline": "Keep off the grass. Forever.",
+      "tier": 1,
+      "zone": "enchanted-forest",
+      "statBp": {
+        "hp": 14000,
+        "atk": 10000,
+        "def": 12500,
+        "mag": 8000,
+        "spd": 6000,
+        "luck": 8000
+      },
+      "attackTable": {
+        "attack": 40,
+        "strike": 40,
+        "spell": 20,
+        "flee": 0
+      },
+      "defendTable": {
+        "guard": 50,
+        "counter": 30,
+        "ward": 20
+      },
+      "battleSpell": "spark",
+      "wardSpell": null,
+      "hooks": [],
+      "xp": 25,
+      "gold": 25
+    },
+    {
+      "id": "crab-customs-officer",
+      "name": "Crab Customs Officer",
+      "tagline": "Anything to declare?",
+      "tier": 2,
+      "zone": "soggy-coast",
+      "statBp": {
+        "hp": 10000,
+        "atk": 9500,
+        "def": 13000,
+        "mag": 8000,
+        "spd": 8500,
+        "luck": 9000
+      },
+      "attackTable": {
+        "attack": 45,
+        "strike": 35,
+        "spell": 20,
+        "flee": 0
+      },
+      "defendTable": {
+        "guard": 25,
+        "counter": 55,
+        "ward": 20
+      },
+      "battleSpell": "spark",
+      "wardSpell": null,
+      "hooks": [],
+      "xp": 45,
+      "gold": 50
+    },
+    {
+      "id": "seagull-debt-collector",
+      "name": "Seagull Debt Collector",
+      "tagline": "Mine. Mine. Mine.",
+      "tier": 2,
+      "zone": "soggy-coast",
+      "statBp": {
+        "hp": 9000,
+        "atk": 10000,
+        "def": 9000,
+        "mag": 9000,
+        "spd": 12500,
+        "luck": 12000
+      },
+      "attackTable": {
+        "attack": 55,
+        "strike": 25,
+        "spell": 20,
+        "flee": 0
+      },
+      "defendTable": {
+        "guard": 35,
+        "counter": 35,
+        "ward": 30
+      },
+      "battleSpell": "spark",
+      "wardSpell": null,
+      "hooks": [
+        {
+          "hook": "stealItemOnHit",
+          "value": 1
+        }
+      ],
+      "xp": 45,
+      "gold": 45
+    },
+    {
+      "id": "mermaid-lifeguard",
+      "name": "Mermaid Lifeguard",
+      "tagline": "No running by the sea.",
+      "tier": 2,
+      "zone": "soggy-coast",
+      "statBp": {
+        "hp": 10000,
+        "atk": 9000,
+        "def": 9500,
+        "mag": 11500,
+        "spd": 10000,
+        "luck": 10000
+      },
+      "attackTable": {
+        "attack": 35,
+        "strike": 20,
+        "spell": 45,
+        "flee": 0
+      },
+      "defendTable": {
+        "guard": 35,
+        "counter": 25,
+        "ward": 40
+      },
+      "battleSpell": "drain",
+      "wardSpell": "barrier",
+      "hooks": [
+        {
+          "hook": "roundRegenBp",
+          "value": 800
+        }
+      ],
+      "xp": 50,
+      "gold": 50
+    },
+    {
+      "id": "pirate-accountant",
+      "name": "Pirate Accountant",
+      "tagline": "Arr-udits your books.",
+      "tier": 2,
+      "zone": "soggy-coast",
+      "statBp": {
+        "hp": 9500,
+        "atk": 9000,
+        "def": 9000,
+        "mag": 11000,
+        "spd": 10500,
+        "luck": 11000
+      },
+      "attackTable": {
+        "attack": 30,
+        "strike": 20,
+        "spell": 50,
+        "flee": 0
+      },
+      "defendTable": {
+        "guard": 35,
+        "counter": 30,
+        "ward": 35
+      },
+      "battleSpell": "pickpocket-bolt",
+      "wardSpell": null,
+      "hooks": [],
+      "xp": 50,
+      "gold": 70
+    },
+    {
+      "id": "goblin-tax-auditor",
+      "name": "Goblin Tax Auditor",
+      "tagline": "Your receipts are... concerning.",
+      "tier": 3,
+      "zone": "goblin-mines",
+      "statBp": {
+        "hp": 10000,
+        "atk": 10000,
+        "def": 10000,
+        "mag": 9000,
+        "spd": 10000,
+        "luck": 10000
+      },
+      "attackTable": {
+        "attack": 50,
+        "strike": 30,
+        "spell": 20,
+        "flee": 0
+      },
+      "defendTable": {
+        "guard": 35,
+        "counter": 35,
+        "ward": 30
+      },
+      "battleSpell": "spark",
+      "wardSpell": null,
+      "hooks": [
+        {
+          "hook": "stealGoldOnHitBp",
+          "value": 800
+        }
+      ],
+      "xp": 90,
+      "gold": 100
+    },
+    {
+      "id": "golem-foreman",
+      "name": "Golem Foreman",
+      "tagline": "Safety third.",
+      "tier": 3,
+      "zone": "goblin-mines",
+      "statBp": {
+        "hp": 12000,
+        "atk": 12000,
+        "def": 11500,
+        "mag": 6000,
+        "spd": 7000,
+        "luck": 8000
+      },
+      "attackTable": {
+        "attack": 30,
+        "strike": 60,
+        "spell": 10,
+        "flee": 0
+      },
+      "defendTable": {
+        "guard": 45,
+        "counter": 35,
+        "ward": 20
+      },
+      "battleSpell": "spark",
+      "wardSpell": null,
+      "hooks": [],
+      "xp": 95,
+      "gold": 90
+    },
+    {
+      "id": "bat-night-shift",
+      "name": "Bat Night-Shift",
+      "tagline": "Clocked in at dusk.",
+      "tier": 3,
+      "zone": "goblin-mines",
+      "statBp": {
+        "hp": 8500,
+        "atk": 10000,
+        "def": 8500,
+        "mag": 9000,
+        "spd": 14000,
+        "luck": 11000
+      },
+      "attackTable": {
+        "attack": 55,
+        "strike": 25,
+        "spell": 20,
+        "flee": 0
+      },
+      "defendTable": {
+        "guard": 30,
+        "counter": 40,
+        "ward": 30
+      },
+      "battleSpell": "drain",
+      "wardSpell": null,
+      "hooks": [
+        {
+          "hook": "lifestealBp",
+          "value": 3000
+        }
+      ],
+      "xp": 90,
+      "gold": 80
+    },
+    {
+      "id": "mimic-vault-clerk",
+      "name": "Mimic Vault Clerk",
+      "tagline": "Please take a number. And a bite.",
+      "tier": 3,
+      "zone": "goblin-mines",
+      "statBp": {
+        "hp": 11000,
+        "atk": 11000,
+        "def": 11000,
+        "mag": 9000,
+        "spd": 8000,
+        "luck": 12000
+      },
+      "attackTable": {
+        "attack": 45,
+        "strike": 40,
+        "spell": 15,
+        "flee": 0
+      },
+      "defendTable": {
+        "guard": 30,
+        "counter": 50,
+        "ward": 20
+      },
+      "battleSpell": "spark",
+      "wardSpell": null,
+      "hooks": [],
+      "xp": 110,
+      "gold": 250
+    },
+    {
+      "id": "swamp-witch-notary",
+      "name": "Swamp Witch Notary",
+      "tagline": "Sign here, here, and in blood.",
+      "tier": 4,
+      "zone": "bureaucrat-bog",
+      "statBp": {
+        "hp": 9500,
+        "atk": 8000,
+        "def": 9000,
+        "mag": 12500,
+        "spd": 10000,
+        "luck": 10000
+      },
+      "attackTable": {
+        "attack": 25,
+        "strike": 15,
+        "spell": 60,
+        "flee": 0
+      },
+      "defendTable": {
+        "guard": 30,
+        "counter": 30,
+        "ward": 40
+      },
+      "battleSpell": "hex",
+      "wardSpell": "reflect",
+      "hooks": [],
+      "xp": 160,
+      "gold": 150
+    },
+    {
+      "id": "bog-troll-bouncer",
+      "name": "Bog Troll Bouncer",
+      "tagline": "You're not on the list.",
+      "tier": 4,
+      "zone": "bureaucrat-bog",
+      "statBp": {
+        "hp": 15000,
+        "atk": 11500,
+        "def": 10500,
+        "mag": 6000,
+        "spd": 7000,
+        "luck": 8000
+      },
+      "attackTable": {
+        "attack": 45,
+        "strike": 45,
+        "spell": 10,
+        "flee": 0
+      },
+      "defendTable": {
+        "guard": 50,
+        "counter": 35,
+        "ward": 15
+      },
+      "battleSpell": "spark",
+      "wardSpell": null,
+      "hooks": [],
+      "xp": 170,
+      "gold": 140
+    },
+    {
+      "id": "wisp-paperwork-spirit",
+      "name": "Wisp Paperwork Spirit",
+      "tagline": "Form 27-B, stroke 6.",
+      "tier": 4,
+      "zone": "bureaucrat-bog",
+      "statBp": {
+        "hp": 8000,
+        "atk": 6000,
+        "def": 9000,
+        "mag": 12500,
+        "spd": 12000,
+        "luck": 10000
+      },
+      "attackTable": {
+        "attack": 10,
+        "strike": 10,
+        "spell": 80,
+        "flee": 0
+      },
+      "defendTable": {
+        "guard": 20,
+        "counter": 20,
+        "ward": 60
+      },
+      "battleSpell": "frostbite",
+      "wardSpell": "absorb",
+      "hooks": [
+        {
+          "hook": "physTakenBp",
+          "value": -5000
+        }
+      ],
+      "xp": 160,
+      "gold": 130
+    },
+    {
+      "id": "ogre-middle-manager",
+      "name": "Ogre Middle Manager",
+      "tagline": "Let's circle back on your face.",
+      "tier": 4,
+      "zone": "bureaucrat-bog",
+      "statBp": {
+        "hp": 11500,
+        "atk": 11000,
+        "def": 10500,
+        "mag": 10000,
+        "spd": 9000,
+        "luck": 9000
+      },
+      "attackTable": {
+        "attack": 40,
+        "strike": 35,
+        "spell": 25,
+        "flee": 0
+      },
+      "defendTable": {
+        "guard": 35,
+        "counter": 35,
+        "ward": 30
+      },
+      "battleSpell": "fireball",
+      "wardSpell": "barrier",
+      "hooks": [
+        {
+          "hook": "attackDmgBp",
+          "value": 1000
+        }
+      ],
+      "xp": 180,
+      "gold": 160
+    }
+  ],
+  "guardians": [
+    {
+      "id": "landlord-lich",
+      "name": "Landlord Lich",
+      "statBp": {
+        "hp": 11000,
+        "atk": 8000,
+        "def": 9500,
+        "mag": 12500,
+        "spd": 10000,
+        "luck": 10000
+      },
+      "attackTable": {
+        "attack": 20,
+        "strike": 15,
+        "spell": 65,
+        "flee": 0
+      },
+      "defendTable": {
+        "guard": 30,
+        "counter": 25,
+        "ward": 45
+      },
+      "battleSpell": "fireball",
+      "wardSpell": "reflect",
+      "hooks": [],
+      "description": "Magic guardian who collects rent in souls.",
+      "style": "magic",
+      "xpPerTier": 60,
+      "goldPerTier": 0
+    },
+    {
+      "id": "tollbridge-troll",
+      "name": "Tollbridge Troll",
+      "statBp": {
+        "hp": 13000,
+        "atk": 11500,
+        "def": 11500,
+        "mag": 6000,
+        "spd": 8000,
+        "luck": 9000
+      },
+      "attackTable": {
+        "attack": 40,
+        "strike": 50,
+        "spell": 10,
+        "flee": 0
+      },
+      "defendTable": {
+        "guard": 45,
+        "counter": 40,
+        "ward": 15
+      },
+      "battleSpell": "spark",
+      "wardSpell": null,
+      "hooks": [],
+      "description": "Physical guardian; the toll is your teeth.",
+      "style": "physical",
+      "xpPerTier": 60,
+      "goldPerTier": 0
+    },
+    {
+      "id": "knight-of-foreclosure",
+      "name": "Knight of Foreclosure",
+      "statBp": {
+        "hp": 12000,
+        "atk": 10500,
+        "def": 10500,
+        "mag": 10000,
+        "spd": 9500,
+        "luck": 9500
+      },
+      "attackTable": {
+        "attack": 40,
+        "strike": 35,
+        "spell": 25,
+        "flee": 0
+      },
+      "defendTable": {
+        "guard": 35,
+        "counter": 35,
+        "ward": 30
+      },
+      "battleSpell": "spark",
+      "wardSpell": "barrier",
+      "hooks": [],
+      "description": "Balanced guardian serving eviction notices.",
+      "style": "balanced",
+      "xpPerTier": 60,
+      "goldPerTier": 0
+    }
+  ],
+  "enforcer": {
+    "id": "crown-enforcer",
+    "name": "Crown Enforcer",
+    "statBp": {
+      "hp": 9000,
+      "atk": 12000,
+      "def": 10000,
+      "mag": 8000,
+      "spd": 10000,
+      "luck": 10000
+    },
+    "attackTable": {
+      "attack": 25,
+      "strike": 60,
+      "spell": 15,
+      "flee": 0
+    },
+    "defendTable": {
+      "guard": 35,
+      "counter": 40,
+      "ward": 25
+    },
+    "battleSpell": "spark",
+    "wardSpell": null,
+    "hooks": [],
+    "description": "A floating gilded helmet with arms. Strikes often.",
+    "xpPerLevel": 10,
+    "goldPerLevel": 0
+  }
+}
