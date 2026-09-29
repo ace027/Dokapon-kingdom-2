@@ -1,6 +1,6 @@
 # Plan 02-05 Summary: CPU AI + balance sim (tasks 1-2)
 
-Status: Tasks 1-2 Complete (branch `phase2/02-05`, worktree `/home/user/usurpia-wt/02-05`). **Task 3 (W3 closing step) is pending** and runs later on `dev` after the orchestrator merges `phase2/02-04` and `phase2/02-05`.
+Status: Complete (tasks 1-2 on branch `phase2/02-05`; task 3, the W3 closing step, on `dev`). Push and CI proof are the orchestrator's.
 
 ## API
 - `@usurpia/core/ai` (`packages/core/package.json` `exports["./ai"]`): `Difficulty`, `AiState`, `createAi`, `AiDecision`, `decideCombat`, `Policy`, `combatPolicy`, `AI_TUNING`, `expNeg`.
@@ -65,4 +65,19 @@ None from the plan's contracts. Notes: `packages/sim/src/index.ts` does not expo
 None found. Not touched: 02-04-owned files, `.planning/reference/`, `.planning/specs/`.
 
 ## W3 closing step
-Pending (Task 3, run by the orchestrator on `dev` after both W3 merges): add the 120 per-duel `(events, hash)` pins to `packages/sim/test/gate.test.ts`, rerun every composite golden and the full pipeline, fill this section (rerun results, pipeline tails, local perf wall time on the merged state, ROADMAP Phase 2 criteria 1-6 to evidence), commit on `dev`.
+Run on `dev` in the main checkout after both W3 merges (HEAD before the step: 6f114e3, clean tree).
+
+- **Pins added:** 120 per-duel `(events, hash)` pairs (first 20 duels x 6 classes) in `packages/sim/test/gate.test.ts`, transcribed mechanically from `traces/gate.trace.json` `events`/`hash` (rewards-on), each cross-checked against the existing `(outcome, winner)` pin during transcription. The `eventsPreRewards`/`hashPreRewards` values are not used (`552fa6cf` absent). All 120 pass on the first run: no mismatch, no localisation needed (cleric j0 `31`/`4a4be739`, warrior j0 `48`/`058ba6df` included).
+- **Composite golden rerun:** `pnpm vitest run packages/core/test/combat-golden.test.ts packages/core/test/rewards-golden.test.ts packages/core/test/replay.test.ts packages/sim` -> 9 files, 138 tests, exit 0. `pnpm sim replay packages/sim/fixtures/combat-game.json` -> `hash=0483c0fa rules=84a995db turn=1 events=95 rejections=0`, exit 0. No reward-independent golden changed (combat `ec0c3508`, kernel `9616698e`, fixture `0483c0fa`, stdout blocks, gate counts, `(outcome, winner)` pins, perf total line, NPC spot stats, AI goldens).
+- **Full pipeline (real exit codes, all 0):** `pnpm install --frozen-lockfile` (up to date), `pnpm lint`, `pnpm lint:purity` (`core purity rules active (18 cases)`), `pnpm format:check` (all files formatted), `pnpm typecheck`, `pnpm test` (33 files, 1187 tests), `pnpm build` (client + content valid), `pnpm sim duel --n 264 --seed ci` (`total n=264 a=154 b=57 draw=51 fled=2`), `grep -q rulesHash README.md`.
+- **Perf on the merged state:** `pnpm sim duel --n 10000 --seed perf` `elapsed_ms=5539`, about 6.5 s wall including pnpm/tsx start (limits 60 s CI test, 20 s local).
+- **Reference oracle:** `.planning/reference/phase-02/` is frozen from this commit on (02-CONTEXT *Golden maintenance after Phase 2*). Never edited here. From Phase 3 the reviewed TS engine is the oracle; rule/content changes re-pin goldens in the same commit, and the balance gate becomes thresholds.
+- **Final Phase 2 state:** 1187 tests green on `dev`, rulesHash `84a995db`. "Pipeline green on dev" in CI is recorded by the orchestrator after the push.
+
+### ROADMAP Phase 2 success criteria to evidence
+1. Resolution matrix 3x3 incl. Strike reflection and failed Counter: `packages/core/test/resolve.test.ts`, `combat-flow.test.ts`, `combat-golden.test.ts`.
+2. 4 base classes, mastery passives ranks 1-5, hybrid unlock: `stats.test.ts`, `progression.test.ts`, `rewards.test.ts`, `rewards-golden.test.ts`, content `build-rules.test.ts`.
+3. Gear, spell slots, field-spell scrolls, class-sized bags, overflow on class switch: `inventory.test.ts`, `loadout.test.ts`.
+4. 20 NPC definitions (16 zone monsters, 3 guardians, Crown Enforcer) with tiered curves: `packages/content/test/data.test.ts`, `validate.test.ts`, `packages/sim/test/content-stats.test.ts`, `packages/core/test/npc.test.ts`.
+5. `pnpm sim duel --n 10000` reports class-vs-class and class-vs-monster rates: `packages/sim/test/perf.test.ts`, `cli.test.ts`; command run above (exit 0).
+6. Combat CPU Easy/Normal/Hard headless, Hard >= 70% in mirrors: `packages/core/test/ai.test.ts`, `ai-hidden.test.ts`, `packages/sim/test/gate.test.ts` (exact counts, D1 thresholds, 120 per-duel pins).
