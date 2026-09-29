@@ -1,49 +1,26 @@
-import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
-  createGame,
   deserialize,
-  fnv1a32,
   hashState,
-  isAction,
-  reduce,
-  replay,
-  MAX_COUNTER,
   SchemaVersionError,
   serialize,
   stableStringify,
-  type Action,
-  type GameState,
-} from "../src/index";
-import { arbGame, arbInput } from "./arbitraries";
+} from "../src/serialize";
+import { fnv1a32 } from "../src/hash";
+import { newGame } from "./fixtures/build";
+import { TEST_RULES } from "./fixtures/test-rules";
 import { usePurityTraps } from "./purity-traps";
 
 usePurityTraps();
 
-const minimalState: GameState = {
-  v: 1,
-  public: {
-    phase: "turn",
-    turn: 1,
-    activePlayer: "p1",
-    players: ["p1"],
-    counter: 0,
-    lastRoll: null,
-    pending: null,
-    lastReveal: null,
-  },
-  private: { p1: { note: null } },
-  hidden: { rng: [1, 2, 3, 4], decisionSeq: 0, decision: null },
-};
-
-function withPatch(patch: (draft: Record<string, unknown>) => void): string {
-  const draft = JSON.parse(serialize(minimalState)) as Record<string, unknown>;
-  patch(draft);
-  return JSON.stringify(draft);
-}
-
 class Point {
   constructor(readonly x: number) {}
+}
+
+function patched(patch: (draft: Record<string, unknown>) => void): string {
+  const draft = JSON.parse(serialize(newGame())) as Record<string, unknown>;
+  patch(draft);
+  return JSON.stringify(draft);
 }
 
 describe("fnv1a32", () => {
@@ -97,441 +74,72 @@ describe("stableStringify", () => {
   });
 });
 
-describe("serialize / deserialize", () => {
-  it("round-trips a state and hashes canonically", () => {
-    expect(deserialize(serialize(minimalState))).toEqual(minimalState);
-    expect(hashState(minimalState)).toBe(fnv1a32(serialize(minimalState)));
+describe("serialize", () => {
+  it("is stableStringify and hashes canonically", () => {
+    const state = newGame();
+    expect(serialize(state)).toBe(stableStringify(state));
+    expect(hashState(state)).toBe(fnv1a32(serialize(state)));
   });
+});
 
-  it("throws SchemaVersionError for v: 2", () => {
-    const json = withPatch((d) => {
-      d.v = 2;
-    });
-    expect(() => deserialize(json)).toThrow(SchemaVersionError);
-    expect(() => deserialize(json)).toThrow(
-      expect.objectContaining({ name: "SchemaVersionError" }),
+describe("deserialize (02-01a compile shim; one mutation each from a valid save)", () => {
+  it("throws TypeError when rules is not an object", () => {
+    expect(() => deserialize(serialize(newGame()), undefined as never)).toThrow(
+      "deserialize: rules must be an object",
     );
   });
 
   it("throws SyntaxError for invalid JSON", () => {
-    expect(() => deserialize("{not json")).toThrow(SyntaxError);
+    expect(() => deserialize("{not json", TEST_RULES)).toThrow(SyntaxError);
   });
 
   it.each<[string, string]>([
-    ["non-object JSON", "[1,2]"],
-    ["null JSON", "null"],
-    [
-      "missing partition",
-      withPatch((d) => {
-        delete d.hidden;
-      }),
-    ],
-    [
-      "empty players",
-      withPatch((d) => {
-        (d.public as Record<string, unknown>).players = [];
-      }),
-    ],
-    [
-      "non-string player",
-      withPatch((d) => {
-        (d.public as Record<string, unknown>).players = [1];
-      }),
-    ],
-    [
-      "rng of wrong length",
-      withPatch((d) => {
-        (d.hidden as Record<string, unknown>).rng = [1, 2, 3];
-      }),
-    ],
-    [
-      "rng word out of range",
-      withPatch((d) => {
-        (d.hidden as Record<string, unknown>).rng = [1, 2, 3, 2 ** 32];
-      }),
-    ],
-    [
-      "non-integer rng word",
-      withPatch((d) => {
-        (d.hidden as Record<string, unknown>).rng = [1, 2, 3, 0.5];
-      }),
-    ],
+    ["null", "null"],
+    ["a number", "42"],
+    ["an array", "[]"],
   ])("throws TypeError for %s", (_label, json) => {
-    expect(() => deserialize(json)).toThrow(TypeError);
+    expect(() => deserialize(json, TEST_RULES)).toThrow(TypeError);
+    expect(() => deserialize(json, TEST_RULES)).toThrow("deserialize: state must be an object");
   });
-});
 
-interface Draft {
-  public: Record<string, unknown>;
-  private: Record<string, unknown>;
-  hidden: Record<string, unknown>;
-}
-
-/** A valid mid-decision state: p1 committed B, p2 still pending; p1 rolled and there was a reveal. */
-const decisionState: GameState = {
-  v: 1,
-  public: {
-    phase: "decision",
-    turn: 2,
-    activePlayer: "p2",
-    players: ["p1", "p2"],
-    counter: 3,
-    lastRoll: { playerId: "p1", value: 6 },
-    pending: { id: "d2", kind: "sample", required: ["p1", "p2"], committed: ["p1"] },
-    lastReveal: { decisionId: "d1", choices: { p1: "A" }, timedOut: ["p1"] },
-  },
-  private: { p1: { note: "n" }, p2: { note: null } },
-  hidden: {
-    rng: [1, 2, 3, 4],
-    decisionSeq: 2,
-    decision: { id: "d2", defaultChoice: "C", choices: { p1: "B" } },
-  },
-};
-
-function patchDecision(patch: (draft: Draft) => void): string {
-  const draft = JSON.parse(serialize(decisionState)) as Draft;
-  patch(draft);
-  return JSON.stringify(draft);
-}
-
-const pub = (d: Draft) => d.public;
-const hid = (d: Draft) => d.hidden;
-const pendingOf = (d: Draft) => pub(d).pending as Record<string, unknown>;
-const decisionOf = (d: Draft) => hid(d).decision as Record<string, unknown>;
-
-describe("deserialize full-shape validation (review cycle 1)", () => {
-  it("accepts valid turn and decision states, including prototype-named players", () => {
-    expect(deserialize(serialize(decisionState))).toEqual(decisionState);
-    const protoNamed = createGame({ v: 1, seed: "s", players: ["toString", "valueOf"] });
-    expect(deserialize(serialize(protoNamed))).toEqual(protoNamed);
-    const toStringOnly = withPatch((d) => {
-      d.public = { ...minimalState.public, players: ["toString"], activePlayer: "toString" };
-      d.private = { toString: { note: null } };
+  it.each([1, 3])("throws SchemaVersionError for v: %s", (v) => {
+    const json = patched((d) => {
+      d.v = v;
     });
-    expect(deserialize(toStringOnly).public.players).toEqual(["toString"]);
-  });
-
-  it.each<[string, (d: Draft) => void]>([
-    [
-      "phase 'decision' with pending missing",
-      (d) => {
-        delete pub(d).pending;
-      },
-    ],
-    [
-      "phase 'decision' with pending {}",
-      (d) => {
-        pub(d).pending = {};
-      },
-    ],
-    [
-      "pending {id:'d1'} without required",
-      (d) => {
-        pub(d).pending = { id: "d2", kind: "sample" };
-      },
-    ],
-    [
-      // Built from a valid decision state so only the phase check can reject it.
-      "bad phase",
-      (d) => {
-        pub(d).phase = "combat";
-      },
-    ],
-    [
-      // committed/choices emptied too, so only the non-empty check can reject it.
-      "pending.required empty",
-      (d) => {
-        pendingOf(d).required = [];
-        pendingOf(d).committed = [];
-        decisionOf(d).choices = {};
-      },
-    ],
-    [
-      "numeric pending.id and decision.id",
-      (d) => {
-        pendingOf(d).id = 5;
-        decisionOf(d).id = 5;
-      },
-    ],
-    [
-      "numeric lastReveal.decisionId",
-      (d) => {
-        (pub(d).lastReveal as Record<string, unknown>).decisionId = 5;
-      },
-    ],
-    [
-      "pending.required with a non-player",
-      (d) => {
-        pendingOf(d).required = ["p1", "ghost"];
-      },
-    ],
-    [
-      "pending.required duplicated",
-      (d) => {
-        pendingOf(d).required = ["p1", "p1"];
-      },
-    ],
-    [
-      "pending.committed outside required",
-      (d) => {
-        pendingOf(d).required = ["p2"];
-      },
-    ],
-    [
-      "pending.kind wrong",
-      (d) => {
-        pendingOf(d).kind = "combat";
-      },
-    ],
-    [
-      "pending.id !== decision.id",
-      (d) => {
-        decisionOf(d).id = "d9";
-      },
-    ],
-    [
-      "decision missing in phase 'decision'",
-      (d) => {
-        hid(d).decision = null;
-      },
-    ],
-    [
-      "decision.defaultChoice invalid",
-      (d) => {
-        decisionOf(d).defaultChoice = "D";
-      },
-    ],
-    [
-      "decision.choices keys != committed",
-      (d) => {
-        decisionOf(d).choices = {};
-      },
-    ],
-    [
-      "decision.choices extra key",
-      (d) => {
-        decisionOf(d).choices = { p1: "B", p2: "A" };
-      },
-    ],
-    [
-      "decision.choices bad value",
-      (d) => {
-        decisionOf(d).choices = { p1: "Z" };
-      },
-    ],
-    [
-      "phase 'turn' with a pending decision",
-      (d) => {
-        pub(d).phase = "turn";
-      },
-    ],
-    [
-      "missing decisionSeq",
-      (d) => {
-        delete hid(d).decisionSeq;
-      },
-    ],
-    [
-      "negative decisionSeq",
-      (d) => {
-        hid(d).decisionSeq = -1;
-      },
-    ],
-    [
-      "fractional turn",
-      (d) => {
-        pub(d).turn = 1.5;
-      },
-    ],
-    [
-      "missing counter",
-      (d) => {
-        delete pub(d).counter;
-      },
-    ],
-    [
-      "players ['constructor']",
-      (d) => {
-        pub(d).players = ["constructor"];
-        pub(d).activePlayer = "constructor";
-        d.private = { constructor: { note: null } };
-      },
-    ],
-    [
-      "players with an invalid id",
-      (d) => {
-        pub(d).players = ["p1", "bad id"];
-      },
-    ],
-    [
-      "5 players",
-      (d) => {
-        pub(d).players = ["p1", "p2", "p3", "p4", "p5"];
-      },
-    ],
-    [
-      "duplicate players",
-      (d) => {
-        pub(d).players = ["p1", "p1"];
-      },
-    ],
-    [
-      "activePlayer not a player",
-      (d) => {
-        pub(d).activePlayer = "ghost";
-      },
-    ],
-    [
-      "private keys != players (missing)",
-      (d) => {
-        delete d.private.p2;
-      },
-    ],
-    [
-      "private keys != players (extra)",
-      (d) => {
-        d.private.p3 = { note: null };
-      },
-    ],
-    [
-      "private __proto__ key",
-      (d) =>
-        void (d.private = JSON.parse('{"p1":{"note":null},"__proto__":{"note":null}}') as Record<
-          string,
-          unknown
-        >),
-    ],
-    [
-      "private note not a string",
-      (d) => {
-        d.private.p1 = { note: 3 };
-      },
-    ],
-    [
-      "lastRoll value 7",
-      (d) => {
-        pub(d).lastRoll = { playerId: "p1", value: 7 };
-      },
-    ],
-    [
-      "lastRoll by a non-player",
-      (d) => {
-        pub(d).lastRoll = { playerId: "ghost", value: 1 };
-      },
-    ],
-    [
-      "lastReveal choices for a non-player",
-      (d) => {
-        pub(d).lastReveal = { decisionId: "d1", choices: { ghost: "A" }, timedOut: [] };
-      },
-    ],
-    [
-      "lastReveal timedOut non-player",
-      (d) => {
-        pub(d).lastReveal = { decisionId: "d1", choices: {}, timedOut: ["ghost"] };
-      },
-    ],
-    [
-      "lastReveal choice value invalid",
-      (d) => {
-        pub(d).lastReveal = { decisionId: "d1", choices: { p1: 1 }, timedOut: [] };
-      },
-    ],
-  ])("throws TypeError for %s", (_label, patch) => {
-    expect(() => deserialize(patchDecision(patch))).toThrow(TypeError);
-  });
-});
-
-describe("deserialize exact keys and counter bounds (review cycle 2)", () => {
-  const lastRevealOf = (d: Draft) => pub(d).lastReveal as Record<string, unknown>;
-  const lastRollOf = (d: Draft) => pub(d).lastRoll as Record<string, unknown>;
-
-  it.each<[string, (d: Draft) => void]>([
-    ["root", (d) => void ((d as unknown as Record<string, unknown>).zz = 0)],
-    ["public", (d) => void (pub(d).zz = 0)],
-    ["hidden", (d) => void (hid(d).zz = 0)],
-    ["a private entry", (d) => void ((d.private.p1 as Record<string, unknown>).zz = 0)],
-    ["lastRoll", (d) => void (lastRollOf(d).zz = 0)],
-    ["pending", (d) => void (pendingOf(d).zz = 0)],
-    ["decision", (d) => void (decisionOf(d).zz = 0)],
-    ["lastReveal", (d) => void (lastRevealOf(d).zz = 0)],
-  ])("throws TypeError for an extra key on %s", (_label, patch) => {
-    expect(() => deserialize(patchDecision(patch))).toThrow(TypeError);
-  });
-
-  it("rejects a 5000-deep extra key at deserialize (not a later RangeError)", () => {
-    const deep = `${'{"zz":'.repeat(5000)}0${"}".repeat(5000)}`;
-    const json = serialize(decisionState).replace('"hidden":{', `"hidden":{"zz":${deep},`);
-    expect(json).not.toBe(serialize(decisionState));
-    expect(() => deserialize(json)).toThrow(TypeError);
-  });
-
-  it.each<[string, (d: Draft) => void]>([
-    ["duplicate lastReveal.timedOut", (d) => void (lastRevealOf(d).timedOut = ["p1", "p1"])],
-    [
-      "duplicate pending.committed",
-      (d) => {
-        // choices has two keys so only the uniqueness check (not the length check) can reject
-        pendingOf(d).committed = ["p1", "p1"];
-        decisionOf(d).choices = { p1: "A", p2: "B" };
-      },
-    ],
-  ])("throws TypeError for %s", (_label, patch) => {
-    expect(() => deserialize(patchDecision(patch))).toThrow(TypeError);
-  });
-
-  it.each<[string, (d: Draft, n: number) => void]>([
-    ["public.turn", (d, n) => void (pub(d).turn = n)],
-    ["public.counter", (d, n) => void (pub(d).counter = n)],
-    ["hidden.decisionSeq", (d, n) => void (hid(d).decisionSeq = n)],
-  ])("accepts %s = MAX_COUNTER and rejects MAX_COUNTER + 1", (_label, set) => {
-    expect(MAX_COUNTER).toBe(2 ** 31 - 1);
-    expect(() =>
-      deserialize(
-        patchDecision((d) => {
-          set(d, MAX_COUNTER);
-        }),
-      ),
-    ).not.toThrow();
-    expect(() =>
-      deserialize(
-        patchDecision((d) => {
-          set(d, MAX_COUNTER + 1);
-        }),
-      ),
-    ).toThrow(TypeError);
-  });
-});
-
-describe("canonical JSON round-trips (properties)", () => {
-  it("round-trips every valid generated action", () => {
-    fc.assert(
-      fc.property(arbInput, (input) => {
-        if (!isAction(input)) return;
-        expect(JSON.parse(stableStringify(input))).toEqual(input);
-      }),
-      { numRuns: 200 },
+    expect(() => deserialize(json, TEST_RULES)).toThrow(SchemaVersionError);
+    expect(() => deserialize(json, TEST_RULES)).toThrow(
+      expect.objectContaining({ name: "SchemaVersionError" }),
     );
   });
 
-  it("round-trips every emitted event and every intermediate state", () => {
-    fc.assert(
-      fc.property(arbGame, ([settings, script]) => {
-        let state = createGame(settings);
-        expect(deserialize(serialize(state))).toEqual(state);
-        for (const action of script) {
-          const result = reduce(state, action);
-          if (!result.ok) continue;
-          state = result.state;
-          for (const event of result.events) {
-            expect(JSON.parse(stableStringify(event))).toEqual(event);
-          }
-          expect(deserialize(serialize(state))).toEqual(state);
-        }
-        const { events } = replay(settings, script as readonly Action[]);
-        for (const event of events) expect(JSON.parse(stableStringify(event))).toEqual(event);
-      }),
-      { numRuns: 200 },
+  it("throws TypeError for an extra root key", () => {
+    const json = patched((d) => {
+      d.extra = 1;
+    });
+    expect(() => deserialize(json, TEST_RULES)).toThrow(TypeError);
+    expect(() => deserialize(json, TEST_RULES)).toThrow("deserialize: root keys");
+  });
+
+  it("throws TypeError for a missing root key", () => {
+    const json = patched((d) => {
+      delete d.hidden;
+    });
+    expect(() => deserialize(json, TEST_RULES)).toThrow("deserialize: root keys");
+  });
+
+  it("throws TypeError for a renamed root key (right key count)", () => {
+    const json = patched((d) => {
+      d.other = d.hidden;
+      delete d.hidden;
+    });
+    expect(() => deserialize(json, TEST_RULES)).toThrow("deserialize: root keys");
+  });
+
+  it("refuses an otherwise valid save until 02-01b", () => {
+    const json = serialize(newGame());
+    expect(() => deserialize(json, TEST_RULES)).toThrow(TypeError);
+    expect(() => deserialize(json, TEST_RULES)).toThrow(
+      "deserialize: v2 validation lands in 02-01b",
     );
   });
 });

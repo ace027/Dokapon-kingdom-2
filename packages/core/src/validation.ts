@@ -1,5 +1,6 @@
 // Internal helpers shared by createGame, reduce and deserialize. Not re-exported from index.ts.
-import { PLAYER_ID_PATTERN, RESERVED_IDS, type Choice } from "./types";
+import type { Rules } from "./rules";
+import { PLAYER_ID_PATTERN, RESERVED_IDS } from "./types";
 
 export const MIN_PLAYERS = 1;
 export const MAX_PLAYERS = 4;
@@ -17,10 +18,6 @@ export function isPlainObject(value: unknown): value is Record<string, unknown> 
 /** Own-property lookup, so ids such as `toString` never resolve to `Object.prototype` members. */
 export function ownGet<V>(record: Readonly<Record<string, V>>, key: string): V | undefined {
   return Object.hasOwn(record, key) ? record[key] : undefined;
-}
-
-export function isChoice(value: unknown): value is Choice {
-  return value === "A" || value === "B" || value === "C";
 }
 
 export function isStringArray(value: unknown): value is string[] {
@@ -53,4 +50,37 @@ export function playersError(players: unknown): string | null {
     if (!PLAYER_ID_PATTERN.test(id)) return `invalid player id "${clip(id)}"`;
   }
   return isUnique(ids) ? null : "player ids must be unique";
+}
+
+/**
+ * The seat rules for `createGame`: 1–4 plain objects with exactly the keys `id` and `classId`,
+ * ids that pass {@link playersError}, and each `classId` an own key of `rules.classes` whose
+ * `kind` is `"base"` (`ownGet`, so `toString`/`constructor` are unknown classes). Returns a unique
+ * error message per failure, or `null` when valid.
+ */
+export function seatsError(seats: unknown, rules: Rules): string | null {
+  if (!Array.isArray(seats)) return "players must be an array";
+  const list: unknown[] = seats;
+  if (list.length < MIN_PLAYERS || list.length > MAX_PLAYERS) {
+    return `players must hold ${MIN_PLAYERS}–${MAX_PLAYERS} seats`;
+  }
+  const seatObjects: Record<string, unknown>[] = [];
+  for (const seat of list) {
+    if (!isPlainObject(seat)) return "each seat must be an object";
+    const keys = Object.keys(seat);
+    if (keys.length !== 2 || !Object.hasOwn(seat, "id") || !Object.hasOwn(seat, "classId")) {
+      return "each seat must have exactly the keys id and classId";
+    }
+    seatObjects.push(seat);
+  }
+  const idsError = playersError(seatObjects.map((seat) => seat.id));
+  if (idsError !== null) return idsError;
+  for (const seat of seatObjects) {
+    const classId = seat.classId;
+    if (typeof classId !== "string") return "seat classId must be a string";
+    const def = ownGet(rules.classes, classId);
+    if (def === undefined) return `unknown class "${clip(classId)}"`;
+    if (def.kind !== "base") return `class "${clip(classId)}" is not a base class`;
+  }
+  return null;
 }

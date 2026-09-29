@@ -20,7 +20,19 @@ A browser-based, friendship-ruining RPG board game for 1–4 players ("Dokapon-k
 | `pnpm typecheck`         | `tsc -b` over the project-reference graph (sources and tests).         |
 | `pnpm test`              | Run every package's Vitest suite.                                      |
 | `pnpm build`             | Run each package's `build` script (content validation, client bundle). |
-| `pnpm sim replay <file>` | Replay a recorded game (`{ settings, actions }` JSON) headlessly.      |
+| `pnpm sim replay <file>` | Replay a recorded game (`{ rulesHash, settings, actions }` JSON).      |
+
+### Replay files
+
+`pnpm sim replay <file.json> [--allow-rules-mismatch]` replays a recorded game headlessly. The file is a JSON object with exactly the keys `{ rulesHash, settings, actions }`:
+
+- `rulesHash`: the 8-hex-digit hash of the `Rules` the game was recorded with.
+- `settings`: the game settings (`{ v: 2, seed, players: [{ id, classId }] }`).
+- `actions`: an array of untrusted actions, each passed through `reduce` (rejections are counted, not thrown).
+
+The hash is checked before replaying. On success the CLI prints `hash=<hashState> rules=<rulesHash> turn=<n> events=<n> rejections=<n>`. `--allow-rules-mismatch` replays despite a different `rulesHash` and appends ` rules-mismatch=<fileHash>` to that line.
+
+Exit codes: `0` ok, `1` invalid content (content gate), `2` usage or file error, `3` rules mismatch.
 
 ### Branch model
 

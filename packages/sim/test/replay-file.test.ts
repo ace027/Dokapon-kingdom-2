@@ -4,16 +4,53 @@ import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { rulesHash } from "@usurpia/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ReplayFileError, replayFile } from "../src/index";
+import { ReplayFileError, replayFile, RulesMismatchError } from "../src/replay-file";
+import { replayRules } from "../src/rules";
 
-const fixturePath = fileURLToPath(new URL("../fixtures/sample-game.json", import.meta.url));
 const cliPath = fileURLToPath(new URL("../src/cli.ts", import.meta.url));
 const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
 const tsxCli = createRequire(import.meta.url).resolve("tsx/cli");
 
-/** Pinned: the fixture's final-state hash must not drift (it predates review cycle 1's fixes). */
-const LINE = /^hash=595a3c9a turn=3 counter=3 events=10 rejections=1$/;
+const SETTINGS = {
+  v: 2,
+  seed: "fixture",
+  players: [
+    { id: "p1", classId: "fighter" },
+    { id: "p2", classId: "caster" },
+  ],
+};
+const LINE = "hash=758ef72c rules=7433ea8b turn=1 events=0 rejections=0";
+
+let tempDir: string;
+
+beforeEach(() => {
+  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "usurpia-sim-"));
+});
+
+afterEach(() => {
+  fs.rmSync(tempDir, { recursive: true, force: true });
+});
+
+function writeTemp(name: string, contents: unknown): string {
+  const filePath = path.join(tempDir, name);
+  fs.writeFileSync(filePath, typeof contents === "string" ? contents : JSON.stringify(contents));
+  return filePath;
+}
+
+function goodFile(overrides: Record<string, unknown> = {}): unknown {
+  return { rulesHash: "7433ea8b", settings: SETTINGS, actions: [], ...overrides };
+}
+
+function errorOf(filePath: string, opts?: { allowRulesMismatch?: boolean }): unknown {
+  try {
+    replayFile(filePath, replayRules(), opts);
+  } catch (error) {
+    return error;
+  }
+  return undefined;
+}
 
 function runCli(...args: string[]) {
   return spawnSync(process.execPath, [tsxCli, cliPath, ...args], {
@@ -22,96 +59,108 @@ function runCli(...args: string[]) {
   });
 }
 
-describe("replayFile on the sample fixture", () => {
-  it("prints the expected summary line", () => {
-    expect(replayFile(fixturePath).line).toMatch(LINE);
+describe("replayRules", () => {
+  it("is the TEST_RULES copy", () => {
+    expect(rulesHash(replayRules())).toBe("7433ea8b");
+  });
+});
+
+describe("replayFile", () => {
+  it("prints the empty-replay line for a matching rulesHash", () => {
+    expect(replayFile(writeTemp("ok.json", goodFile()), replayRules()).line).toBe(LINE);
   });
 
   it("is deterministic across runs", () => {
-    expect(replayFile(fixturePath).line).toBe(replayFile(fixturePath).line);
+    const filePath = writeTemp("ok.json", goodFile());
+    expect(replayFile(filePath, replayRules()).line).toBe(replayFile(filePath, replayRules()).line);
   });
 
-  it("rejects the out-of-turn roll and resolves the timed-out decision", () => {
-    const { result } = replayFile(fixturePath);
-    expect(result.rejections).toHaveLength(1);
-    expect(result.rejections[0]?.index).toBe(2);
-    expect(result.rejections[0]?.error.code).toBe("WRONG_ACTOR");
-    expect(result.events.map((event) => event.type)).toEqual([
-      "Rolled",
-      "TurnAdvanced",
-      "CounterIncremented",
-      "Rolled",
-      "TurnAdvanced",
-      "SecretSet",
-      "DecisionOpened",
-      "ChoiceCommitted",
-      "ChoiceTimedOut",
-      "ChoicesRevealed",
+  it("counts rejected actions instead of throwing", () => {
+    const filePath = writeTemp("junk.json", goodFile({ actions: [null, { v: 2, type: "x" }] }));
+    const { line, result } = replayFile(filePath, replayRules());
+    expect(result.rejections.map((r) => r.error.code)).toEqual([
+      "UNSUPPORTED_VERSION",
+      "UNKNOWN_ACTION",
     ]);
-    expect(result.state.public.lastReveal).toEqual({
-      decisionId: "d1",
-      choices: { p1: "B", p2: "A" },
-      timedOut: ["p2"],
-    });
+    expect(line).toBe("hash=758ef72c rules=7433ea8b turn=1 events=0 rejections=2");
+  });
+
+  it("throws RulesMismatchError for a different rulesHash", () => {
+    const error = errorOf(writeTemp("mismatch.json", goodFile({ rulesHash: "deadbeef" })));
+    expect(error).toBeInstanceOf(RulesMismatchError);
+    expect((error as Error).message).toBe("rules mismatch: file deadbeef, current 7433ea8b");
+  });
+
+  it("proceeds with a suffix under allowRulesMismatch", () => {
+    const filePath = writeTemp("mismatch.json", goodFile({ rulesHash: "deadbeef" }));
+    expect(replayFile(filePath, replayRules(), { allowRulesMismatch: true }).line).toBe(
+      `${LINE} rules-mismatch=deadbeef`,
+    );
   });
 });
 
 describe("replayFile errors", () => {
-  let tempDir: string;
-
-  beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "usurpia-sim-"));
-  });
-
-  afterEach(() => {
-    fs.rmSync(tempDir, { recursive: true, force: true });
-  });
-
-  function writeTemp(name: string, contents: string): string {
-    const filePath = path.join(tempDir, name);
-    fs.writeFileSync(filePath, contents);
-    return filePath;
-  }
-
-  function errorOf(filePath: string): unknown {
-    try {
-      replayFile(filePath);
-    } catch (error) {
-      return error;
-    }
-    return undefined;
+  function expectFileError(error: unknown, message: string | RegExp): void {
+    expect(error).toBeInstanceOf(ReplayFileError);
+    expect(error).not.toBeInstanceOf(RulesMismatchError);
+    if (typeof message === "string") expect((error as Error).message).toBe(message);
+    else expect((error as Error).message).toMatch(message);
   }
 
   it("reports invalid JSON", () => {
-    const error = errorOf(writeTemp("bad.json", "{ not json"));
-    expect(error).toBeInstanceOf(ReplayFileError);
-    expect((error as Error).message).toBe("invalid JSON");
+    expectFileError(errorOf(writeTemp("bad.json", "{ not json")), "invalid JSON");
   });
 
-  it("reports a missing actions array", () => {
-    const settings = { v: 1, seed: "s", players: ["p1"] };
-    for (const body of [{ settings }, { settings, actions: {} }, [], null]) {
-      const error = errorOf(writeTemp("shape.json", JSON.stringify(body)));
-      expect(error).toBeInstanceOf(ReplayFileError);
-      expect((error as Error).message).toBe("expected {settings, actions[]}");
+  it("reports a missing rulesHash key", () => {
+    const rest = goodFile() as Record<string, unknown>;
+    delete rest.rulesHash;
+    expectFileError(
+      errorOf(writeTemp("nohash.json", rest)),
+      "expected {rulesHash, settings, actions[]}",
+    );
+  });
+
+  it("reports an extra key", () => {
+    expectFileError(
+      errorOf(writeTemp("extra.json", goodFile({ extra: 1 }))),
+      "expected {rulesHash, settings, actions[]}",
+    );
+  });
+
+  it("reports actions that are not an array", () => {
+    expectFileError(
+      errorOf(writeTemp("actions.json", goodFile({ actions: {} }))),
+      "expected {rulesHash, settings, actions[]}",
+    );
+  });
+
+  it("reports a rulesHash that is not 8 hex chars", () => {
+    expectFileError(
+      errorOf(writeTemp("badhash.json", goodFile({ rulesHash: "DEADBEEF" }))),
+      "expected {rulesHash, settings, actions[]}",
+    );
+  });
+
+  it("reports a non-object root", () => {
+    for (const body of ["[]", "null"]) {
+      expectFileError(
+        errorOf(writeTemp("root.json", body)),
+        "expected {rulesHash, settings, actions[]}",
+      );
     }
   });
 
   it("reports an unreadable path", () => {
     const missing = path.join(tempDir, "does-not-exist.json");
-    const error = errorOf(missing);
-    expect(error).toBeInstanceOf(ReplayFileError);
-    expect((error as Error).message).toBe(`cannot read ${missing}`);
+    expectFileError(errorOf(missing), `cannot read ${missing}`);
   });
 
   it("reports invalid settings", () => {
     const filePath = writeTemp(
       "settings.json",
-      JSON.stringify({ settings: { v: 1, seed: "s", players: [] }, actions: [] }),
+      goodFile({ settings: { ...SETTINGS, players: [] } }),
     );
-    const error = errorOf(filePath);
-    expect(error).toBeInstanceOf(ReplayFileError);
-    expect((error as Error).message).toMatch(/^invalid settings: /);
+    expectFileError(errorOf(filePath), /^invalid settings: /);
   });
 });
 
@@ -119,60 +168,55 @@ describe("sim CLI", () => {
   it("prints usage and exits 2 without a file", () => {
     const result = runCli("replay");
     expect(result.status).toBe(2);
-    expect(result.stderr).toContain("usage: sim replay <file.json>");
+    expect(result.stderr).toContain("usage: sim replay <file.json> [--allow-rules-mismatch]");
   });
 
-  it("prints usage and exits 2 for an unknown command or extra arguments", () => {
-    expect(runCli("play", fixturePath).status).toBe(2);
-    expect(runCli("replay", fixturePath, "extra").status).toBe(2);
+  it("prints usage and exits 2 for an unknown command, extra arguments or an unknown flag", () => {
+    const filePath = writeTemp("ok.json", goodFile());
+    expect(runCli("play", filePath).status).toBe(2);
+    expect(runCli("replay", filePath, "extra").status).toBe(2);
+    expect(runCli("replay", filePath, "--bogus").status).toBe(2);
   });
 
-  it("replays the fixture from the repo root with a relative path", () => {
-    const result = runCli("replay", "packages/sim/fixtures/sample-game.json");
+  it("replays a valid file and prints the golden line", () => {
+    const result = runCli("replay", writeTemp("ok.json", goodFile()));
+    expect(result.stderr).toBe("");
     expect(result.status).toBe(0);
-    expect(result.stdout.trim()).toMatch(LINE);
+    expect(result.stdout.trim()).toBe(LINE);
   });
 
-  it("replays players named after Object.prototype members through a timeout", () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "usurpia-sim-proto-"));
-    try {
-      const players = ["toString", "valueOf", "hasOwnProperty"];
-      const filePath = path.join(tempDir, "proto.json");
-      fs.writeFileSync(
-        filePath,
-        JSON.stringify({
-          settings: { v: 1, seed: "x", players },
-          actions: [
-            {
-              v: 1,
-              type: "decision/open",
-              playerId: "system",
-              required: players,
-              defaultChoice: "A",
-            },
-            { v: 1, type: "decision/commit", playerId: "valueOf", decisionId: "d1", choice: "B" },
-            { v: 1, type: "timeout", playerId: "system", decisionId: "d1" },
-          ],
-        }),
-      );
-      const result = runCli("replay", filePath);
-      expect(result.stderr).toBe("");
-      expect(result.status).toBe(0);
-      expect(result.stdout.trim()).toMatch(
-        /^hash=[0-9a-f]{8} turn=1 counter=0 events=5 rejections=0$/,
-      );
-      expect(replayFile(filePath).result.state.public.lastReveal).toEqual({
-        decisionId: "d1",
-        choices: { toString: "A", valueOf: "B", hasOwnProperty: "A" },
-        timedOut: ["toString", "hasOwnProperty"],
-      });
-    } finally {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    }
+  it("resolves a relative path against the working directory", () => {
+    const filePath = writeTemp("ok.json", goodFile());
+    const result = runCli("replay", path.relative(repoRoot, filePath));
+    expect(result.status).toBe(0);
+    expect(result.stdout.trim()).toBe(LINE);
+  });
+
+  it("exits exactly 3 on a rules mismatch", () => {
+    const result = runCli(
+      "replay",
+      writeTemp("mismatch.json", goodFile({ rulesHash: "deadbeef" })),
+    );
+    expect(result.status).toBe(3);
+    expect(result.stderr).toBe("error: rules mismatch: file deadbeef, current 7433ea8b\n");
+    expect(result.stdout).toBe("");
+  });
+
+  it("proceeds with --allow-rules-mismatch and a suffix", () => {
+    const filePath = writeTemp("mismatch.json", goodFile({ rulesHash: "deadbeef" }));
+    const result = runCli("replay", filePath, "--allow-rules-mismatch");
+    expect(result.status).toBe(0);
+    expect(result.stdout.trim()).toBe(`${LINE} rules-mismatch=deadbeef`);
+  });
+
+  it("exits 2 for a file with a missing rulesHash", () => {
+    const result = runCli("replay", writeTemp("nohash.json", { settings: SETTINGS, actions: [] }));
+    expect(result.status).toBe(2);
+    expect(result.stderr).toMatch(/^error: expected \{rulesHash, settings, actions\[\]\}/);
   });
 
   it("prints an error and exits 2 for a missing file", () => {
-    const result = runCli("replay", "packages/sim/fixtures/nope.json");
+    const result = runCli("replay", path.join(tempDir, "nope.json"));
     expect(result.status).toBe(2);
     expect(result.stderr).toMatch(/^error: cannot read /);
   });

@@ -1,4 +1,4 @@
-import type { Choice, PlayerId } from "./types";
+import type { DecisionKind, PlayerId } from "./types";
 
 export type Visibility = { kind: "public" } | { kind: "players"; ids: readonly PlayerId[] };
 
@@ -10,38 +10,42 @@ export function onlyPlayers(ids: readonly PlayerId[]): Visibility {
   return Object.freeze({ kind: "players", ids: Object.freeze([...ids]) } as const);
 }
 
+/**
+ * Every event is `{ v: 2, type, visibility, ... }`. Only the five decision events are declared
+ * in 02-01a (types only: nothing emits them until 02-01b); later waves add the rest.
+ */
 export type GameEvent =
   | {
-      v: 1;
-      type: "CounterIncremented";
-      visibility: Visibility;
-      playerId: PlayerId;
-      amount: number;
-      counter: number;
-    }
-  | { v: 1; type: "Rolled"; visibility: Visibility; playerId: PlayerId; value: number }
-  | { v: 1; type: "TurnAdvanced"; visibility: Visibility; activePlayer: PlayerId; turn: number }
-  | { v: 1; type: "SecretSet"; visibility: Visibility; playerId: PlayerId; note: string }
-  | {
-      v: 1;
+      v: 2;
       type: "DecisionOpened";
       visibility: Visibility;
       decisionId: string;
+      kind: DecisionKind;
       required: readonly PlayerId[];
     }
   | {
-      v: 1;
+      v: 2;
+      type: "PromptOpened";
+      visibility: Visibility;
+      decisionId: string;
+      playerId: PlayerId;
+      options: readonly string[];
+      default: string;
+    }
+  | {
+      v: 2;
       type: "ChoiceCommitted";
       visibility: Visibility;
       decisionId: string;
       playerId: PlayerId;
     }
-  | { v: 1; type: "ChoiceTimedOut"; visibility: Visibility; decisionId: string; playerId: PlayerId }
+  | { v: 2; type: "ChoiceTimedOut"; visibility: Visibility; decisionId: string; playerId: PlayerId }
   | {
-      v: 1;
+      v: 2;
       type: "ChoicesRevealed";
       visibility: Visibility;
       decisionId: string;
-      choices: Readonly<Record<PlayerId, Choice>>;
+      kind: DecisionKind;
+      choices: Readonly<Record<PlayerId, string>>;
       timedOut: readonly PlayerId[];
     };

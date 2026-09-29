@@ -1,7 +1,9 @@
-import { isActionType, type Action } from "./actions";
+import type { Action } from "./actions";
 import type { GameEvent } from "./events";
-import { handlers, openDecision, type Ctx, type Handler } from "./handlers";
+import { handlers } from "./handlers/index";
+import type { Ctx, Handler } from "./handlers/shared";
 import { nextInt, type RngState } from "./rng";
+import type { Rules } from "./rules";
 import { stableStringify } from "./serialize";
 import { SCHEMA_VERSION, SYSTEM_ACTOR, type GameState, type PlayerId } from "./types";
 import { clip, isPlainObject } from "./validation";
@@ -62,13 +64,15 @@ function checkShape(value: unknown): ShapeResult {
   if (!isPlainObject(raw) || raw.v !== SCHEMA_VERSION) {
     return fail("UNSUPPORTED_VERSION", `action must be a plain object with v=${SCHEMA_VERSION}`);
   }
-  const type = raw.type;
-  if (!isActionType(type)) {
+  // Widened to `string`: with the empty W1a union `Action["type"]` is `never`.
+  const type: string = typeof raw.type === "string" ? raw.type : "";
+  if (!Object.hasOwn(handlers, type)) {
     return fail("UNKNOWN_ACTION", "unknown action type");
   }
   // safe: the handler map is exhaustive over Action['type'] and its guard verifies that the
   // payload matches `type`, so the handler is only ever called with its own action variant.
-  const handler = handlers[type] as unknown as Handler<Action>;
+  const handler = (handlers as Readonly<Record<string, Handler<Action> | undefined>>)[type];
+  if (handler === undefined) return fail("UNKNOWN_ACTION", "unknown action type");
   if (!handler.guard(raw)) {
     return fail("INVALID_PAYLOAD", `invalid payload for ${type}`);
   }
@@ -88,7 +92,7 @@ function actorAllowed(
     case "system":
       return playerId === SYSTEM_ACTOR;
     case "required":
-      return openDecision(state)?.pending.required.includes(playerId) ?? false;
+      return state.public.pending?.required.includes(playerId) ?? false;
   }
 }
 
@@ -114,20 +118,22 @@ export function isAction(value: unknown): value is Action {
  * `state`. `action` is first canonicalized (read once), then checked, first failure wins:
  * version → type → shape → phase → actor → state validation.
  */
-export function reduce(state: GameState, action: unknown): ReduceResult {
+export function reduce(state: GameState, action: unknown, rules: Rules): ReduceResult {
   const shape = checkShape(action);
   if (!shape.ok) return shape;
   const { action: a, handler } = shape;
+  // Widened while `Action` is the empty union (`never` has no properties); the guard verified both.
+  const { type, playerId }: { type: string; playerId: string } = a;
   if (!handler.phases.includes(state.public.phase)) {
-    return fail("WRONG_PHASE", `${a.type} is not allowed in phase ${state.public.phase}`);
+    return fail("WRONG_PHASE", `${type} is not allowed in phase ${state.public.phase}`);
   }
-  if (!actorAllowed(handler.actor, state, a.playerId)) {
-    return fail("WRONG_ACTOR", `${clip(a.playerId)} may not perform ${a.type}`);
+  if (!actorAllowed(handler.actor, state, playerId)) {
+    return fail("WRONG_ACTOR", `${clip(playerId)} may not perform ${type}`);
   }
-  const invalid = handler.validate?.(state, a) ?? null;
+  const invalid = handler.validate?.(state, a, rules) ?? null;
   if (invalid !== null) return { ok: false, error: invalid };
   const ctx = makeCtx(state.hidden.rng);
-  const applied = handler.apply(state, a, ctx);
+  const applied = handler.apply(state, a, ctx, rules);
   return {
     ok: true,
     state: { ...applied.state, hidden: { ...applied.state.hidden, rng: ctx.rng } },
