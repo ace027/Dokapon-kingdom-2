@@ -1,0 +1,104 @@
+# d1 ["a"] {"a":["attack","strike","spell","flee","item:herb","item:battle-tonic"]}
+# d2 ["a"] {"a":["guard","counter","ward"]}
+# d3 ["a"] {"a":["attack","strike","spell","flee","item:herb","item:battle-tonic"]}
+# d4 ["b","a"] {"b":["attack","strike","spell","flee","item:herb","item:smoke-bomb"],"a":["guard","counter","ward"]}
+# d5 ["a","b"] {"a":["attack","strike","spell","flee","item:herb","item:battle-tonic"],"b":["guard","counter","ward"]}
+# d6 ["b","a"] {"b":["attack","strike","spell","flee","item:herb","item:smoke-bomb"],"a":["guard","counter","ward"]}
+# d7 ["a","b"] {"a":["attack","strike","spell","flee","item:herb"],"b":["guard","counter","ward"]}
+# d8 ["b","a"] {"b":["attack","strike","spell","flee","item:herb","item:smoke-bomb"],"a":["guard","counter","ward"]}
+# d9 ["a","b"] {"a":["attack","strike","spell","flee","item:herb"],"b":["guard","counter","ward"]}
+Granted [private a] {"playerId":"a","grant":{"kind":"item","id":"battle-tonic"}}
+BagUpdated [private a] {"playerId":"a","bag":["herb","battle-tonic"]}
+CombatStarted  {"combatId":"c1","sides":[{"kind":"player","playerId":"a","mods":{"atk":0,"def":0,"mag":0,"spd":0,"poison":false,"stun":false}},{"kind":"npc","npc":{"kind":"monster","id":"slime-intern","senior":false},"stats":{"hp":38,"atk":12,"def":7,"mag":8,"spd":7,"luck":3},"hp":38,"mods":{"atk":0,"def":0,"mag":0,"spd":0,"poison":false,"stun":false}}]}
+RoundStarted  {"combatId":"c1","round":1,"first":0}
+DecisionOpened  {"decisionId":"d1","kind":"combat/exchange","required":["a"]}
+PromptOpened [private a] {"decisionId":"d1","playerId":"a","options":["attack","strike","spell","flee","item:herb","item:battle-tonic"],"default":"attack"}
+ChoiceCommitted  {"decisionId":"d1","playerId":"a"}
+ChoicesRevealed  {"decisionId":"d1","kind":"combat/exchange","choices":{"a":"strike"},"timedOut":[]}
+ExchangeResolved  {"combatId":"c1","round":1,"exchange":1,"attacker":0,"command":"strike","defense":"guard","crit":false,"damage":[0,30],"heal":[0,0],"effects":[],"hp":[46,8]}
+DecisionOpened  {"decisionId":"d2","kind":"combat/exchange","required":["a"]}
+PromptOpened [private a] {"decisionId":"d2","playerId":"a","options":["guard","counter","ward"],"default":"guard"}
+ChoiceCommitted  {"decisionId":"d2","playerId":"a"}
+ChoicesRevealed  {"decisionId":"d2","kind":"combat/exchange","choices":{"a":"guard"},"timedOut":[]}
+ExchangeResolved  {"combatId":"c1","round":1,"exchange":2,"attacker":1,"command":"strike","defense":"guard","crit":false,"damage":[12,0],"heal":[0,0],"effects":[],"hp":[34,8]}
+RoundEnded  {"combatId":"c1","round":1,"poison":[0,0],"regen":[0,0],"hp":[34,8]}
+RoundStarted  {"combatId":"c1","round":2,"first":0}
+DecisionOpened  {"decisionId":"d3","kind":"combat/exchange","required":["a"]}
+PromptOpened [private a] {"decisionId":"d3","playerId":"a","options":["attack","strike","spell","flee","item:herb","item:battle-tonic"],"default":"attack"}
+ChoiceCommitted  {"decisionId":"d3","playerId":"a"}
+ChoicesRevealed  {"decisionId":"d3","kind":"combat/exchange","choices":{"a":"attack"},"timedOut":[]}
+ExchangeResolved  {"combatId":"c1","round":2,"exchange":1,"attacker":0,"command":"attack","defense":"guard","crit":false,"damage":[0,8],"heal":[0,0],"effects":[],"hp":[34,0]}
+CombatEnded  {"combatId":"c1","outcome":"ko","winner":0,"fled":null,"hp":[34,0]}
+VictoryRewarded  {"playerId":"a","xp":15,"gold":20,"classId":"warrior","masteryWins":1}
+CombatStarted  {"combatId":"c2","sides":[{"kind":"player","playerId":"b","mods":{"atk":0,"def":0,"mag":0,"spd":0,"poison":false,"stun":false}},{"kind":"player","playerId":"a","mods":{"atk":0,"def":0,"mag":0,"spd":0,"poison":false,"stun":false}}]}
+RoundStarted  {"combatId":"c2","round":1,"first":0}
+DecisionOpened  {"decisionId":"d4","kind":"combat/exchange","required":["b","a"]}
+PromptOpened [private b] {"decisionId":"d4","playerId":"b","options":["attack","strike","spell","flee","item:herb","item:smoke-bomb"],"default":"attack"}
+PromptOpened [private a] {"decisionId":"d4","playerId":"a","options":["guard","counter","ward"],"default":"guard"}
+ChoiceCommitted  {"decisionId":"d4","playerId":"b"}
+ChoiceCommitted  {"decisionId":"d4","playerId":"a"}
+ChoicesRevealed  {"decisionId":"d4","kind":"combat/exchange","choices":{"b":"attack","a":"guard"},"timedOut":[]}
+ExchangeResolved  {"combatId":"c2","round":1,"exchange":1,"attacker":0,"command":"attack","defense":"guard","crit":false,"damage":[0,6],"heal":[0,0],"effects":[],"hp":[38,28]}
+DecisionOpened  {"decisionId":"d5","kind":"combat/exchange","required":["a","b"]}
+PromptOpened [private a] {"decisionId":"d5","playerId":"a","options":["attack","strike","spell","flee","item:herb","item:battle-tonic"],"default":"attack"}
+PromptOpened [private b] {"decisionId":"d5","playerId":"b","options":["guard","counter","ward"],"default":"guard"}
+ChoiceCommitted  {"decisionId":"d5","playerId":"a"}
+ChoiceCommitted  {"decisionId":"d5","playerId":"b"}
+ChoicesRevealed  {"decisionId":"d5","kind":"combat/exchange","choices":{"a":"item:battle-tonic","b":"counter"},"timedOut":[]}
+ExchangeResolved  {"combatId":"c2","round":1,"exchange":2,"attacker":1,"command":"item:battle-tonic","defense":null,"crit":false,"damage":[0,0],"heal":[0,0],"effects":["item:battle-tonic"],"hp":[38,28]}
+BagUpdated [private a] {"playerId":"a","bag":["herb"]}
+RoundEnded  {"combatId":"c2","round":1,"poison":[0,0],"regen":[0,0],"hp":[38,28]}
+RoundStarted  {"combatId":"c2","round":2,"first":0}
+DecisionOpened  {"decisionId":"d6","kind":"combat/exchange","required":["b","a"]}
+PromptOpened [private b] {"decisionId":"d6","playerId":"b","options":["attack","strike","spell","flee","item:herb","item:smoke-bomb"],"default":"attack"}
+PromptOpened [private a] {"decisionId":"d6","playerId":"a","options":["guard","counter","ward"],"default":"guard"}
+ChoiceCommitted  {"decisionId":"d6","playerId":"b"}
+ChoiceCommitted  {"decisionId":"d6","playerId":"a"}
+ChoicesRevealed  {"decisionId":"d6","kind":"combat/exchange","choices":{"b":"spell","a":"ward"},"timedOut":[]}
+ExchangeResolved  {"combatId":"c2","round":2,"exchange":1,"attacker":0,"command":"spell","defense":"ward","crit":false,"damage":[0,1],"heal":[0,0],"effects":[],"hp":[38,27]}
+DecisionOpened  {"decisionId":"d7","kind":"combat/exchange","required":["a","b"]}
+PromptOpened [private a] {"decisionId":"d7","playerId":"a","options":["attack","strike","spell","flee","item:herb"],"default":"attack"}
+PromptOpened [private b] {"decisionId":"d7","playerId":"b","options":["guard","counter","ward"],"default":"guard"}
+ChoiceCommitted  {"decisionId":"d7","playerId":"a"}
+ChoiceCommitted  {"decisionId":"d7","playerId":"b"}
+ChoicesRevealed  {"decisionId":"d7","kind":"combat/exchange","choices":{"a":"strike","b":"guard"},"timedOut":[]}
+ExchangeResolved  {"combatId":"c2","round":2,"exchange":2,"attacker":1,"command":"strike","defense":"guard","crit":false,"damage":[36,0],"heal":[0,0],"effects":[],"hp":[2,27]}
+RoundEnded  {"combatId":"c2","round":2,"poison":[0,0],"regen":[0,0],"hp":[2,27]}
+RoundStarted  {"combatId":"c2","round":3,"first":0}
+DecisionOpened  {"decisionId":"d8","kind":"combat/exchange","required":["b","a"]}
+PromptOpened [private b] {"decisionId":"d8","playerId":"b","options":["attack","strike","spell","flee","item:herb","item:smoke-bomb"],"default":"attack"}
+PromptOpened [private a] {"decisionId":"d8","playerId":"a","options":["guard","counter","ward"],"default":"guard"}
+ChoiceCommitted  {"decisionId":"d8","playerId":"b"}
+ChoiceTimedOut  {"decisionId":"d8","playerId":"a"}
+ChoicesRevealed  {"decisionId":"d8","kind":"combat/exchange","choices":{"b":"strike","a":"guard"},"timedOut":["a"]}
+ExchangeResolved  {"combatId":"c2","round":3,"exchange":1,"attacker":0,"command":"strike","defense":"guard","crit":false,"damage":[0,19],"heal":[0,0],"effects":[],"hp":[2,8]}
+DecisionOpened  {"decisionId":"d9","kind":"combat/exchange","required":["a","b"]}
+PromptOpened [private a] {"decisionId":"d9","playerId":"a","options":["attack","strike","spell","flee","item:herb"],"default":"attack"}
+PromptOpened [private b] {"decisionId":"d9","playerId":"b","options":["guard","counter","ward"],"default":"guard"}
+ChoiceCommitted  {"decisionId":"d9","playerId":"a"}
+ChoiceCommitted  {"decisionId":"d9","playerId":"b"}
+ChoicesRevealed  {"decisionId":"d9","kind":"combat/exchange","choices":{"a":"attack","b":"ward"},"timedOut":[]}
+ExchangeResolved  {"combatId":"c2","round":3,"exchange":2,"attacker":1,"command":"attack","defense":"ward","crit":false,"damage":[2,0],"heal":[0,0],"effects":[],"hp":[0,8]}
+CombatEnded  {"combatId":"c2","outcome":"ko","winner":1,"fled":null,"hp":[0,8]}
+VictoryRewarded  {"playerId":"a","xp":10,"gold":0,"classId":"warrior","masteryWins":2}
+Granted  {"playerId":"b","grant":{"kind":"xp","amount":150}}
+LevelUp  {"playerId":"b","level":2}
+LevelUp  {"playerId":"b","level":3}
+Granted  {"playerId":"b","grant":{"kind":"gold","amount":200}}
+Granted [private b] {"playerId":"b","grant":{"kind":"item","id":"big-herb"}}
+BagUpdated [private b] {"playerId":"b","bag":["herb","smoke-bomb","big-herb"]}
+Granted [private b] {"playerId":"b","grant":{"kind":"item","id":"antidote"}}
+BagUpdated [private b] {"playerId":"b","bag":["herb","smoke-bomb","big-herb","antidote"]}
+Granted [private b] {"playerId":"b","grant":{"kind":"item","id":"cursed-wig"}}
+BagUpdated [private b] {"playerId":"b","bag":["herb","smoke-bomb","big-herb","antidote","cursed-wig"]}
+Granted [private b] {"playerId":"b","grant":{"kind":"item","id":"swift-boots"}}
+BagUpdated [private b] {"playerId":"b","bag":["herb","smoke-bomb","big-herb","antidote","cursed-wig","swift-boots"]}
+Granted [private b] {"playerId":"b","grant":{"kind":"item","id":"herb"}}
+BagUpdated [private b] {"playerId":"b","bag":["herb","smoke-bomb","big-herb","antidote","cursed-wig","swift-boots","herb"]}
+Granted  {"playerId":"b","grant":{"kind":"gear","id":"mage-ring"}}
+ClassSwitched  {"playerId":"b","from":"thief","to":"mage","fee":100,"hp":0}
+BagUpdated [private b] {"playerId":"b","bag":["herb","smoke-bomb","big-herb","antidote","swift-boots","herb"]}
+BagUpdated [private a] {"playerId":"a","bag":[]}
+FINAL 8abfd7b6 events 92 actions 28
+ACTIONS [{"v":2,"type":"system/grant","playerId":"system","target":"a","grant":{"kind":"item","id":"battle-tonic"}},{"v":2,"type":"combat/start","playerId":"system","attacker":"a","opponent":{"kind":"monster","monsterId":"slime-intern","senior":false}},{"v":2,"type":"decision/commit","playerId":"a","decisionId":"d1","choice":"strike"},{"v":2,"type":"decision/commit","playerId":"a","decisionId":"d2","choice":"guard"},{"v":2,"type":"decision/commit","playerId":"a","decisionId":"d3","choice":"attack"},{"v":2,"type":"combat/start","playerId":"system","attacker":"b","opponent":{"kind":"player","playerId":"a"}},{"v":2,"type":"decision/commit","playerId":"b","decisionId":"d4","choice":"attack"},{"v":2,"type":"decision/commit","playerId":"a","decisionId":"d4","choice":"guard"},{"v":2,"type":"decision/commit","playerId":"a","decisionId":"d5","choice":"item:battle-tonic"},{"v":2,"type":"decision/commit","playerId":"b","decisionId":"d5","choice":"counter"},{"v":2,"type":"decision/commit","playerId":"b","decisionId":"d6","choice":"spell"},{"v":2,"type":"decision/commit","playerId":"a","decisionId":"d6","choice":"ward"},{"v":2,"type":"decision/commit","playerId":"a","decisionId":"d7","choice":"strike"},{"v":2,"type":"decision/commit","playerId":"b","decisionId":"d7","choice":"guard"},{"v":2,"type":"decision/commit","playerId":"b","decisionId":"d8","choice":"strike"},{"v":2,"type":"timeout","playerId":"system","decisionId":"d8"},{"v":2,"type":"decision/commit","playerId":"a","decisionId":"d9","choice":"attack"},{"v":2,"type":"decision/commit","playerId":"b","decisionId":"d9","choice":"ward"},{"v":2,"type":"system/grant","playerId":"system","target":"b","grant":{"kind":"xp","amount":150}},{"v":2,"type":"system/grant","playerId":"system","target":"b","grant":{"kind":"gold","amount":200}},{"v":2,"type":"system/grant","playerId":"system","target":"b","grant":{"kind":"item","id":"big-herb"}},{"v":2,"type":"system/grant","playerId":"system","target":"b","grant":{"kind":"item","id":"antidote"}},{"v":2,"type":"system/grant","playerId":"system","target":"b","grant":{"kind":"item","id":"cursed-wig"}},{"v":2,"type":"system/grant","playerId":"system","target":"b","grant":{"kind":"item","id":"swift-boots"}},{"v":2,"type":"system/grant","playerId":"system","target":"b","grant":{"kind":"item","id":"herb"}},{"v":2,"type":"system/grant","playerId":"system","target":"b","grant":{"kind":"gear","id":"mage-ring"}},{"v":2,"type":"loadout/switchClass","playerId":"b","classId":"mage","discard":["cursed-wig"]},{"v":2,"type":"loadout/discard","playerId":"a","itemId":"herb"}]
+STATE {"hidden":{"combatSeq":2,"decision":null,"decisionSeq":9,"rng":[381008064,1647848347,2126958140,733868239]},"private":{"a":{"bag":[],"prompt":null,"scrolls":[]},"b":{"bag":["herb","smoke-bomb","big-herb","antidote","swift-boots","herb"],"prompt":null,"scrolls":[]}},"public":{"activePlayer":"a","characters":{"a":{"accessory":null,"battleSpell":"spark","classId":"warrior","gold":120,"hp":8,"level":1,"mastery":{"cleric":0,"mage":0,"shadowpriest":0,"spellblade":0,"thief":0,"warrior":2},"portable":null,"shield":"pot-lid","wardSpell":null,"weapon":"wooden-sword","xp":25},"b":{"accessory":"mage-ring","battleSpell":"spark","classId":"mage","gold":200,"hp":0,"level":3,"mastery":{"cleric":0,"mage":0,"shadowpriest":0,"spellblade":0,"thief":0,"warrior":0},"portable":null,"shield":"pot-lid","wardSpell":null,"weapon":"wooden-sword","xp":150}},"choiceHistory":{"a":{"attack":2,"counter":0,"guard":2,"spell":0,"strike":2,"ward":1},"b":{"attack":1,"counter":1,"guard":1,"spell":1,"strike":1,"ward":1}},"combat":null,"lastReveal":{"choices":{"a":"attack","b":"ward"},"decisionId":"d9","kind":"combat/exchange","timedOut":[]},"pending":null,"phase":"turn","players":["a","b"],"turn":1},"v":2}

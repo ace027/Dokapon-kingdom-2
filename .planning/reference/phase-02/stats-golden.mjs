@@ -1,0 +1,16 @@
+import {TEST_RULES as R} from './test-rules.mjs';
+import {sheetStats,npcStats} from './engine.mjs';
+const m=(o={})=>({battlemage:0,caster:0,fighter:0,...o});
+const C=(classId,level,weapon,shield,accessory,mastery={},portable=null)=>({classId,level,mastery:m(mastery),portable,weapon,shield,accessory});
+const J=x=>JSON.stringify(x);
+console.log('fighter L1 starter',J(sheetStats(R,C('fighter',1,'stick','lid',null))));
+console.log('caster L1 starter',J(sheetStats(R,C('caster',1,'stick','lid','charm'))));
+console.log('battlemage L1 stick/mirror/band',J(sheetStats(R,C('battlemage',1,'stick','mirror','band'))));
+console.log('fighter L5 sword/lid rank2 (3 wins)',J(sheetStats(R,C('fighter',5,'sword','lid',null,{fighter:3}))));
+console.log('caster L3 portable fighter(rank5) + caster rank3',J(sheetStats(R,C('caster',3,'stick','lid',null,{fighter:18,caster:7},'fighter'))));
+console.log('battlemage L4 rank3 (7 wins)',J(sheetStats(R,C('battlemage',4,'sword','lid',null,{battlemage:7}))));
+console.log('slime',J(npcStats(R,{kind:'monster',id:'slime',senior:false})));
+console.log('crab senior',J(npcStats(R,{kind:'monster',id:'crab',senior:true})));
+console.log('gull',J(npcStats(R,{kind:'monster',id:'gull',senior:false})));
+console.log('lich t2',J(npcStats(R,{kind:'guardian',id:'lich',townTier:2})));
+console.log('enforcer L5',J(npcStats(R,{kind:'enforcer',level:5})));
