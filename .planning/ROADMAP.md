@@ -3,7 +3,7 @@
 ## Phases
 
 - [x] Phase 1: Foundations & Deterministic Engine (4 plans)
-- [ ] Phase 2: Combat Core & Balance Sim (6 plans)
+- [x] Phase 2: Combat Core & Balance Sim (6 plans)
 - [ ] Phase 3: Board, Economy & CPU AI Core (6 plans)
 - [ ] Phase 4: Graybox Client & Hot-Seat Play (5 plans)
 - [ ] Phase 5: Griefing, Cursed Crown & Boss (5 plans)
@@ -120,7 +120,7 @@
 | Phase | Plans | Completed | Status |
 |-------|-------|-----------|--------|
 | 1. Foundations & Deterministic Engine | 4 | 4 | Complete (reviewed) |
-| 2. Combat Core & Balance Sim | 6 | 0 | Not started |
+| 2. Combat Core & Balance Sim | 6 | 6 | Executed (pending review) |
 | 3. Board, Economy & CPU AI Core | 6 | 0 | Not started |
 | 4. Graybox Client & Hot-Seat Play | 5 | 0 | Not started |
 | 5. Griefing, Cursed Crown & Boss | 5 | 0 | Not started |

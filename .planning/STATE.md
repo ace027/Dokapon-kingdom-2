@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 2 of 8 (planned)
-- **Status**: Phase 2 planned — 6 plans across 4 waves (W1a → W1b → W2 ∥ → W3 ∥ + closing step)
-- **Last Activity**: Phase 2 planning (2026-09-29)
+- **Phase**: 2 of 8 (executed, pending review)
+- **Status**: Phase 2 executed — 6/6 plans (W1a, W1b, W2 ∥, W3 ∥, closing step); awaiting `/legion:review`
+- **Last Activity**: Phase 2 build (2026-09-29)
 
 ## Progress
 ```
-[####·································] 11% — 4/37 plans complete
+[#########·····························] 27% — 10/37 plans complete
 ```
 
 ## Recent Decisions
@@ -27,10 +27,11 @@
 - Phase 2 spec: critiqued (CAUTION) and revised; verify-spec 56/56; golden oracle .planning/reference/phase-02; D1 gate = Hard ≥70% of decisive AND ≤40% draws per mirror; D2 Ward without ward spell = Guard multiplier; 20 NPC definitions
 - Phase 2 plans: critiqued (CAUTION/CAUTION) and revised; parallel waves run in separate git worktrees, orchestrator merges, runs full pipeline, pushes and checks CI after every wave
 - Golden policy after Phase 2: reference oracle frozen after 02-05 closing step; later phases re-pin from the TS engine; balance gates become thresholds
+- Phase 2 executed: 6/6 plans on Sonnet 5.5 (02-01a 6a5e79f, 02-01b 6fb651c, 02-02 5cbfba2, 02-03 fba59f4, 02-04 13c0ef6, 02-05 2791724 + closing 9c4f5e0); 1187 tests; rulesHash 84a995db; goldens matched first run; CI green on 6a5e79f (run 21), 6fb651c (22), 2dd9397 (23), 6f114e3 (25); reference oracle now frozen
 - 01-04 deviation accepted: seated player with no note renders `your note: (none)` (plan-internal conflict; render contract wins)
 
 ## Next Action
-Run `/legion:build` to execute Phase 2: Combat Core & Balance Sim (see 02-CONTEXT.md "Wave execution protocol")
+Run `/legion:review` to review Phase 2: Combat Core & Balance Sim
 
 ## GitHub
 - Phase 1 issue: #1 — https://github.com/ace027/Dokapon-kingdom-2/issues/1 (label: legion) — closed after review
