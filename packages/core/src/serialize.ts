@@ -1,13 +1,16 @@
-import { sheetStats } from "./combat/stats";
+import { attackerOptions, DEFENDER_OPTIONS, exchangeRoles, requiredFor } from "./combat/options";
+import { npcStats, sheetStats } from "./combat/stats";
 import { fnv1a32 } from "./hash";
-import { COMMANDS, levelForXp, masteryRank, type GearSlot, type Rules } from "./rules";
+import { COMMANDS, levelForXp, masteryRank, STAT_KEYS, type GearSlot, type Rules } from "./rules";
 import {
   CHOICE_PATTERN,
   MAX_COUNTER,
   MAX_STAT,
   SCHEMA_VERSION,
   type CharacterPublic,
+  type CombatState,
   type GameState,
+  type NpcRef,
 } from "./types";
 import { clip, isPlainObject, isUnique, ownGet, playersError } from "./validation";
 
@@ -100,6 +103,11 @@ const PROMPT_KEYS = ["decisionId", "options", "default"] as const;
 const PENDING_KEYS = ["id", "kind", "required", "committed"] as const;
 const HIDDEN_DECISION_KEYS = ["id", "choices"] as const;
 const LAST_REVEAL_KEYS = ["decisionId", "kind", "choices", "timedOut"] as const;
+const COMBAT_KEYS = ["id", "round", "exchange", "first", "sides"] as const;
+const PLAYER_SIDE_KEYS = ["kind", "playerId", "mods"] as const;
+const NPC_SIDE_KEYS = ["kind", "npc", "stats", "hp", "mods"] as const;
+const MODS_KEYS = ["atk", "def", "mag", "spd", "poison", "stun"] as const;
+const MOD_STATS = ["atk", "def", "mag", "spd"] as const;
 const GEAR_SLOTS: readonly GearSlot[] = ["weapon", "shield", "accessory"];
 const DECISION_KINDS: readonly unknown[] = ["poll", "combat/exchange"];
 const MAX_PROMPT_OPTIONS = 24;
@@ -330,12 +338,140 @@ function checkLastReveal(value: unknown, players: readonly string[]): void {
   if (!subsetOf(timedOut, keys)) bad("lastReveal.timedOut must be a subset of the choice keys");
 }
 
+function checkMods(rules: Rules, mods: unknown, where: string): void {
+  const m = asObject(mods, `${where}.mods`);
+  exactKeys(m, MODS_KEYS, `${where}.mods`);
+  for (const stat of MOD_STATS) {
+    if (!isIntIn(m[stat], rules.combat.modMinBp, rules.combat.modMaxBp)) {
+      bad(`${where}.mods.${stat} out of range`);
+    }
+  }
+  if (typeof m.poison !== "boolean") bad(`${where}.mods.poison must be a boolean`);
+  if (typeof m.stun !== "boolean") bad(`${where}.mods.stun must be a boolean`);
+}
+
+/** Validates an NPC reference (ids exist, tiers and levels in range) and returns it. */
+function checkNpcRef(rules: Rules, value: unknown, where: string): NpcRef {
+  const npc = asObject(value, `${where}.npc`);
+  switch (npc.kind) {
+    case "monster":
+      exactKeys(npc, ["kind", "id", "senior"], `${where}.npc`);
+      if (typeof npc.id !== "string" || ownGet(rules.monsters, npc.id) === undefined) {
+        bad(`${where}.npc is an unknown monster`);
+      }
+      if (typeof npc.senior !== "boolean") bad(`${where}.npc.senior must be a boolean`);
+      break;
+    case "guardian":
+      exactKeys(npc, ["kind", "id", "townTier"], `${where}.npc`);
+      if (typeof npc.id !== "string" || ownGet(rules.guardians, npc.id) === undefined) {
+        bad(`${where}.npc is an unknown guardian`);
+      }
+      if (!isIntIn(npc.townTier, 1, 4)) bad(`${where}.npc.townTier out of range`);
+      break;
+    case "enforcer":
+      exactKeys(npc, ["kind", "level"], `${where}.npc`);
+      if (!isIntIn(npc.level, 1, rules.progression.maxLevel)) {
+        bad(`${where}.npc.level out of range`);
+      }
+      break;
+    default:
+      bad(`${where}.npc.kind is unknown`);
+  }
+  // safe: kind, keys and every field of the reference were verified above.
+  return npc as unknown as NpcRef;
+}
+
+function checkCombatSide(rules: Rules, value: unknown, index: number, players: readonly string[]) {
+  const where = `combat.sides[${index}]`;
+  const side = asObject(value, where);
+  if (side.kind === "player") {
+    exactKeys(side, PLAYER_SIDE_KEYS, where);
+    if (typeof side.playerId !== "string" || !players.includes(side.playerId)) {
+      bad(`${where}.playerId is not a seated player`);
+    }
+    checkMods(rules, side.mods, where);
+    return;
+  }
+  if (index === 0) bad("combat.sides[0] must be a player side");
+  if (side.kind !== "npc") bad(`${where}.kind is unknown`);
+  exactKeys(side, NPC_SIDE_KEYS, where);
+  const npc = checkNpcRef(rules, side.npc, where);
+  const stats = asObject(side.stats, `${where}.stats`);
+  exactKeys(stats, STAT_KEYS, `${where}.stats`);
+  const expected = npcStats(rules, npc);
+  if (!STAT_KEYS.every((key) => stats[key] === expected[key])) {
+    bad(`${where}.stats does not match the npc snapshot`);
+  }
+  if (!isIntIn(side.hp, 1, expected.hp)) bad(`${where}.hp out of range`);
+  checkMods(rules, side.mods, where);
+}
+
+function sameStrings(a: readonly unknown[], b: readonly unknown[]): boolean {
+  return a.length === b.length && a.every((item, i) => item === b[i]);
+}
+
+/** Check 8: the combat state and its consistency with the open `combat/exchange` decision. */
+function checkCombat(
+  rules: Rules,
+  pub: Obj,
+  hidden: Obj,
+  priv: Obj,
+  chars: Obj,
+  players: readonly string[],
+): void {
+  const pending = isPlainObject(pub.pending) ? pub.pending : null;
+  const combatDecision = pending !== null && pending.kind === "combat/exchange";
+  if (pub.combat === null) {
+    if (combatDecision) bad("combat/exchange decision requires combat");
+    return;
+  }
+  if (pending === null || !combatDecision) bad("combat requires a combat/exchange decision");
+  const combat = asObject(pub.combat, "combat");
+  exactKeys(combat, COMBAT_KEYS, "combat");
+  if (combat.id !== `c${hidden.combatSeq as number}`) bad("combat.id does not match combatSeq");
+  if (!isIntIn(combat.round, 1, rules.combat.maxRounds)) bad("combat.round out of range");
+  if (!isIntIn(combat.exchange, 1, 2)) bad("combat.exchange must be 1 or 2");
+  if (!isIntIn(combat.first, 0, 1)) bad("combat.first must be 0 or 1");
+  const sides = asArray(combat.sides, "combat.sides");
+  if (sides.length !== 2) bad("combat.sides must hold two sides");
+  sides.forEach((side, index) => {
+    checkCombatSide(rules, side, index, players);
+  });
+  const playerIds = sides.flatMap((side) => {
+    const s = side as Obj;
+    return s.kind === "player" ? [s.playerId as string] : [];
+  });
+  if (!isUnique(playerIds)) bad("combat.sides must not repeat a player");
+  for (const id of playerIds) {
+    if ((ownGet(chars, id) as Obj).hp === 0) bad(`combat side ${clip(id)} is knocked out`);
+  }
+
+  // safe: every side, mod and reference was verified above.
+  const state = combat as unknown as CombatState;
+  const required = requiredFor(state);
+  if (!sameStrings(pending.required as unknown[], required)) {
+    bad("pending.required does not match the combat exchange");
+  }
+  for (const id of required) {
+    const character = ownGet(chars, id) as CharacterPublic;
+    const prompt = (ownGet(priv, id) as Obj).prompt as Obj;
+    const attacker = state.sides[exchangeRoles(state).attacker];
+    const bag = (ownGet(priv, id) as Obj).bag as string[];
+    const isAttacker = attacker.kind === "player" && attacker.playerId === id;
+    const options = isAttacker ? attackerOptions(rules, character, bag) : [...DEFENDER_OPTIONS];
+    const dflt = isAttacker ? "attack" : "guard";
+    if (!sameStrings(prompt.options as unknown[], options) || prompt.default !== dflt) {
+      bad(`private.${clip(id)}.prompt does not match the combat exchange`);
+    }
+  }
+}
+
 /**
  * Parses and fully validates a v2 save against `rules`: `JSON.parse` (a `SyntaxError`
  * propagates), a plain object (`TypeError`), `v === 2` (`SchemaVersionError`), then checks 1-8 in
  * spec order, each throwing `TypeError("deserialize: <unique message>")`. Exact own keys at every
- * object level; every player- or content-keyed lookup goes through `ownGet`. W1b check 8: combat
- * must be null, and a `combat/exchange` decision is rejected (02-03 replaces it).
+ * object level; every player- or content-keyed lookup goes through `ownGet`. Check 8 validates
+ * the combat state against the open `combat/exchange` decision.
  */
 export function deserialize(json: string, rules: Rules): GameState {
   const root: unknown = JSON.parse(json);
@@ -385,11 +521,8 @@ export function deserialize(json: string, rules: Rules): GameState {
   // 7. last reveal
   checkLastReveal(pub.lastReveal, players);
 
-  // 8. combat (W1b: none is accepted)
-  if (pub.combat !== null) bad("combat must be null");
-  if (isPlainObject(pub.pending) && pub.pending.kind === "combat/exchange") {
-    bad("combat decisions unsupported");
-  }
+  // 8. combat
+  checkCombat(rules, pub, hidden, priv, characters, players);
 
   // safe: every key, type and cross-reference of GameState was verified above.
   return root as unknown as GameState;

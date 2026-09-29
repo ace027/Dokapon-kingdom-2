@@ -7,7 +7,14 @@ import { reduce } from "../src/reducer";
 import type { GameState } from "../src/types";
 import { ownGet } from "../src/validation";
 import { eventsFor, redactEvent, viewFor } from "../src/views";
-import { arbGame, PLAYER_POOL, SENTINELS, seatIds } from "./arbitraries";
+import {
+  arbGame,
+  COMBAT_GOLDEN_ACTIONS,
+  COMBAT_GOLDEN_SETTINGS,
+  PLAYER_POOL,
+  SENTINELS,
+  seatIds,
+} from "./arbitraries";
 import { applyAll, newGame } from "./fixtures/build";
 import { TEST_RULES } from "./fixtures/test-rules";
 import { usePurityTraps } from "./purity-traps";
@@ -175,6 +182,70 @@ describe("viewFor during an open poll", () => {
   });
 });
 
+describe("viewFor during a combat", () => {
+  // The golden's actions 0-4: d2 is open, p1 committed the private choice item:tonic, p2 has not.
+  const golden = applyAll(newGame(COMBAT_GOLDEN_SETTINGS), COMBAT_GOLDEN_ACTIONS.slice(0, 5));
+  const { state } = golden;
+
+  it("shows each player only their own combat prompt", () => {
+    const own = viewFor(state, "p1").self?.prompt;
+    expect(own?.decisionId).toBe("d2");
+    expect(own?.options).toContain("item:tonic");
+    expect(viewFor(state, "p2").self?.prompt).toEqual({
+      decisionId: "d2",
+      options: ["guard", "counter", "ward"],
+      default: "guard",
+    });
+  });
+
+  it("never shows a player the opponent's bag items, options or committed choice", () => {
+    for (const viewer of ["p2", "spectator"]) {
+      const json = JSON.stringify(viewFor(state, viewer));
+      expect(json).not.toContain("tonic");
+      expect(json).not.toContain("item:");
+      expect(json).not.toContain('"hidden"');
+    }
+    const view = viewFor(state, "p2");
+    expect(view.public.pending?.committed).toEqual(["p1"]);
+    expect(view.public.combat?.id).toBe("c1");
+    expect(view.counts.p1).toEqual({ bag: 2, scrolls: 0 });
+  });
+
+  it("gives a spectator the public combat state and no prompt", () => {
+    const view = viewFor(state, "spectator");
+    expect(view.self).toBeNull();
+    expect(view.public.combat).toEqual(state.public.combat);
+  });
+
+  it("shows BagUpdated to its owner only and every other combat event to everyone", () => {
+    const events = applyAll(newGame(COMBAT_GOLDEN_SETTINGS), COMBAT_GOLDEN_ACTIONS).events;
+    const bags = events.filter(
+      (e): e is Extract<GameEvent, { type: "BagUpdated" }> => e.type === "BagUpdated",
+    );
+    expect(bags.length).toBeGreaterThan(0);
+    for (const event of bags) {
+      const owner = event.playerId;
+      const other = owner === "p1" ? "p2" : "p1";
+      expect(redactEvent(event, owner)).toBe(event);
+      expect(redactEvent(event, other)).toBeNull();
+      expect(redactEvent(event, "spectator")).toBeNull();
+    }
+    const publicTypes = new Set([
+      "CombatStarted",
+      "RoundStarted",
+      "ExchangeSkipped",
+      "ExchangeResolved",
+      "RoundEnded",
+      "CombatEnded",
+      "CharacterSet",
+    ]);
+    for (const event of events.filter((e) => publicTypes.has(e.type))) {
+      expect(redactEvent(event, "spectator")).toBe(event);
+    }
+    expect(eventsFor(events, "spectator").some((e) => e.type === "PromptOpened")).toBe(false);
+  });
+});
+
 describe("structural redaction property", () => {
   const VIEWERS = ["spectator", ...PLAYER_POOL];
 
@@ -218,6 +289,7 @@ describe("structural redaction property", () => {
             for (const event of eventsFor(events, viewer)) {
               if (event.type === "PromptOpened") expect(event.playerId).toBe(viewer);
               if (event.type === "ChoiceCommitted") expect("choice" in event).toBe(false);
+              if (event.type === "BagUpdated") expect(event.playerId).toBe(viewer);
             }
           }
         };

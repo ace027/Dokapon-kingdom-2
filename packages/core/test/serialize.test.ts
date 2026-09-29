@@ -9,6 +9,7 @@ import {
 import { fnv1a32 } from "../src/hash";
 import { replay } from "../src/replay";
 import { MAX_COUNTER, type GameSettings, type GameState } from "../src/types";
+import { COMBAT_GOLDEN_ACTIONS, COMBAT_GOLDEN_SETTINGS } from "./arbitraries";
 import { applyAll, FIXTURE_SETTINGS, newGame } from "./fixtures/build";
 import { TEST_RULES } from "./fixtures/test-rules";
 import { usePurityTraps } from "./purity-traps";
@@ -139,10 +140,53 @@ const revealBase = applyAll(newGame(), [
   { v: 2, type: "timeout", playerId: "system", decisionId: "d1" },
 ]).state;
 
-const BASES: Readonly<Record<"turn" | "poll" | "reveal", GameState>> = {
+const COMBAT_START = (opponent: unknown) => ({
+  v: 2,
+  type: "combat/start",
+  playerId: "system",
+  attacker: "p1",
+  opponent,
+});
+/** Base 4: mid-combat, the golden's actions 0-3: d2 open, both players prompted, none committed. */
+const combatBase = applyAll(
+  newGame(COMBAT_GOLDEN_SETTINGS),
+  COMBAT_GOLDEN_ACTIONS.slice(0, 4),
+).state;
+/** Base 5: the golden's actions 0-4: d2 open with p1 committed (hidden.decision.choices). */
+const combatCommittedBase = applyAll(
+  newGame(COMBAT_GOLDEN_SETTINGS),
+  COMBAT_GOLDEN_ACTIONS.slice(0, 5),
+).state;
+/** Base 6: a player vs the gull (the golden's actions 0-12): the npc attacks, only p2 is prompted. */
+const npcBase = applyAll(newGame(COMBAT_GOLDEN_SETTINGS), COMBAT_GOLDEN_ACTIONS.slice(0, 13)).state;
+/** Bases 7-8: a guardian (town tier 2) and the Crown Enforcer (level 5). */
+const guardianBase = applyAll(newGame(), [
+  COMBAT_START({ kind: "npc", npc: { kind: "guardian", id: "lich", townTier: 2 } }),
+]).state;
+const enforcerBase = applyAll(newGame(), [
+  COMBAT_START({ kind: "npc", npc: { kind: "enforcer", level: 5 } }),
+]).state;
+
+/** The mid-combat base's `public.combat` as plain JSON (for a well-formed combat on a turn base). */
+function combatJson(): unknown {
+  const parsed = JSON.parse(serialize(combatBase)) as { public: { combat: unknown } };
+  return parsed.public.combat;
+}
+
+const BASES: Readonly<
+  Record<
+    "turn" | "poll" | "reveal" | "combat" | "combatCommitted" | "npc" | "guardian" | "enforcer",
+    GameState
+  >
+> = {
   turn: turnBase,
   poll: pollBase,
   reveal: revealBase,
+  combat: combatBase,
+  combatCommitted: combatCommittedBase,
+  npc: npcBase,
+  guardian: guardianBase,
+  enforcer: enforcerBase,
 };
 
 type Op =
@@ -580,12 +624,172 @@ const ROWS: readonly Row[] = [
     [set("public.lastReveal.timedOut", ["ghost"])],
     "deserialize: lastReveal.timedOut must be a subset of the choice keys",
   ),
-  // 8. combat (W1b: none accepted)
-  row("turn", [set("public.combat", {})], "deserialize: combat must be null"),
+  // 8. combat
   row(
-    "poll",
-    [set("public.pending.kind", "combat/exchange")],
-    "deserialize: combat decisions unsupported",
+    "turn",
+    [set("public.combat", combatJson())],
+    "deserialize: combat requires a combat/exchange decision",
+  ),
+  row(
+    "combat",
+    [set("public.combat", null)],
+    "deserialize: combat/exchange decision requires combat",
+  ),
+  row("combat", [set("public.combat", 5)], "deserialize: combat must be an object"),
+  row("combat", [del("public.combat.round")], 'deserialize: combat is missing key "round"'),
+  row("combat", [set("public.combat.zzz", 1)], 'deserialize: combat has unexpected key "zzz"'),
+  row("combat", [set("public.combat.id", "c2")], "deserialize: combat.id does not match combatSeq"),
+  row("combat", [set("public.combat.round", 0)], "deserialize: combat.round out of range"),
+  row("combat", [set("public.combat.exchange", 3)], "deserialize: combat.exchange must be 1 or 2"),
+  row("combat", [set("public.combat.first", 2)], "deserialize: combat.first must be 0 or 1"),
+  row("combat", [set("public.combat.sides", "x")], "deserialize: combat.sides must be an array"),
+  row(
+    "combat",
+    [set("public.combat.sides", [{}])],
+    "deserialize: combat.sides must hold two sides",
+  ),
+  row(
+    "combat",
+    [set("public.combat.sides.0", { kind: "npc" })],
+    "deserialize: combat.sides[0] must be a player side",
+  ),
+  row(
+    "combat",
+    [del("public.combat.sides.0.mods")],
+    'deserialize: combat.sides[0] is missing key "mods"',
+  ),
+  row(
+    "combat",
+    [set("public.combat.sides.1.kind", "boss")],
+    "deserialize: combat.sides[1].kind is unknown",
+  ),
+  row(
+    "combat",
+    [set("public.combat.sides.1.playerId", "p1")],
+    "deserialize: combat.sides must not repeat a player",
+  ),
+  row(
+    "combat",
+    [set("public.combat.sides.1.playerId", "ghost")],
+    "deserialize: combat.sides[1].playerId is not a seated player",
+  ),
+  row(
+    "combat",
+    [set("public.combat.sides.0.mods", 5)],
+    "deserialize: combat.sides[0].mods must be an object",
+  ),
+  row(
+    "combat",
+    [del("public.combat.sides.0.mods.spd")],
+    'deserialize: combat.sides[0].mods is missing key "spd"',
+  ),
+  row(
+    "combat",
+    [set("public.combat.sides.0.mods.atk", 5001)],
+    "deserialize: combat.sides[0].mods.atk out of range",
+  ),
+  row(
+    "combat",
+    [set("public.combat.sides.1.mods.def", -5001)],
+    "deserialize: combat.sides[1].mods.def out of range",
+  ),
+  row(
+    "combat",
+    [set("public.combat.sides.0.mods.stun", "no")],
+    "deserialize: combat.sides[0].mods.stun must be a boolean",
+  ),
+  row(
+    "combat",
+    [set("public.combat.sides.1.mods.poison", 1)],
+    "deserialize: combat.sides[1].mods.poison must be a boolean",
+  ),
+  row("combat", [set("public.characters.p1.hp", 0)], "deserialize: combat side p1 is knocked out"),
+  row(
+    "combat",
+    [set("public.pending.required", ["p2", "p1"])],
+    "deserialize: pending.required does not match the combat exchange",
+  ),
+  row(
+    "combat",
+    [set("private.p2.prompt.options", ["guard", "counter"])],
+    "deserialize: private.p2.prompt does not match the combat exchange",
+  ),
+  row(
+    "combat",
+    [set("private.p1.prompt.options", ["attack", "strike", "spell", "flee"])],
+    "deserialize: private.p1.prompt does not match the combat exchange",
+  ),
+  row(
+    "npc",
+    [set("public.combat.sides.1.npc.id", "toString")],
+    "deserialize: combat.sides[1].npc is an unknown monster",
+  ),
+  row(
+    "npc",
+    [set("public.combat.sides.1.npc.senior", "yes")],
+    "deserialize: combat.sides[1].npc.senior must be a boolean",
+  ),
+  row(
+    "npc",
+    [set("public.combat.sides.1.npc.zzz", 1)],
+    'deserialize: combat.sides[1].npc has unexpected key "zzz"',
+  ),
+  row(
+    "npc",
+    [set("public.combat.sides.1.npc.kind", "boss")],
+    "deserialize: combat.sides[1].npc.kind is unknown",
+  ),
+  row(
+    "npc",
+    [set("public.combat.sides.1.npc", 5)],
+    "deserialize: combat.sides[1].npc must be an object",
+  ),
+  row(
+    "combat",
+    [set("public.combat.sides.0", 5)],
+    "deserialize: combat.sides[0] must be an object",
+  ),
+  row(
+    "npc",
+    [set("public.combat.sides.1.stats", 5)],
+    "deserialize: combat.sides[1].stats must be an object",
+  ),
+  row(
+    "guardian",
+    [set("public.combat.sides.1.npc.zzg", 1)],
+    'deserialize: combat.sides[1].npc has unexpected key "zzg"',
+  ),
+  row(
+    "enforcer",
+    [set("public.combat.sides.1.npc.zze", 1)],
+    'deserialize: combat.sides[1].npc has unexpected key "zze"',
+  ),
+  row(
+    "npc",
+    [set("public.combat.sides.1.stats.atk", 999)],
+    "deserialize: combat.sides[1].stats does not match the npc snapshot",
+  ),
+  row(
+    "npc",
+    [del("public.combat.sides.1.stats.luck")],
+    'deserialize: combat.sides[1].stats is missing key "luck"',
+  ),
+  row("npc", [set("public.combat.sides.1.hp", 0)], "deserialize: combat.sides[1].hp out of range"),
+  row("npc", [del("public.combat.sides.1.hp")], 'deserialize: combat.sides[1] is missing key "hp"'),
+  row(
+    "guardian",
+    [set("public.combat.sides.1.npc.townTier", 5)],
+    "deserialize: combat.sides[1].npc.townTier out of range",
+  ),
+  row(
+    "guardian",
+    [set("public.combat.sides.1.npc.id", "nope")],
+    "deserialize: combat.sides[1].npc is an unknown guardian",
+  ),
+  row(
+    "enforcer",
+    [set("public.combat.sides.1.npc.level", 11)],
+    "deserialize: combat.sides[1].npc.level out of range",
   ),
 ];
 
@@ -754,5 +958,94 @@ describe("deserialize: boundaries and prototype-member ids (PIT-002)", () => {
       ],
     ).state;
     expect(deserialize(serialize(proto), TEST_RULES)).toEqual(proto);
+  });
+});
+
+describe("deserialize: combat boundaries and prototype-member ids (PIT-002)", () => {
+  it("accepts round = maxRounds and rejects maxRounds + 1", () => {
+    const max = TEST_RULES.combat.maxRounds;
+    expect(() =>
+      deserialize(applyOps(combatBase, [set("public.combat.round", max)]), TEST_RULES),
+    ).not.toThrow();
+    expectRejected(
+      applyOps(combatBase, [set("public.combat.round", max + 1)]),
+      "deserialize: combat.round out of range",
+    );
+  });
+
+  it("accepts npc hp = stats.hp and rejects stats.hp + 1", () => {
+    const hp = (npcBase.public.combat?.sides[1] as { stats: { hp: number } }).stats.hp;
+    expect(() =>
+      deserialize(applyOps(npcBase, [set("public.combat.sides.1.hp", hp)]), TEST_RULES),
+    ).not.toThrow();
+    expectRejected(
+      applyOps(npcBase, [set("public.combat.sides.1.hp", hp + 1)]),
+      "deserialize: combat.sides[1].hp out of range",
+    );
+  });
+
+  it("rejects townTier 0 and enforcer level 0", () => {
+    expectRejected(
+      applyOps(guardianBase, [set("public.combat.sides.1.npc.townTier", 0)]),
+      "deserialize: combat.sides[1].npc.townTier out of range",
+    );
+    expectRejected(
+      applyOps(enforcerBase, [set("public.combat.sides.1.npc.level", 0)]),
+      "deserialize: combat.sides[1].npc.level out of range",
+    );
+  });
+
+  it("rejects a prompt whose default is not the engine default", () => {
+    expectRejected(
+      applyOps(combatBase, [set("private.p2.prompt.default", "counter")]),
+      "deserialize: private.p2.prompt does not match the combat exchange",
+    );
+  });
+
+  it("checks hidden.decision.choices of a committed combat decision", () => {
+    expectRejected(
+      applyOps(combatCommittedBase, [set("hidden.decision.choices.p1", "guard")]),
+      "deserialize: hidden.decision.choices.p1 is not one of the options",
+    );
+    expectRejected(
+      applyOps(combatCommittedBase, [set("hidden.decision.choices", {})]),
+      "deserialize: hidden.decision.choices keys do not match committed",
+    );
+  });
+
+  it.each(["toString", "constructor", "__proto__"])(
+    "treats %s as an unknown monster and guardian id",
+    (id) => {
+      expectRejected(
+        applyOps(npcBase, [set("public.combat.sides.1.npc.id", id)]),
+        "deserialize: combat.sides[1].npc is an unknown monster",
+      );
+      expectRejected(
+        applyOps(guardianBase, [set("public.combat.sides.1.npc.id", id)]),
+        "deserialize: combat.sides[1].npc is an unknown guardian",
+      );
+    },
+  );
+
+  it("round-trips combats between seats named like Object.prototype members", () => {
+    const game = newGame({
+      v: 2,
+      seed: "proto",
+      players: [
+        { id: "toString", classId: "fighter" },
+        { id: "valueOf", classId: "caster" },
+      ],
+    });
+    const combat = applyAll(game, [
+      {
+        v: 2,
+        type: "combat/start",
+        playerId: "system",
+        attacker: "valueOf",
+        opponent: { kind: "player", playerId: "toString" },
+      },
+    ]).state;
+    expect(combat.public.combat).not.toBeNull();
+    expect(deserialize(serialize(combat), TEST_RULES)).toEqual(combat);
   });
 });
