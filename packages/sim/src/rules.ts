@@ -1,7 +1,7 @@
 import type { Rules } from "@usurpia/core";
-import { KERNEL_RULES } from "./kernel-rules";
+import { loadRules } from "@usurpia/content/node";
 
-/** The single rules source for the sim CLI and tests (W1: the kernel TEST_RULES copy). */
+/** The single rules source for the sim CLI and tests: the shipped content. */
 export function replayRules(): Rules {
-  return KERNEL_RULES;
+  return loadRules();
 }
