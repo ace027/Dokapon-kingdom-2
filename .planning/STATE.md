@@ -34,4 +34,5 @@ Run `/legion:build` to execute Phase 2: Combat Core & Balance Sim (see 02-CONTEX
 
 ## GitHub
 - Phase 1 issue: #1 — https://github.com/ace027/Dokapon-kingdom-2/issues/1 (label: legion) — closed after review
+- Phase 2 issue: #2 — https://github.com/ace027/Dokapon-kingdom-2/issues/2 (label: legion)
 - GitHub access: via GitHub MCP tools (no `gh` CLI in this environment)
