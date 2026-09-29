@@ -20,6 +20,7 @@ import {
   type FighterAfter,
 } from "../combat/resolve";
 import { npcDef, npcStats } from "../combat/stats";
+import { awardVictory, progressionEvent, victoryReward } from "../progression";
 import { onlyPlayers, PUBLIC, type GameEvent } from "../events";
 import type { Opponent } from "../actions";
 import { DEFEND_COMMANDS, type AttackCommand, type DefendCommand, type Rules } from "../rules";
@@ -245,7 +246,7 @@ export function endCombat(
   outcome: "ko" | "fled" | "draw",
   winner: 0 | 1 | null,
   fled: 0 | 1 | null,
-  _rules: Rules,
+  rules: Rules,
   events: GameEvent[],
 ): GameState {
   const combat = activeCombat(state);
@@ -260,9 +261,34 @@ export function endCombat(
     hp: hpPair(state),
   });
   const closed: GameState = { ...state, public: { ...state.public, combat: null } };
-  // 02-04 inserts the victory reward here: when `outcome === "ko"` and `winner`'s side (read from
-  // `combat.sides`) is a player, apply the reward and append its events after `CombatEnded`.
-  return closed;
+  if (outcome !== "ko" || winner === null) return closed;
+  return rewardWinner(closed, combat.sides, winner, rules, events);
+}
+
+/** Appends the victory events after `CombatEnded` when the KO winner is a player (NPC wins pay nothing). */
+function rewardWinner(
+  state: GameState,
+  sides: CombatState["sides"],
+  winner: 0 | 1,
+  rules: Rules,
+  events: GameEvent[],
+): GameState {
+  const winning = sides[winner];
+  const loser = sides[winner === 0 ? 1 : 0];
+  if (winning.kind !== "player") return state;
+  const character = ownGet(state.public.characters, winning.playerId);
+  if (character === undefined) return state;
+  const loserLevel =
+    loser.kind === "player" ? (ownGet(state.public.characters, loser.playerId)?.level ?? 0) : 0;
+  const award = awardVictory(rules, character, victoryReward(rules, loser, loserLevel));
+  for (const event of award.events) events.push(progressionEvent(winning.playerId, event));
+  return {
+    ...state,
+    public: {
+      ...state.public,
+      characters: { ...state.public.characters, [winning.playerId]: award.character },
+    },
+  };
 }
 
 /** Higher battle SPD goes first; a tie is broken by a LUCK-weighted draw. */

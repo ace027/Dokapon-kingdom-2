@@ -1,3 +1,4 @@
+import type { Grant } from "./actions";
 import type { ContentId, DefendCommand } from "./rules";
 import type { CombatSide, DecisionKind, PlayerId } from "./types";
 
@@ -14,7 +15,7 @@ export function onlyPlayers(ids: readonly PlayerId[]): Visibility {
 /**
  * Every event is `{ v: 2, type, visibility, ... }`. The five decision events are emitted by the
  * decision handlers (02-01b); the combat events and `CharacterSet`/`BagUpdated` come from 02-03;
- * later waves add the rest. `PromptOpened` is players-only, and
+ * the progression and loadout events come from 02-04. `PromptOpened` is players-only, and
  * `ChoiceCommitted` never carries the choice.
  */
 export type GameEvent =
@@ -129,4 +130,65 @@ export type GameEvent =
       visibility: Visibility;
       playerId: PlayerId;
       bag: readonly ContentId[];
+    }
+  | {
+      v: 2;
+      type: "ScrollsUpdated";
+      visibility: Visibility;
+      playerId: PlayerId;
+      scrolls: readonly ContentId[];
+    }
+  | { v: 2; type: "Granted"; visibility: Visibility; playerId: PlayerId; grant: Grant }
+  | { v: 2; type: "LevelUp"; visibility: Visibility; playerId: PlayerId; level: number }
+  | {
+      v: 2;
+      type: "VictoryRewarded";
+      visibility: Visibility;
+      playerId: PlayerId;
+      xp: number;
+      gold: number;
+      classId: ContentId;
+      masteryWins: number;
+    }
+  | {
+      v: 2;
+      type: "MasteryRankUp";
+      visibility: Visibility;
+      playerId: PlayerId;
+      classId: ContentId;
+      rank: number;
+    }
+  | {
+      v: 2;
+      type: "HybridUnlocked";
+      visibility: Visibility;
+      playerId: PlayerId;
+      classId: ContentId;
+    }
+  | {
+      v: 2;
+      type: "ClassSwitched";
+      visibility: Visibility;
+      playerId: PlayerId;
+      from: ContentId;
+      to: ContentId;
+      fee: number;
+      hp: number;
+    }
+  | {
+      v: 2;
+      type: "ItemUsed";
+      visibility: Visibility;
+      playerId: PlayerId;
+      itemId: ContentId;
+      healed: number;
+      hp: number;
+    }
+  | {
+      v: 2;
+      type: "PortableSet";
+      visibility: Visibility;
+      playerId: PlayerId;
+      classId: ContentId | null;
+      hp: number;
     };

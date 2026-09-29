@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { reduce } from "../src/reducer";
 import { deserialize, serialize } from "../src/serialize";
+import type { Rules } from "../src/rules";
 import { MAX_COUNTER, type GameState } from "../src/types";
 import { applyAll, newGame } from "./fixtures/build";
 import { TEST_RULES } from "./fixtures/test-rules";
@@ -163,5 +164,93 @@ describe("saturating combat counters", () => {
     expect(state.public.characters.p1?.gold).toBe(MAX_COUNTER);
     expect(state.public.characters.p2?.gold).toBe(90);
     expect(deserialize(serialize(state), TEST_RULES)).toEqual(state);
+  });
+});
+
+describe("system/grant bounds", () => {
+  const grant = (g: unknown) => ({
+    v: 2,
+    type: "system/grant",
+    playerId: "system",
+    target: "p1",
+    grant: g,
+  });
+
+  it("rejects a gold grant that would pass MAX_COUNTER and accepts one landing exactly on it", () => {
+    const base = withValue(newGame(), "public.characters.p1.gold", MAX_COUNTER - 5);
+    fails(base, grant({ kind: "gold", amount: 10 }), "gold would exceed MAX_COUNTER");
+    const exact = reduce(base, grant({ kind: "gold", amount: 5 }), TEST_RULES);
+    expect(exact.ok).toBe(true);
+    if (!exact.ok) return;
+    expect(exact.state.public.characters.p1?.gold).toBe(MAX_COUNTER);
+    expect(deserialize(serialize(exact.state), TEST_RULES)).toEqual(exact.state);
+  });
+
+  it("rejects an xp grant that would pass MAX_COUNTER and accepts one landing exactly on it", () => {
+    const json = JSON.parse(serialize(newGame())) as {
+      public: { characters: { p1: Record<string, unknown> } };
+    };
+    json.public.characters.p1.level = 10;
+    json.public.characters.p1.xp = MAX_COUNTER - 5;
+    const base = deserialize(JSON.stringify(json), TEST_RULES);
+    fails(base, grant({ kind: "xp", amount: 10 }), "xp would exceed MAX_COUNTER");
+    const exact = reduce(base, grant({ kind: "xp", amount: 5 }), TEST_RULES);
+    expect(exact.ok).toBe(true);
+    if (!exact.ok) return;
+    expect(exact.state.public.characters.p1?.xp).toBe(MAX_COUNTER);
+    expect(exact.events.map((e) => e.type)).toEqual(["Granted"]);
+    expect(deserialize(serialize(exact.state), TEST_RULES)).toEqual(exact.state);
+  });
+});
+
+describe("saturating reward counters", () => {
+  // every monster has 1 hp, 0 def and 0 spd, so one Attack from p1 ends the combat
+  type Mutable<T> = { -readonly [K in keyof T]: Mutable<T[K]> };
+  const fragile = JSON.parse(JSON.stringify(TEST_RULES)) as Mutable<Rules>;
+  for (const m of Object.values(fragile.monsters)) {
+    m.statBp = { hp: 1, atk: 10000, def: 1, mag: 10000, spd: 1, luck: 10000 };
+  }
+
+  /** p1 at the ceiling of xp (level 10), gold and fighter mastery, hp 1 (still below max). */
+  function atCeiling(): GameState {
+    const json: unknown = JSON.parse(serialize(newGame(undefined, fragile)));
+    const c = (json as { public: { characters: { p1: Record<string, unknown> } } }).public
+      .characters.p1;
+    c.level = 10;
+    c.xp = MAX_COUNTER;
+    c.gold = MAX_COUNTER;
+    c.mastery = { battlemage: 0, caster: 0, fighter: MAX_COUNTER };
+    c.hp = 1;
+    return deserialize(JSON.stringify(json), fragile);
+  }
+
+  it("keeps xp, gold and mastery wins at MAX_COUNTER after a monster KO win", () => {
+    const { state, events } = applyAll(
+      atCeiling(),
+      [
+        {
+          v: 2,
+          type: "combat/start",
+          playerId: "system",
+          attacker: "p1",
+          opponent: { kind: "npc", npc: { kind: "monster", id: "slime", senior: false } },
+        },
+        commit("p1", "attack"),
+      ],
+      fragile,
+    );
+    expect(events.slice(-2).map((e) => e.type)).toEqual(["CombatEnded", "VictoryRewarded"]);
+    expect(events.find((e) => e.type === "VictoryRewarded")).toMatchObject({
+      xp: 20,
+      gold: 30,
+      masteryWins: MAX_COUNTER,
+    });
+    expect(state.public.characters.p1).toMatchObject({
+      xp: MAX_COUNTER,
+      gold: MAX_COUNTER,
+      level: 10,
+    });
+    expect(state.public.characters.p1?.mastery.fighter).toBe(MAX_COUNTER);
+    expect(deserialize(serialize(state), fragile)).toEqual(state);
   });
 });

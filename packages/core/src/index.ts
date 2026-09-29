@@ -53,6 +53,23 @@ export {
   type Fighter,
   type FighterAfter,
 } from "./combat/resolve";
+export {
+  applyXp,
+  awardVictory,
+  hybridsUnlocked,
+  victoryReward,
+  type ProgressionEvent,
+} from "./progression";
+export {
+  addItem,
+  addScroll,
+  equipGear,
+  isReject,
+  planClassSwitch,
+  removeItem,
+  setSpell,
+  type InvResult,
+} from "./inventory";
 export { nextInt, nextU32, seedRng, type RngState } from "./rng";
 export { fnv1a32 } from "./hash";
 export {
@@ -62,7 +79,7 @@ export {
   serialize,
   stableStringify,
 } from "./serialize";
-export { ACTION_TYPES, type Action, type ActionType, type Opponent } from "./actions";
+export { ACTION_TYPES, type Action, type ActionType, type Grant, type Opponent } from "./actions";
 export type { GameEvent, Visibility } from "./events";
 export { isAction, reduce, type ReduceResult, type Reject, type RejectCode } from "./reducer";
 export { createGame, SettingsError } from "./game";
