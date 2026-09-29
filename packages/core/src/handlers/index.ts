@@ -1,7 +1,14 @@
-import type { HandlerMap } from "./shared";
+import { decisionHandlers, resolvePoll, resolveUnsupported } from "./decision";
+import type { HandlerMap, ResolverTable } from "./shared";
 
 /**
- * The exhaustive handler map. Empty in 02-01a because `Action` is the empty union; 02-01b adds
- * the decision handlers and later waves add the rest.
+ * Reveal dispatch per decision kind. `combat/exchange` stays `resolveUnsupported` until 02-03
+ * replaces it.
  */
-export const handlers = {} satisfies HandlerMap;
+const resolvers = {
+  poll: resolvePoll,
+  "combat/exchange": resolveUnsupported,
+} satisfies ResolverTable;
+
+/** The exhaustive handler map; later waves spread their handlers in here. */
+export const handlers = { ...decisionHandlers(resolvers) } satisfies HandlerMap;

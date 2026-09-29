@@ -11,8 +11,9 @@ export function onlyPlayers(ids: readonly PlayerId[]): Visibility {
 }
 
 /**
- * Every event is `{ v: 2, type, visibility, ... }`. Only the five decision events are declared
- * in 02-01a (types only: nothing emits them until 02-01b); later waves add the rest.
+ * Every event is `{ v: 2, type, visibility, ... }`. The five decision events are emitted by the
+ * decision handlers (02-01b); later waves add the rest. `PromptOpened` is players-only, and
+ * `ChoiceCommitted` never carries the choice.
  */
 export type GameEvent =
   | {

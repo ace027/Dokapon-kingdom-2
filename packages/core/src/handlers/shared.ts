@@ -3,7 +3,14 @@ import type { GameEvent } from "../events";
 import type { Reject, RejectCode } from "../reducer";
 import type { RngState } from "../rng";
 import type { Rules } from "../rules";
-import { CHOICE_PATTERN, MAX_COUNTER, type GameState, type Phase } from "../types";
+import {
+  CHOICE_PATTERN,
+  MAX_COUNTER,
+  type DecisionKind,
+  type GameState,
+  type Phase,
+  type PlayerId,
+} from "../types";
 import { clip, isPlainObject, ownGet } from "../validation";
 
 export { clip, isPlainObject, ownGet };
@@ -29,8 +36,23 @@ export interface Handler<A extends Action> {
 
 export type ActionOf<K extends Action["type"]> = Extract<Action, { type: K }>;
 
-/** One handler per action type; empty while `Action` is the empty union. */
+/** One handler per action type. */
 export type HandlerMap = { [K in Action["type"]]: Handler<ActionOf<K>> };
+
+/**
+ * Applies a revealed decision of one kind (`resolvers[kind]`). `choices` is in `required` order.
+ * `events` is appended to in place, like every handler's event list.
+ */
+export type Resolver = (
+  state: GameState,
+  choices: Readonly<Record<PlayerId, string>>,
+  ctx: Ctx,
+  rules: Rules,
+  events: GameEvent[],
+) => GameState;
+
+/** One resolver per decision kind, passed into the decision handlers (no mutable registry). */
+export type ResolverTable = Readonly<Record<DecisionKind, Resolver>>;
 
 /** Own keys of `raw` are exactly `keys` (as a set; callers include `v`, `type`, `playerId`). */
 export function hasExactKeys(raw: Record<string, unknown>, keys: readonly string[]): boolean {
@@ -41,6 +63,13 @@ export function hasExactKeys(raw: Record<string, unknown>, keys: readonly string
 /** A decision token: matches {@link CHOICE_PATTERN} (1-64 chars). */
 export function isChoiceToken(value: unknown): value is string {
   return typeof value === "string" && CHOICE_PATTERN.test(value);
+}
+
+/** An array of `min..max` decision tokens. */
+export function isTokenArray(value: unknown, min: number, max: number): value is string[] {
+  return (
+    Array.isArray(value) && value.length >= min && value.length <= max && value.every(isChoiceToken)
+  );
 }
 
 /** An integer in `[min, max]`. */

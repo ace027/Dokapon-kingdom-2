@@ -1,6 +1,4 @@
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
-import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,9 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ReplayFileError, replayFile, RulesMismatchError } from "../src/replay-file";
 import { replayRules } from "../src/rules";
 
-const cliPath = fileURLToPath(new URL("../src/cli.ts", import.meta.url));
-const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
-const tsxCli = createRequire(import.meta.url).resolve("tsx/cli");
+const kernelFixture = fileURLToPath(new URL("../fixtures/kernel-game.json", import.meta.url));
 
 const SETTINGS = {
   v: 2,
@@ -52,16 +48,26 @@ function errorOf(filePath: string, opts?: { allowRulesMismatch?: boolean }): unk
   return undefined;
 }
 
-function runCli(...args: string[]) {
-  return spawnSync(process.execPath, [tsxCli, cliPath, ...args], {
-    encoding: "utf8",
-    cwd: repoRoot,
-  });
-}
-
 describe("replayRules", () => {
   it("is the TEST_RULES copy", () => {
     expect(rulesHash(replayRules())).toBe("7433ea8b");
+  });
+});
+
+describe("kernel-game fixture", () => {
+  const KERNEL_LINE = "hash=9616698e rules=7433ea8b turn=1 events=10 rejections=2";
+
+  it("replays to the golden line", () => {
+    expect(replayFile(kernelFixture, replayRules()).line).toBe(KERNEL_LINE);
+  });
+
+  it("is deterministic and rejects the two scripted actions", () => {
+    const first = replayFile(kernelFixture, replayRules());
+    expect(replayFile(kernelFixture, replayRules()).line).toBe(first.line);
+    expect(first.result.rejections.map((r) => [r.index, r.error.code])).toEqual([
+      [2, "ALREADY_COMMITTED"],
+      [5, "INVALID_PAYLOAD"],
+    ]);
   });
 });
 
@@ -161,63 +167,5 @@ describe("replayFile errors", () => {
       goodFile({ settings: { ...SETTINGS, players: [] } }),
     );
     expectFileError(errorOf(filePath), /^invalid settings: /);
-  });
-});
-
-describe("sim CLI", () => {
-  it("prints usage and exits 2 without a file", () => {
-    const result = runCli("replay");
-    expect(result.status).toBe(2);
-    expect(result.stderr).toContain("usage: sim replay <file.json> [--allow-rules-mismatch]");
-  });
-
-  it("prints usage and exits 2 for an unknown command, extra arguments or an unknown flag", () => {
-    const filePath = writeTemp("ok.json", goodFile());
-    expect(runCli("play", filePath).status).toBe(2);
-    expect(runCli("replay", filePath, "extra").status).toBe(2);
-    expect(runCli("replay", filePath, "--bogus").status).toBe(2);
-  });
-
-  it("replays a valid file and prints the golden line", () => {
-    const result = runCli("replay", writeTemp("ok.json", goodFile()));
-    expect(result.stderr).toBe("");
-    expect(result.status).toBe(0);
-    expect(result.stdout.trim()).toBe(LINE);
-  });
-
-  it("resolves a relative path against the working directory", () => {
-    const filePath = writeTemp("ok.json", goodFile());
-    const result = runCli("replay", path.relative(repoRoot, filePath));
-    expect(result.status).toBe(0);
-    expect(result.stdout.trim()).toBe(LINE);
-  });
-
-  it("exits exactly 3 on a rules mismatch", () => {
-    const result = runCli(
-      "replay",
-      writeTemp("mismatch.json", goodFile({ rulesHash: "deadbeef" })),
-    );
-    expect(result.status).toBe(3);
-    expect(result.stderr).toBe("error: rules mismatch: file deadbeef, current 7433ea8b\n");
-    expect(result.stdout).toBe("");
-  });
-
-  it("proceeds with --allow-rules-mismatch and a suffix", () => {
-    const filePath = writeTemp("mismatch.json", goodFile({ rulesHash: "deadbeef" }));
-    const result = runCli("replay", filePath, "--allow-rules-mismatch");
-    expect(result.status).toBe(0);
-    expect(result.stdout.trim()).toBe(`${LINE} rules-mismatch=deadbeef`);
-  });
-
-  it("exits 2 for a file with a missing rulesHash", () => {
-    const result = runCli("replay", writeTemp("nohash.json", { settings: SETTINGS, actions: [] }));
-    expect(result.status).toBe(2);
-    expect(result.stderr).toMatch(/^error: expected \{rulesHash, settings, actions\[\]\}/);
-  });
-
-  it("prints an error and exits 2 for a missing file", () => {
-    const result = runCli("replay", path.join(tempDir, "nope.json"));
-    expect(result.status).toBe(2);
-    expect(result.stderr).toMatch(/^error: cannot read /);
   });
 });

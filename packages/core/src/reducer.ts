@@ -64,7 +64,6 @@ function checkShape(value: unknown): ShapeResult {
   if (!isPlainObject(raw) || raw.v !== SCHEMA_VERSION) {
     return fail("UNSUPPORTED_VERSION", `action must be a plain object with v=${SCHEMA_VERSION}`);
   }
-  // Widened to `string`: with the empty W1a union `Action["type"]` is `never`.
   const type: string = typeof raw.type === "string" ? raw.type : "";
   if (!Object.hasOwn(handlers, type)) {
     return fail("UNKNOWN_ACTION", "unknown action type");
@@ -122,8 +121,7 @@ export function reduce(state: GameState, action: unknown, rules: Rules): ReduceR
   const shape = checkShape(action);
   if (!shape.ok) return shape;
   const { action: a, handler } = shape;
-  // Widened while `Action` is the empty union (`never` has no properties); the guard verified both.
-  const { type, playerId }: { type: string; playerId: string } = a;
+  const { type, playerId } = a;
   if (!handler.phases.includes(state.public.phase)) {
     return fail("WRONG_PHASE", `${type} is not allowed in phase ${state.public.phase}`);
   }

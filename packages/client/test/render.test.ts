@@ -1,19 +1,50 @@
-import { createGame, rulesHash, viewFor } from "@usurpia/core";
+import {
+  createGame,
+  eventsFor,
+  reduce,
+  rulesHash,
+  viewFor,
+  type GameEvent,
+  type GameState,
+} from "@usurpia/core";
 import { describe, expect, it } from "vitest";
 import { DEMO_RULES } from "../src/demo-rules";
 import { renderView } from "../src/render";
 
-const state = createGame(
-  {
-    v: 2,
-    seed: "demo",
-    players: [
-      { id: "p1", classId: "fighter" },
-      { id: "p2", classId: "caster" },
-    ],
-  },
-  DEMO_RULES,
-);
+const SETTINGS = {
+  v: 2 as const,
+  seed: "demo",
+  players: [
+    { id: "p1", classId: "fighter" },
+    { id: "p2", classId: "caster" },
+  ],
+};
+const initial = createGame(SETTINGS, DEMO_RULES);
+
+/** The demo of `main.ts`: p1 and p2 are polled, then p1 commits `yes`. */
+function demo(): { state: GameState; events: GameEvent[] } {
+  const actions = [
+    {
+      v: 2,
+      type: "decision/open",
+      playerId: "system",
+      prompts: [
+        { playerId: "p1", options: ["yes", "no"], default: "no" },
+        { playerId: "p2", options: ["red", "green", "blue"], default: "red" },
+      ],
+    },
+    { v: 2, type: "decision/commit", playerId: "p1", decisionId: "d1", choice: "yes" },
+  ];
+  let state = initial;
+  const events: GameEvent[] = [];
+  for (const action of actions) {
+    const result = reduce(state, action, DEMO_RULES);
+    if (!result.ok) throw new Error(result.error.message);
+    state = result.state;
+    events.push(...result.events);
+  }
+  return { state, events };
+}
 
 describe("DEMO_RULES", () => {
   it("is a verbatim TEST_RULES copy", () => {
@@ -21,38 +52,58 @@ describe("DEMO_RULES", () => {
   });
 });
 
-describe("renderView", () => {
+describe("renderView before any decision", () => {
   it("renders p2's view with the exact line layout", () => {
-    expect(renderView(viewFor(state, "p2"), [])).toBe(
+    expect(renderView(viewFor(initial, "p2"), [])).toBe(
       [
         "Usurpia — viewer: p2",
         "turn 1 · active p1 · phase turn",
-        "p1 fighter L1 hp 48 gold 100",
-        "p2 caster L1 hp 36 gold 100",
+        "p1 fighter L1 hp 48 gold 100 bag 1",
+        "p2 caster L1 hp 36 gold 100 bag 2",
+        "pending: —",
         "events:",
       ].join("\n"),
     );
   });
 
   it("renders a spectator with the same player lines", () => {
-    const text = renderView(viewFor(state, "spectator"), []);
+    const text = renderView(viewFor(initial, "spectator"), []);
     expect(text).toContain("viewer: spectator");
-    expect(text).toContain("p1 fighter L1 hp 48 gold 100");
-    expect(text).toContain("p2 caster L1 hp 36 gold 100");
-    expect(text).toContain("events:");
+    expect(text).toContain("p1 fighter L1 hp 48 gold 100 bag 1");
+    expect(text).toContain("p2 caster L1 hp 36 gold 100 bag 2");
+    expect(text).toContain("pending: —");
+  });
+});
+
+describe("renderView during the demo decision", () => {
+  const { state, events } = demo();
+  const p2 = renderView(viewFor(state, "p2"), eventsFor(events, "p2"));
+
+  it("shows the player lines with bag counts", () => {
+    expect(p2).toContain("p1 fighter L1 hp 48 gold 100 bag 1");
+    expect(p2).toContain("p2 caster L1 hp 36 gold 100 bag 2");
+  });
+
+  it("shows the pending decision and p2's own options", () => {
+    expect(p2).toContain("pending: d1 (poll) committed: p1");
+    expect(p2).toContain("your options: red, green, blue (default red)");
+  });
+
+  it("lists only the events p2 may see and never p1's choice or options", () => {
+    expect(p2).toContain("- DecisionOpened");
+    expect(p2).toContain("- ChoiceCommitted");
+    expect(p2.match(/- PromptOpened/g)).toHaveLength(1);
+    expect(p2).not.toContain("yes");
+  });
+
+  it("gives a spectator the pending line and no options line", () => {
+    const spectator = renderView(viewFor(state, "spectator"), eventsFor(events, "spectator"));
+    expect(spectator).toContain("pending: d1 (poll) committed: p1");
+    expect(spectator).not.toContain("your options");
+    expect(spectator).not.toContain("- PromptOpened");
   });
 
   it("lists event types one per line", () => {
-    const text = renderView(viewFor(state, "p1"), [
-      {
-        v: 2,
-        type: "DecisionOpened",
-        visibility: { kind: "public" },
-        decisionId: "d1",
-        kind: "poll",
-        required: ["p1"],
-      },
-    ]);
-    expect(text.endsWith("events:\n- DecisionOpened")).toBe(true);
+    expect(p2.endsWith("events:\n- DecisionOpened\n- PromptOpened\n- ChoiceCommitted")).toBe(true);
   });
 });
