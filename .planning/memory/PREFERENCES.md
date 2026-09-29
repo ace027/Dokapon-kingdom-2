@@ -31,7 +31,7 @@ Implication: once production code is verified correct, residual test-assertion g
 
 ---
 
-## PRF-003: Balanced cost profile — per-role model tiers from Phase 2 on
+## PRF-003 (SUPERSEDED by PRF-006): Balanced cost profile — per-role model tiers from Phase 2 on
 - **Date**: 2026-09-29
 - **Type**: preference
 - **Tags**: cost-profile, models, agents, subagents
@@ -67,5 +67,15 @@ The `.planning/reference/phase-02/` implementation is the golden oracle only unt
 - **Phase**: Phase 2 onward
 
 Same-wave parallel plans each get their own git worktree and branch from `dev`, so they can run the full pipeline without seeing each other's in-progress files. The orchestrator merges each branch into `dev` in plan order, runs the full pipeline, pushes, checks CI via GitHub MCP, and removes the worktrees. Executors never push.
+
+---
+
+## PRF-006: All agents on Sonnet 5.5 — Opus uses too much usage
+- **Date**: 2026-09-29
+- **Type**: preference
+- **Tags**: cost-profile, models, agents, subagents, usage
+- **Phase**: Phase 2 onward (supersedes PRF-003)
+
+Spawn every agent with `model: "sonnet"`: plan executors, review fix agents, planning/spec/critique agents, review panels and checks. Do not use Opus or Haiku for agents. If a Sonnet executor fails a plan twice on complexity, stop and ask the user instead of escalating to Opus. The main session model is set by the user with `/model`.
 
 ---

@@ -90,8 +90,7 @@ Phase 1 is complete. Review accepted 2026-09-26 (see `01-REVIEW.md`); **263 test
     4. Fix against the spec prose.
   - If it cannot be reconciled, emit `BLOCKED` naming the first diverging action index and field.
 - **Model split (PRF-003):**
-  - Plan executors run on `sonnet`. If a plan fails twice on complexity (not environment), the orchestrator escalates that plan to `opus`, and the SUMMARY notes it.
-  - Planning and review use `opus`; checks use `haiku`.
+  - All agents run on `sonnet` (Sonnet 5.5): executors, fix agents, planning, critique, review and checks (memory PRF-006, supersedes PRF-003). No automatic escalation to Opus; if a plan fails twice on complexity, the orchestrator stops and asks the user.
 - **Agents:**
   - `engineering-senior-developer` for kernel, content, progression and inventory work.
   - `engineering-backend-architect` for the combat engine (state machine and integer math, 02-03).
