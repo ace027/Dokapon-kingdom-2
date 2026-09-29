@@ -1,14 +1,17 @@
-import { decisionHandlers, resolvePoll, resolveUnsupported } from "./decision";
+import { combatStartHandler, resolveCombatExchange } from "./combat";
+import { decisionHandlers, resolvePoll } from "./decision";
 import type { HandlerMap, ResolverTable } from "./shared";
+import { setCharacterHandler } from "./system";
 
-/**
- * Reveal dispatch per decision kind. `combat/exchange` stays `resolveUnsupported` until 02-03
- * replaces it.
- */
+/** Reveal dispatch per decision kind. */
 const resolvers = {
   poll: resolvePoll,
-  "combat/exchange": resolveUnsupported,
+  "combat/exchange": resolveCombatExchange,
 } satisfies ResolverTable;
 
 /** The exhaustive handler map; later waves spread their handlers in here. */
-export const handlers = { ...decisionHandlers(resolvers) } satisfies HandlerMap;
+export const handlers = {
+  ...decisionHandlers(resolvers),
+  "combat/start": combatStartHandler,
+  "system/setCharacter": setCharacterHandler,
+} satisfies HandlerMap;

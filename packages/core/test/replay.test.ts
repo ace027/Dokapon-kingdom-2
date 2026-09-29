@@ -5,7 +5,7 @@ import { reduce } from "../src/reducer";
 import { replay } from "../src/replay";
 import { deserialize, hashState, serialize, stableStringify } from "../src/serialize";
 import type { GameState } from "../src/types";
-import { arbGame, PROTO_IDS } from "./arbitraries";
+import { arbGame, COMBAT_GOLDEN_ACTIONS, COMBAT_GOLDEN_SETTINGS, PROTO_IDS } from "./arbitraries";
 import { deepFreeze, FIXTURE_SETTINGS, newGame } from "./fixtures/build";
 import { TEST_RULES } from "./fixtures/test-rules";
 import { usePurityTraps } from "./purity-traps";
@@ -190,6 +190,41 @@ describe("generators reach the interesting paths", () => {
     expect(reveals).toBeGreaterThan(20);
     expect(timeouts).toBeGreaterThan(5);
     expect(protoReveals).toBeGreaterThan(0);
+  });
+});
+
+describe("combat replay", () => {
+  it("replays the combat golden's first 12 actions with 0 rejections", () => {
+    const result = replay(COMBAT_GOLDEN_SETTINGS, COMBAT_GOLDEN_ACTIONS.slice(0, 12), TEST_RULES);
+    expect(result.rejections).toEqual([]);
+    expect(result.state.public.combat).toBeNull();
+    expect(result.events.filter((e) => e.type === "CombatEnded")).toHaveLength(1);
+  });
+
+  it("generators reach combats: starts, exchanges, endings and prototype-named fighters", () => {
+    const games = fc.sample(arbGame, 600);
+    const seen = { started: 0, resolved: 0, ended: 0, skipped: 0, protoFights: 0, ko: 0 };
+    for (const [settings, script] of games) {
+      for (const event of replay(settings, script, TEST_RULES).events) {
+        if (event.type === "CombatStarted") {
+          seen.started += 1;
+          const [a, b] = event.sides;
+          const named = (side: typeof a) =>
+            side.kind === "player" && PROTO_IDS.some((id) => id === side.playerId);
+          if (named(a) || named(b)) seen.protoFights += 1;
+        }
+        if (event.type === "ExchangeResolved") seen.resolved += 1;
+        if (event.type === "ExchangeSkipped") seen.skipped += 1;
+        if (event.type === "CombatEnded") {
+          seen.ended += 1;
+          if (event.outcome === "ko") seen.ko += 1;
+        }
+      }
+    }
+    expect(seen.started).toBeGreaterThan(30);
+    expect(seen.resolved).toBeGreaterThan(30);
+    expect(seen.ended).toBeGreaterThan(5);
+    expect(seen.protoFights).toBeGreaterThan(0);
   });
 });
 
