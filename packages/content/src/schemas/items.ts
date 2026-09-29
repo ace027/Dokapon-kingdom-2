@@ -1,17 +1,45 @@
 import { z } from "zod";
-import { IdSchema } from "./common";
+import {
+  BpSchema,
+  DescriptionSchema,
+  IdSchema,
+  IntSchema,
+  NameSchema,
+  PriceSchema,
+} from "./common";
 
-export const ItemSchema = z.strictObject({
+const ModStatSchema = z.enum(["atk", "def", "mag", "spd"]);
+
+export const ItemEffectSchema = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("heal"), bp: BpSchema }),
+  z.strictObject({ kind: z.literal("cleanse") }),
+  z.strictObject({ kind: z.literal("flee") }),
+  z.strictObject({ kind: z.literal("mod"), stat: ModStatSchema, bp: BpSchema }),
+  z.strictObject({
+    kind: z.literal("board"),
+    tag: z.enum(["spinBonus", "spinFixed", "warpCastle", "pickSpin", "blockGoldSteal"]),
+    value: IntSchema(0, 1_000_000),
+  }),
+  z.strictObject({
+    kind: z.literal("joke"),
+    tag: z.enum(["decoyGoldBag", "cursedWig", "whoopeeScroll", "royalSummons", "bagOfBees"]),
+  }),
+]);
+
+export const ItemEntrySchema = z.strictObject({
   id: IdSchema,
-  name: z.string().min(1).max(40),
-  kind: z.enum(["consumable", "gear", "joke"]),
-  price: z.number().int().min(0),
-  description: z.string().min(1).max(200),
+  name: NameSchema,
+  description: DescriptionSchema,
+  kind: z.enum(["consumable", "joke"]),
+  price: PriceSchema,
+  use: z.enum(["combat", "board", "both", "none"]),
+  effect: ItemEffectSchema,
 });
 
 export const ItemsFileSchema = z.strictObject({
   v: z.literal(1),
-  items: z.array(ItemSchema).min(1),
+  items: z.array(ItemEntrySchema),
 });
 
-export type Item = z.infer<typeof ItemSchema>;
+export type ItemEntry = z.infer<typeof ItemEntrySchema>;
+export type ItemsFile = z.infer<typeof ItemsFileSchema>;

@@ -4,37 +4,211 @@
     {
       "id": "herb",
       "name": "Herb",
+      "description": "Heals 30% HP.",
       "kind": "consumable",
       "price": 20,
-      "description": "Heals 30% HP."
+      "use": "both",
+      "effect": {
+        "kind": "heal",
+        "bp": 3000
+      }
     },
     {
       "id": "big-herb",
       "name": "Big Herb",
+      "description": "Heals 60% HP.",
       "kind": "consumable",
       "price": 60,
-      "description": "Heals 60% HP."
+      "use": "both",
+      "effect": {
+        "kind": "heal",
+        "bp": 6000
+      }
     },
     {
       "id": "royal-elixir",
       "name": "Royal Elixir",
+      "description": "Fully restores HP.",
       "kind": "consumable",
       "price": 200,
-      "description": "Fully restores HP."
+      "use": "both",
+      "effect": {
+        "kind": "heal",
+        "bp": 10000
+      }
+    },
+    {
+      "id": "antidote",
+      "name": "Antidote",
+      "description": "Clears status effects.",
+      "kind": "consumable",
+      "price": 30,
+      "use": "both",
+      "effect": {
+        "kind": "cleanse"
+      }
     },
     {
       "id": "swift-boots",
       "name": "Swift Boots",
+      "description": "Your next spin gets +3.",
       "kind": "consumable",
       "price": 80,
-      "description": "Your next spin gets +3."
+      "use": "board",
+      "effect": {
+        "kind": "board",
+        "tag": "spinBonus",
+        "value": 3
+      }
+    },
+    {
+      "id": "lead-boots",
+      "name": "Lead Boots",
+      "description": "Target's next spin is fixed at 1.",
+      "kind": "consumable",
+      "price": 80,
+      "use": "board",
+      "effect": {
+        "kind": "board",
+        "tag": "spinFixed",
+        "value": 1
+      }
+    },
+    {
+      "id": "homing-stone",
+      "name": "Homing Stone",
+      "description": "Warp to the Castle.",
+      "kind": "consumable",
+      "price": 120,
+      "use": "board",
+      "effect": {
+        "kind": "board",
+        "tag": "warpCastle",
+        "value": 0
+      }
+    },
+    {
+      "id": "pathfinder",
+      "name": "Pathfinder",
+      "description": "Pick your exact spin result 1–6.",
+      "kind": "consumable",
+      "price": 150,
+      "use": "board",
+      "effect": {
+        "kind": "board",
+        "tag": "pickSpin",
+        "value": 6
+      }
     },
     {
       "id": "smoke-bomb",
       "name": "Smoke Bomb",
+      "description": "Guarantees escape from battle.",
       "kind": "consumable",
       "price": 50,
-      "description": "Guarantees escape from battle."
+      "use": "combat",
+      "effect": {
+        "kind": "flee"
+      }
+    },
+    {
+      "id": "battle-tonic",
+      "name": "Battle Tonic",
+      "description": "+25% ATK for this battle.",
+      "kind": "consumable",
+      "price": 70,
+      "use": "combat",
+      "effect": {
+        "kind": "mod",
+        "stat": "atk",
+        "bp": 2500
+      }
+    },
+    {
+      "id": "iron-tonic",
+      "name": "Iron Tonic",
+      "description": "+25% DEF for this battle.",
+      "kind": "consumable",
+      "price": 70,
+      "use": "combat",
+      "effect": {
+        "kind": "mod",
+        "stat": "def",
+        "bp": 2500
+      }
+    },
+    {
+      "id": "coin-purse-lock",
+      "name": "Coin Purse Lock",
+      "description": "Blocks the next gold steal against you.",
+      "kind": "consumable",
+      "price": 100,
+      "use": "board",
+      "effect": {
+        "kind": "board",
+        "tag": "blockGoldSteal",
+        "value": 1
+      }
+    },
+    {
+      "id": "decoy-gold-bag",
+      "name": "Decoy Gold Bag",
+      "description": "Drop it; the next rival to land loses 10% gold to you.",
+      "kind": "joke",
+      "price": 120,
+      "use": "none",
+      "effect": {
+        "kind": "joke",
+        "tag": "decoyGoldBag"
+      }
+    },
+    {
+      "id": "cursed-wig",
+      "name": "Cursed Wig",
+      "description": "Force a hideous wig on a rival: −10% SPD for 3 turns.",
+      "kind": "joke",
+      "price": 90,
+      "use": "none",
+      "effect": {
+        "kind": "joke",
+        "tag": "cursedWig"
+      }
+    },
+    {
+      "id": "whoopee-scroll",
+      "name": "Whoopee Scroll",
+      "description": "Target's next battle opens with a fanfare; they lose round-1 initiative.",
+      "kind": "joke",
+      "price": 60,
+      "use": "none",
+      "effect": {
+        "kind": "joke",
+        "tag": "whoopeeScroll"
+      }
+    },
+    {
+      "id": "royal-summons",
+      "name": "Royal Summons (fake)",
+      "description": "A forged decree teleports a rival to the Castle.",
+      "kind": "joke",
+      "price": 150,
+      "use": "none",
+      "effect": {
+        "kind": "joke",
+        "tag": "royalSummons"
+      }
+    },
+    {
+      "id": "bag-of-bees",
+      "name": "Bag of Bees",
+      "description": "A rival drops a random bag item on their space.",
+      "kind": "joke",
+      "price": 80,
+      "use": "none",
+      "effect": {
+        "kind": "joke",
+        "tag": "bagOfBees"
+      }
     }
   ]
 }

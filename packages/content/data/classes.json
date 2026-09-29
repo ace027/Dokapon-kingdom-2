@@ -1,0 +1,441 @@
+{
+  "v": 1,
+  "classes": [
+    {
+      "id": "warrior",
+      "name": "Warrior",
+      "description": "Frontline brawler with a punishing Strike.",
+      "kind": "base",
+      "parents": null,
+      "statBp": {
+        "hp": 11500,
+        "atk": 11500,
+        "def": 11500,
+        "mag": 8500,
+        "spd": 9000,
+        "luck": 9000
+      },
+      "bagSize": 5,
+      "switchFee": 100,
+      "passives": [
+        {
+          "rank": 1,
+          "id": "brawler",
+          "name": "Brawler",
+          "hook": "strikeDmgBp",
+          "value": 1000,
+          "description": "+10% Strike damage."
+        },
+        {
+          "rank": 2,
+          "id": "thick-skin",
+          "name": "Thick Skin",
+          "hook": "hpBp",
+          "value": 1000,
+          "description": "+10% max HP."
+        },
+        {
+          "rank": 3,
+          "id": "shield-wall",
+          "name": "Shield Wall",
+          "hook": "defBp",
+          "value": 1000,
+          "description": "+10% DEF."
+        },
+        {
+          "rank": 4,
+          "id": "battle-rhythm",
+          "name": "Battle Rhythm",
+          "hook": "attackDmgBp",
+          "value": 1000,
+          "description": "+10% Attack damage."
+        },
+        {
+          "rank": 5,
+          "id": "unbreakable",
+          "name": "Unbreakable",
+          "hook": "guardVsStrikeBp",
+          "value": 5000,
+          "description": "Guard also halves Strike damage."
+        }
+      ],
+      "starter": {
+        "weapon": "wooden-sword",
+        "shield": "pot-lid",
+        "accessory": null,
+        "battleSpell": "spark",
+        "wardSpell": null,
+        "bag": ["herb"]
+      },
+      "aiBias": {
+        "attack": 30,
+        "strike": 50,
+        "spell": 20,
+        "guard": 50,
+        "counter": 30,
+        "ward": 20
+      }
+    },
+    {
+      "id": "thief",
+      "name": "Thief",
+      "description": "Fast, lucky griefer who steals and flees.",
+      "kind": "base",
+      "parents": null,
+      "statBp": {
+        "hp": 9500,
+        "atk": 10000,
+        "def": 9000,
+        "mag": 8000,
+        "spd": 13000,
+        "luck": 14000
+      },
+      "bagSize": 8,
+      "switchFee": 100,
+      "passives": [
+        {
+          "rank": 1,
+          "id": "sticky-fingers",
+          "name": "Sticky Fingers",
+          "hook": "pvpExtraSteal",
+          "value": 1,
+          "description": "Steal an extra item on a PvP win."
+        },
+        {
+          "rank": 2,
+          "id": "quick-feet",
+          "name": "Quick Feet",
+          "hook": "fleeBp",
+          "value": 2000,
+          "description": "+20% flee chance."
+        },
+        {
+          "rank": 3,
+          "id": "lucky-break",
+          "name": "Lucky Break",
+          "hook": "critBp",
+          "value": 500,
+          "description": "+5% crit chance."
+        },
+        {
+          "rank": 4,
+          "id": "fleet",
+          "name": "Fleet",
+          "hook": "spdBp",
+          "value": 1000,
+          "description": "+10% SPD."
+        },
+        {
+          "rank": 5,
+          "id": "pickpocket",
+          "name": "Pickpocket",
+          "hook": "passPickpocketBp",
+          "value": 500,
+          "description": "Pickpocket 5% gold when passing players."
+        }
+      ],
+      "starter": {
+        "weapon": "wooden-sword",
+        "shield": "pot-lid",
+        "accessory": "lucky-sock",
+        "battleSpell": "spark",
+        "wardSpell": null,
+        "bag": ["herb", "smoke-bomb"]
+      },
+      "aiBias": {
+        "attack": 50,
+        "strike": 30,
+        "spell": 20,
+        "guard": 35,
+        "counter": 40,
+        "ward": 25
+      }
+    },
+    {
+      "id": "mage",
+      "name": "Mage",
+      "description": "Burst Spells and field magic.",
+      "kind": "base",
+      "parents": null,
+      "statBp": {
+        "hp": 8500,
+        "atk": 7500,
+        "def": 8500,
+        "mag": 13000,
+        "spd": 10000,
+        "luck": 10000
+      },
+      "bagSize": 6,
+      "switchFee": 100,
+      "passives": [
+        {
+          "rank": 1,
+          "id": "frugal-caster",
+          "name": "Frugal Caster",
+          "hook": "spellPriceBp",
+          "value": -2500,
+          "description": "Spells cost 25% less in shops."
+        },
+        {
+          "rank": 2,
+          "id": "focus",
+          "name": "Focus",
+          "hook": "spellDmgBp",
+          "value": 1000,
+          "description": "+10% Spell damage."
+        },
+        {
+          "rank": 3,
+          "id": "arcane-mind",
+          "name": "Arcane Mind",
+          "hook": "magBp",
+          "value": 1000,
+          "description": "+10% MAG."
+        },
+        {
+          "rank": 4,
+          "id": "overcharge",
+          "name": "Overcharge",
+          "hook": "spellDmgBp",
+          "value": 1500,
+          "description": "+15% Spell damage."
+        },
+        {
+          "rank": 5,
+          "id": "fieldcraft",
+          "name": "Fieldcraft",
+          "hook": "fieldSpellMove",
+          "value": 1,
+          "description": "Cast a field spell and still move."
+        }
+      ],
+      "starter": {
+        "weapon": "wooden-sword",
+        "shield": "pot-lid",
+        "accessory": null,
+        "battleSpell": "fireball",
+        "wardSpell": "barrier",
+        "bag": ["herb"]
+      },
+      "aiBias": {
+        "attack": 30,
+        "strike": 20,
+        "spell": 50,
+        "guard": 40,
+        "counter": 30,
+        "ward": 30
+      }
+    },
+    {
+      "id": "cleric",
+      "name": "Cleric",
+      "description": "Sustain and support; the Crown hunter.",
+      "kind": "base",
+      "parents": null,
+      "statBp": {
+        "hp": 10500,
+        "atk": 9500,
+        "def": 11000,
+        "mag": 12000,
+        "spd": 9000,
+        "luck": 10000
+      },
+      "bagSize": 6,
+      "switchFee": 100,
+      "passives": [
+        {
+          "rank": 1,
+          "id": "mending",
+          "name": "Mending",
+          "hook": "turnRegenBp",
+          "value": 1000,
+          "description": "Heal 10% HP each turn."
+        },
+        {
+          "rank": 2,
+          "id": "sanctuary",
+          "name": "Sanctuary",
+          "hook": "roundRegenBp",
+          "value": 500,
+          "description": "Heal 5% HP at each round end."
+        },
+        {
+          "rank": 3,
+          "id": "faith",
+          "name": "Faith",
+          "hook": "defBp",
+          "value": 1000,
+          "description": "+10% DEF."
+        },
+        {
+          "rank": 4,
+          "id": "devotion",
+          "name": "Devotion",
+          "hook": "magBp",
+          "value": 1000,
+          "description": "+10% MAG."
+        },
+        {
+          "rank": 5,
+          "id": "mirror-ward",
+          "name": "Mirror Ward",
+          "hook": "wardReflectBp",
+          "value": 5000,
+          "description": "Ward reflects 50% of Spell damage."
+        }
+      ],
+      "starter": {
+        "weapon": "wooden-sword",
+        "shield": "pot-lid",
+        "accessory": null,
+        "battleSpell": "drain",
+        "wardSpell": "barrier",
+        "bag": ["herb", "antidote"]
+      },
+      "aiBias": {
+        "attack": 35,
+        "strike": 20,
+        "spell": 45,
+        "guard": 35,
+        "counter": 25,
+        "ward": 40
+      }
+    },
+    {
+      "id": "spellblade",
+      "name": "Spellblade",
+      "description": "Warrior + Mage: Strikes carry spell power.",
+      "kind": "hybrid",
+      "parents": ["warrior", "mage"],
+      "statBp": {
+        "hp": 11000,
+        "atk": 11500,
+        "def": 10000,
+        "mag": 11500,
+        "spd": 9500,
+        "luck": 9000
+      },
+      "bagSize": 6,
+      "switchFee": 300,
+      "passives": [
+        {
+          "rank": 1,
+          "id": "runic-edge",
+          "name": "Runic Edge",
+          "hook": "spellbladeStrike",
+          "value": 5000,
+          "description": "Strikes add 50% of your battle spell's power and its effect."
+        },
+        {
+          "rank": 2,
+          "id": "arcane-muscle",
+          "name": "Arcane Muscle",
+          "hook": "magBp",
+          "value": 1000,
+          "description": "+10% MAG."
+        },
+        {
+          "rank": 3,
+          "id": "honed-edge",
+          "name": "Honed Edge",
+          "hook": "strikeDmgBp",
+          "value": 1000,
+          "description": "+10% Strike damage."
+        },
+        {
+          "rank": 4,
+          "id": "keen-eye",
+          "name": "Keen Eye",
+          "hook": "critBp",
+          "value": 500,
+          "description": "+5% crit chance."
+        },
+        {
+          "rank": 5,
+          "id": "twin-arts",
+          "name": "Twin Arts",
+          "hook": "spellDmgBp",
+          "value": 1500,
+          "description": "+15% Spell damage."
+        }
+      ],
+      "starter": null,
+      "aiBias": {
+        "attack": 30,
+        "strike": 45,
+        "spell": 25,
+        "guard": 40,
+        "counter": 35,
+        "ward": 25
+      }
+    },
+    {
+      "id": "shadowpriest",
+      "name": "Shadowpriest",
+      "description": "Thief + Cleric: drains HP and outlasts.",
+      "kind": "hybrid",
+      "parents": ["thief", "cleric"],
+      "statBp": {
+        "hp": 10000,
+        "atk": 10000,
+        "def": 9500,
+        "mag": 11000,
+        "spd": 12000,
+        "luck": 12000
+      },
+      "bagSize": 7,
+      "switchFee": 300,
+      "passives": [
+        {
+          "rank": 1,
+          "id": "leech",
+          "name": "Leech",
+          "hook": "lifestealBp",
+          "value": 2500,
+          "description": "Heal 25% of Attack/Strike damage dealt."
+        },
+        {
+          "rank": 2,
+          "id": "shade-step",
+          "name": "Shade Step",
+          "hook": "spdBp",
+          "value": 1000,
+          "description": "+10% SPD."
+        },
+        {
+          "rank": 3,
+          "id": "dark-litany",
+          "name": "Dark Litany",
+          "hook": "roundRegenBp",
+          "value": 500,
+          "description": "Heal 5% HP at each round end."
+        },
+        {
+          "rank": 4,
+          "id": "cruel-luck",
+          "name": "Cruel Luck",
+          "hook": "critBp",
+          "value": 500,
+          "description": "+5% crit chance."
+        },
+        {
+          "rank": 5,
+          "id": "soul-tithe",
+          "name": "Soul Tithe",
+          "hook": "lifestealBp",
+          "value": 2500,
+          "description": "Heal a further 25% of Attack/Strike damage dealt."
+        }
+      ],
+      "starter": null,
+      "aiBias": {
+        "attack": 45,
+        "strike": 30,
+        "spell": 25,
+        "guard": 35,
+        "counter": 35,
+        "ward": 30
+      }
+    }
+  ]
+}

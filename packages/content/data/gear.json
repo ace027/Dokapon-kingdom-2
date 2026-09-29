@@ -1,0 +1,275 @@
+{
+  "v": 1,
+  "gear": [
+    {
+      "id": "wooden-sword",
+      "name": "Wooden Sword",
+      "description": "A stick with ambition.",
+      "slot": "weapon",
+      "tier": 1,
+      "price": 0,
+      "stats": {
+        "hp": 0,
+        "atk": 2,
+        "def": 0,
+        "mag": 0,
+        "spd": 0,
+        "luck": 0
+      },
+      "hooks": []
+    },
+    {
+      "id": "bronze-blade",
+      "name": "Bronze Blade",
+      "description": "Reliable, if a little green.",
+      "slot": "weapon",
+      "tier": 1,
+      "price": 150,
+      "stats": {
+        "hp": 0,
+        "atk": 5,
+        "def": 0,
+        "mag": 0,
+        "spd": 0,
+        "luck": 0
+      },
+      "hooks": []
+    },
+    {
+      "id": "knights-saber",
+      "name": "Knight's Saber",
+      "description": "Standard issue for knights who read the manual.",
+      "slot": "weapon",
+      "tier": 2,
+      "price": 400,
+      "stats": {
+        "hp": 0,
+        "atk": 9,
+        "def": 0,
+        "mag": 0,
+        "spd": 0,
+        "luck": 0
+      },
+      "hooks": []
+    },
+    {
+      "id": "goblin-cleaver",
+      "name": "Goblin Cleaver",
+      "description": "Lucky, greasy, sharp.",
+      "slot": "weapon",
+      "tier": 3,
+      "price": 800,
+      "stats": {
+        "hp": 0,
+        "atk": 12,
+        "def": 0,
+        "mag": 0,
+        "spd": 0,
+        "luck": 4
+      },
+      "hooks": []
+    },
+    {
+      "id": "royal-claymore",
+      "name": "Royal Claymore",
+      "description": "Too heavy for the actual royals.",
+      "slot": "weapon",
+      "tier": 4,
+      "price": 1600,
+      "stats": {
+        "hp": 0,
+        "atk": 18,
+        "def": 0,
+        "mag": 0,
+        "spd": 0,
+        "luck": 0
+      },
+      "hooks": []
+    },
+    {
+      "id": "pot-lid",
+      "name": "Pot Lid",
+      "description": "Still smells of soup.",
+      "slot": "shield",
+      "tier": 1,
+      "price": 0,
+      "stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 2,
+        "mag": 0,
+        "spd": 0,
+        "luck": 0
+      },
+      "hooks": []
+    },
+    {
+      "id": "buckler",
+      "name": "Buckler",
+      "description": "Small shield, big attitude.",
+      "slot": "shield",
+      "tier": 1,
+      "price": 120,
+      "stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 5,
+        "mag": 0,
+        "spd": 0,
+        "luck": 0
+      },
+      "hooks": []
+    },
+    {
+      "id": "tower-shield",
+      "name": "Tower Shield",
+      "description": "A wall you can carry. Slowly.",
+      "slot": "shield",
+      "tier": 2,
+      "price": 380,
+      "stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 9,
+        "mag": 0,
+        "spd": -2,
+        "luck": 0
+      },
+      "hooks": []
+    },
+    {
+      "id": "mirror-shield",
+      "name": "Mirror Shield",
+      "description": "Weakens incoming Spells by 20%.",
+      "slot": "shield",
+      "tier": 3,
+      "price": 750,
+      "stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 8,
+        "mag": 0,
+        "spd": 0,
+        "luck": 0
+      },
+      "hooks": [
+        {
+          "hook": "spellTakenBp",
+          "value": -2000
+        }
+      ]
+    },
+    {
+      "id": "aegis-of-usurpia",
+      "name": "Aegis of Usurpia",
+      "description": "The kingdom's finest, slightly used.",
+      "slot": "shield",
+      "tier": 4,
+      "price": 1500,
+      "stats": {
+        "hp": 10,
+        "atk": 0,
+        "def": 16,
+        "mag": 0,
+        "spd": 0,
+        "luck": 0
+      },
+      "hooks": []
+    },
+    {
+      "id": "lucky-sock",
+      "name": "Lucky Sock",
+      "description": "One sock. Unwashed. Lucky.",
+      "slot": "accessory",
+      "tier": 1,
+      "price": 60,
+      "stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "mag": 0,
+        "spd": 0,
+        "luck": 5
+      },
+      "hooks": []
+    },
+    {
+      "id": "speed-anklet",
+      "name": "Speed Anklet",
+      "description": "Your feet feel late for something.",
+      "slot": "accessory",
+      "tier": 2,
+      "price": 200,
+      "stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "mag": 0,
+        "spd": 5,
+        "luck": 0
+      },
+      "hooks": []
+    },
+    {
+      "id": "mage-ring",
+      "name": "Mage Ring",
+      "description": "Hums quietly with MAG.",
+      "slot": "accessory",
+      "tier": 2,
+      "price": 350,
+      "stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "mag": 6,
+        "spd": 0,
+        "luck": 0
+      },
+      "hooks": []
+    },
+    {
+      "id": "tax-collectors-seal",
+      "name": "Tax Collector's Seal",
+      "description": "+5% town tax income.",
+      "slot": "accessory",
+      "tier": 3,
+      "price": 600,
+      "stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "mag": 0,
+        "spd": 0,
+        "luck": 0
+      },
+      "hooks": [
+        {
+          "hook": "townTaxBp",
+          "value": 500
+        }
+      ]
+    },
+    {
+      "id": "crown-ward-amulet",
+      "name": "Crown Ward Amulet",
+      "description": "Resists the Cursed Crown's Tyrant's Tax.",
+      "slot": "accessory",
+      "tier": 4,
+      "price": 900,
+      "stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 3,
+        "mag": 0,
+        "spd": 0,
+        "luck": 0
+      },
+      "hooks": [
+        {
+          "hook": "crownTaxResistBp",
+          "value": 5000
+        }
+      ]
+    }
+  ]
+}
