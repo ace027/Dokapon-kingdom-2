@@ -49,3 +49,23 @@ Apply the Balanced cost profile explicitly by passing `model` on every spawned a
 The orchestrator (main session) stays on the session model. If a Sonnet executor fails a plan twice on complexity (not environment), escalate that plan to Opus and note it in the SUMMARY.
 
 ---
+
+## PRF-004: Golden maintenance — TS engine becomes the oracle after Phase 2
+- **Date**: 2026-09-29
+- **Type**: preference
+- **Tags**: goldens, testing, content, balance
+- **Phase**: Phase 2 onward
+
+The `.planning/reference/phase-02/` implementation is the golden oracle only until the 02-05 closing step commits; after that it is frozen. Later phases re-pin exact goldens from the reviewed TypeScript engine (`pnpm sim ...` / test output) in the same commit that changes rules, with the diff reviewed. Balance gates (Hard ≥ 70% of decisive duels, ≤ 40% draws per mirror) are asserted as thresholds once rules change.
+
+---
+
+## PRF-005: Parallel plans run in separate git worktrees
+- **Date**: 2026-09-29
+- **Type**: preference
+- **Tags**: build, waves, git, worktree, ci
+- **Phase**: Phase 2 onward
+
+Same-wave parallel plans each get their own git worktree and branch from `dev`, so they can run the full pipeline without seeing each other's in-progress files. The orchestrator merges each branch into `dev` in plan order, runs the full pipeline, pushes, checks CI via GitHub MCP, and removes the worktrees. Executors never push.
+
+---

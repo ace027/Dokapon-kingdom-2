@@ -60,7 +60,7 @@ Phase 1 is complete. Review accepted 2026-09-26 (see `01-REVIEW.md`); **263 test
   - `traces/{kernel-game,combat-golden,rewards-golden,combat-game,gate}.trace.json`
   - It is excluded from eslint (`ignores: ".planning/**"`), prettier (`.prettierignore: .planning/`), tsc (root `files: []`) and vitest (`projects: packages/*`).
   - **No plan edits it; no committed test reads it.**
-- **Memory to honour:** PIT-001 (single-mutation negative tests), PIT-002 (`Object.hasOwn`/`ownGet`), PRF-001 (GitHub MCP, no `gh`), PRF-003 (model split).
+- **Memory to honour:** PIT-001 (single-mutation negative tests), PIT-002 (`Object.hasOwn`/`ownGet`), PRF-001 (GitHub MCP, no `gh`; used by the **orchestrator only** in Phase 2), PRF-003 (model split).
 
 ## Key Design Decisions
 - **Architecture:** "Hybrid: Pragmatic-based", selected by the user on 2026-09-29. It keeps Phase 1's handler-map reducer and partitions, splits handlers into `handlers/{shared,decision,combat,system,loadout,index}.ts`, and puts pure combat math in `combat/*`.
@@ -84,7 +84,7 @@ Phase 1 is complete. Review accepted 2026-09-26 (see `01-REVIEW.md`); **263 test
 - **Golden discipline (binding):**
   - Goldens come from the spec (computed by the oracle). Executors never "record" a golden from their own implementation.
   - On a mismatch, follow the spec's *Mismatch localisation protocol*:
-    1. Replay per action with a throwaway, uncommitted script or `it.only`.
+    1. Replay per action with a throwaway, uncommitted script or `it.only`. Throwaway scripts live **outside** the checkout/worktree, in `/tmp/usurpia-scratch/<plan>/` (import sources by absolute path, e.g. `/home/user/usurpia-wt/02-03/packages/core/src/index.ts`, and run them with `pnpm exec tsx <script>` from the checkout root), so every `git status --porcelain` check stays clean. An `it.only` is reverted before the next verification run.
     2. Diff `hashState` + events against `traces/*.trace.json`.
     3. Find the first diverging step.
     4. Fix against the spec prose.
@@ -99,26 +99,59 @@ Phase 1 is complete. Review accepted 2026-09-26 (see `01-REVIEW.md`); **263 test
   - `testing-qa-verification-specialist` on every plan (the mandatory testing role: goldens, property suites, mutation proofs).
 
 ### Wave rationale
-- **W1a 02-01a → W1b 02-01b (sequential).** The cross-cutting kernel change is too large for one plan. 02-01a changes the data model and threads `Rules`, leaving an action-less kernel. 02-01b adds the behaviour (decisions), persistence (`deserialize` v2), `views.counts` and the property suite. Both run the full repo pipeline.
-- **W2 02-02 ∥ 02-03.** Content (`packages/content/**` + `content/package.json`) and the combat engine (`packages/core/**`) share no files.
+Wave names vs plan frontmatter `wave:` numbers: **W1a** = `wave: 1` (02-01a), **W1b** = `wave: 2` (02-01b), **W2** = `wave: 3` (02-02 ∥ 02-03), **W3** = `wave: 4` (02-04 ∥ 02-05).
+- **W1a 02-01a → W1b 02-01b (sequential).** The cross-cutting kernel change is too large for one plan. 02-01a changes the data model and threads `Rules`, leaving an action-less kernel. 02-01b adds the behaviour (decisions), persistence (`deserialize` v2), `views.counts` and the property suite; it may also fix 02-01a's `reducer.ts`/`index.ts` (sequential, so safe). Both run in the main checkout on `dev` and run the full repo pipeline.
+- **W2 02-02 ∥ 02-03.** Content (`packages/content/**` + `content/package.json`) and the combat engine (`packages/core/**`, including `handlers/decision.ts`, which 02-03 owns in W2) share no files.
 - **W3 02-04 ∥ 02-05 (tasks 1–2).**
   - 02-04 owns `core/src/{progression,inventory,index,actions,events}.ts`, `handlers/{combat,loadout,index}.ts` and the core suites (`arbitraries`, `counter-bounds`, `views`).
-  - 02-05 owns `core/src/ai/**`, `core/package.json`, `eslint.config.js`, `scripts/check-core-purity.mjs`, `packages/sim/**`, `ci.yml` and `README.md`.
-- **Parallel-plan rules (Phase 1 lesson):**
-  - Same-wave plans use **only** package-scoped commands: `pnpm vitest run <paths>`, `pnpm exec tsc -b packages/<pkg>`, `pnpm exec eslint <paths>`, `pnpm exec prettier --check|--write <paths>`, `git status --porcelain -- <owned paths>`.
-  - They never run repo-wide `pnpm format`, `lint`, `typecheck`, `test` or `build`.
-  - They commit with `git add <own paths> <own SUMMARY>` and retry if `.git/index.lock` exists.
-  - A transient failure whose error originates in a file owned by the sibling plan (it is mid-edit in the same working tree) is retried after a pause; it is never "fixed" by editing the sibling's files.
+  - 02-05 owns `core/src/ai/**`, `core/package.json`, `eslint.config.js`, `scripts/check-core-purity.mjs`, `.gitignore`, `packages/sim/**`, `ci.yml` and `README.md`.
+- **Parallel-plan rules:** same-wave plans run in **separate git worktrees** (see *Wave execution protocol*), so each executor sees only `dev` + its own edits. Executors may and must run the full repo pipeline inside their own worktree. `files_forbidden` still lists the sibling's owned files as a safety net; disjointness is what makes the orchestrator's merges clean.
+
+### Wave execution protocol (orchestrator-owned)
+Executors never push, never use GitHub MCP, and never touch another worktree or (for W2/W3 plans) the main checkout `/home/user/Dokapon-kingdom-2`. The orchestrator does every step below.
+
+**Sequential plans (02-01a, 02-01b).** They run in the main checkout on `dev` and commit on `dev` without pushing. After each one reports Complete, the orchestrator:
+1. pushes `dev` (`git push -u origin dev`, retrying network failures up to 4 times with 2/4/8/16 s backoff);
+2. verifies CI through GitHub MCP (PRF-001): `mcp__github__actions_list` (owner `ace027`, repo `Dokapon-kingdom-2`, branch `dev`) → the `CI` run whose `head_sha` equals the pushed HEAD → poll `mcp__github__actions_get` until it completes with `conclusion: success`; on failure, read `mcp__github__get_job_logs` and re-dispatch a fix to the plan's executor (which commits on `dev`, no push), then push and re-check;
+3. records the run URL (`https://github.com/ace027/Dokapon-kingdom-2/actions/runs/<id>`) in its own build log / STATE update (not in a plan SUMMARY). Proving CI after W1a surfaces environment issues early.
+
+**Parallel waves (W2: 02-02 ∥ 02-03; W3: 02-04 ∥ 02-05 tasks 1–2).**
+1. **Create worktrees** from the current `dev` HEAD (main checkout clean, `dev` pushed and CI green), one per plan:
+   - W2: `git worktree add ../usurpia-wt/02-02 -b phase2/02-02 dev` and `git worktree add ../usurpia-wt/02-03 -b phase2/02-03 dev`
+   - W3: `git worktree add ../usurpia-wt/02-04 -b phase2/02-04 dev` and `git worktree add ../usurpia-wt/02-05 -b phase2/02-05 dev`
+   - (run from `/home/user/Dokapon-kingdom-2`; the absolute paths are `/home/user/usurpia-wt/<plan>`).
+2. **Install** in each worktree: `cd /home/user/usurpia-wt/<plan> && (pnpm install --frozen-lockfile --offline || pnpm install --frozen-lockfile)`.
+3. **Dispatch** both executors in parallel, each told its absolute worktree path and branch. Every executor command `cd`s into its worktree; every `> verification:` line is run from the worktree root (relative paths). Executors commit on their own branch (`phase2/<plan>`), never on `dev`.
+4. **Merge** after both plans report Complete, in the main checkout on `dev`, in plan order:
+   - W2: `git merge --no-ff phase2/02-02`, then `git merge --no-ff phase2/02-03`
+   - W3: `git merge --no-ff phase2/02-04`, then `git merge --no-ff phase2/02-05`
+   - Files are disjoint, so merges are clean. **If any conflict appears, `git merge --abort` and stop: escalate to the user.** Never resolve a conflict by hand.
+5. **Gate on `dev`:** run the full pipeline in the main checkout (`pnpm install --frozen-lockfile && pnpm lint && pnpm lint:purity && pnpm format:check && pnpm typecheck && pnpm test && pnpm build`). A failure here (an integration issue neither worktree could see) is escalated / re-dispatched as a fix plan; never pushed red.
+6. **Push + CI** exactly as for sequential plans (steps 1–3 above).
+7. **Remove the worktrees:** `git worktree remove ../usurpia-wt/<plan>` for both, then `git branch -d phase2/<plan>` (merged, so `-d` succeeds).
+- After W3's merge + green gate + push, the orchestrator dispatches **02-05 task 3** (the W3 closing step) in the main checkout on `dev`, then runs the full pipeline again, pushes, and verifies CI (the final Phase 2 CI proof).
+- If a plan in a parallel wave fails and must be re-run, its worktree is reset from the plan branch; the sibling's worktree is untouched.
 
 ### W3 closing-step rule
 Rewards (02-04) append `VictoryRewarded`/`LevelUp`/`MasteryRankUp` after `CombatEnded` for player KO wins. That changes `DuelResult.events`/`hash` but never `outcome`/`winner`/`fled`. Therefore:
-- 02-05 tasks 1–2 pin **only reward-independent goldens**: stdout blocks, gate counts, per-duel `(outcome, winner)`, the sim fixture line, content NPC spot stats and the perf total line.
-- 02-05 task 3 runs **only after the `Phase 2 plan 02-04:` commit is on `dev`**. It:
+- 02-05 tasks 1–2 (in worktree `phase2/02-05`, without 02-04's code) pin **only reward-independent goldens**: stdout blocks, gate counts, per-duel `(outcome, winner)`, the sim fixture line, content NPC spot stats and the perf total line.
+- 02-05 task 3 is a **post-merge task on `dev` in the main checkout**. Its precondition is that `git log dev` contains the merge commits of both `phase2/02-04` and `phase2/02-05` and the orchestrator's post-merge full pipeline was green. It:
   1. adds the per-duel `(events, hash)` pins from `traces/gate.trace.json` (the `events`/`hash` fields, not the `…PreRewards` pair);
   2. reruns every composite golden and the full pipeline;
-  3. pushes and proves CI green through GitHub MCP.
+  3. commits on `dev` (no push; the orchestrator pushes and proves CI).
 - Any change to a reward-independent golden at that point is a bug: stop and escalate.
-- W3, and Phase 2 execution, is complete only after this commit.
+- W3, and Phase 2 execution, is complete only after this commit is pushed and CI is green.
+
+### Golden maintenance after Phase 2 (user decision: "TS engine becomes the oracle")
+- The reference implementation `.planning/reference/phase-02/` is the golden oracle **only until the 02-05 closing step (task 3) commits**. After that it is **frozen**: kept in the repository for history, never regenerated, never edited, and no longer authoritative.
+- From Phase 3 on, the reviewed TypeScript engine is the oracle. A phase that changes content or rules re-pins the affected exact goldens (hashes, event counts, stdout blocks, gate counts) from the engine's own output (`pnpm sim …` / test output) **in the same commit that changes the rules**, and the golden diff is reviewed as part of that change.
+- Once rules change, the balance gate (Hard ≥ 70% of decisive duels and ≤ 40% draws in every mirror, D1) is asserted as **thresholds**, not exact counts.
+- Phase 2 itself still pins the exact values from the reference; "never record a golden from your implementation" stays binding for every Phase 2 plan.
+
+### Known Phase 3+ inputs (notes only; no Phase 2 work)
+- `decision/open` / prompt caps (≤ 8 options per prompt, 1–4 prompts) are sized for combat and polls; board movement will likely need a larger option cap.
+- `public.choiceHistory` is pooled per player across all opponents (not per opponent pair); Phase 3 board AI/personas may want per-opponent memory.
+- Saves carry no `rulesHash`; Phase 4 persistence needs a save wrapper `{rulesHash, state}` (as replay files already do).
 
 ## Plan Structure
 - **Plan 02-01a (Wave 1): Kernel v2 data model and Rules threading.**
@@ -139,21 +172,22 @@ Rewards (02-04) append `VictoryRewarded`/`LevelUp`/`MasteryRankUp` after `Combat
   - `buildRules` / `validateContent` / `loadRules`
   - `rulesHash(loadRules()) = 84a995db`
   - counts, cross-ref messages
-  - package-scoped
+  - worktree `/home/user/usurpia-wt/02-02`, branch `phase2/02-02`; full pipeline in the worktree
 - **Plan 02-03 (Wave 3): Combat engine (resolve → flow → golden).**
   - pure `computeCell` / `resolveExchange` with the matrix + variant goldens
-  - the combat state machine (`combat/start`, `system/setCharacter`, the exchange resolver, deserialize check 8)
+  - the combat state machine (`combat/start`, `system/setCharacter`, the exchange resolver, deserialize check 8); owns `handlers/decision.ts` in W2 (reveal logic)
   - the combat golden `ec0c3508`
-  - package-scoped
+  - worktree `/home/user/usurpia-wt/02-03`, branch `phase2/02-03`; full pipeline in the worktree
 - **Plan 02-04 (Wave 4): Progression + inventory.**
   - XP/levels/mastery/hybrids/portable + the reward hook
   - inventory helpers + `system/grant` / `loadout/*` handlers
   - the rewards golden `57da3ea4`
-  - package-scoped
+  - worktree `/home/user/usurpia-wt/02-04`, branch `phase2/02-04`; full pipeline in the worktree
 - **Plan 02-05 (Wave 4): CPU AI + balance sim (+ W3 closing step).**
   - `@usurpia/core/ai` (Easy/Normal/Hard, `expNeg`) with lint isolation + purity probes
   - `pnpm sim duel`, the report, kits, the fixture `0483c0fa`, gate counts, the perf test, the CI smoke step
-  - task 3: the W3 closing step (reward-dependent gate pins, full pipeline, push, CI)
+  - tasks 1–2 in worktree `/home/user/usurpia-wt/02-05`, branch `phase2/02-05`
+  - task 3: the W3 closing step, post-merge on `dev` in the main checkout (reward-dependent gate pins, composite goldens, full pipeline, commit; the orchestrator pushes and proves CI)
 
 ## Pinned values summary
 | Golden | Value | Plan / task |
@@ -197,10 +231,11 @@ Oracle trace endpoints (`initialHash → finalHash`, steps):
 ## Conventions for every plan
 - Each plan owns `.planning/phases/02-combat-core-balance-sim/02-XX-SUMMARY.md` (in its `files_modified`).
 - No plan edits these: `.planning/specs/`, `.planning/reference/`, `.planning/ROADMAP.md`, `.planning/PROJECT.md`, `.planning/STATE.md`, `.planning/memory/`, `.planning/phases/01-foundations-deterministic-engine/`.
-- Every plan ends with a commit on `dev`:
+- Every plan ends with a commit: on `dev` for 02-01a, 02-01b and 02-05 task 3 (main checkout); on the plan's own branch `phase2/02-0X` for 02-02, 02-03, 02-04 and 02-05 tasks 1–2 (worktree):
   - message `Phase 2 plan 02-XX: <plan name>`, ending with the attribution trailer lines provided in the execution prompt;
   - verify with `git show --name-only --format= HEAD` that no `.tsbuild/`, `dist/` or `node_modules/` path is committed.
-  - Only 02-05 task 3 pushes.
+  - **No executor pushes or uses GitHub MCP.** The orchestrator pushes and proves CI after 02-01a, after 02-01b, after each wave merge, and after the closing step (*Wave execution protocol*).
+- **Import-cycle guard:** `rules.ts` ↔ `serialize.ts` form an import cycle (`rulesHash` needs `stableStringify`; `deserialize` needs `levelForXp`/`masteryRank`/`sheetStats`). Neither module may use the other's values at module top level (only inside function bodies). Plans touching them verify fresh-process imports with `pnpm exec tsx --input-type=module -e 'import "./packages/core/src/<entry>.ts"'` per entry point and `pnpm --filter @usurpia/sim exec tsx --input-type=module -e 'import * as c from "@usurpia/core"; …'` (no `ReferenceError`).
 - **Negative tests (PIT-001):** built from a known-valid fixture with exactly one mutation, asserting the exact code **and** message. For every new validation check group, a mutation proof is recorded in the SUMMARY: temporarily delete (or invert) each check, confirm that only its own test(s) fail, then restore.
 - **Id-keyed records (PIT-002):** every record keyed by a player id **or content id** is read with `Object.hasOwn`/`ownGet`. Arbitraries and negative tests include prototype-member ids (`toString`, `valueOf`, `hasOwnProperty` for players; `toString`, `valueOf`, `constructor`, `__proto__` as raw content-id strings in actions and saves).
 - **Verification lines** are deterministic and exit 0 on success. Negative checks assert an exact exit code (`…; test $? -eq 1`), and greps use specific patterns.

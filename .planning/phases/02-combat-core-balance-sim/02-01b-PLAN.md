@@ -12,6 +12,8 @@ files_modified:
   - packages/core/src/events.ts
   - packages/core/src/serialize.ts
   - packages/core/src/views.ts
+  - packages/core/src/reducer.ts
+  - packages/core/src/index.ts
   - packages/core/test/decision.test.ts
   - packages/core/test/reducer.test.ts
   - packages/core/test/serialize.test.ts
@@ -36,11 +38,9 @@ files_forbidden:
   - .planning/phases/01-foundations-deterministic-engine/
   - packages/core/src/rules.ts
   - packages/core/src/types.ts
-  - packages/core/src/reducer.ts
   - packages/core/src/game.ts
   - packages/core/src/replay.ts
   - packages/core/src/validation.ts
-  - packages/core/src/index.ts
   - packages/core/src/combat/
   - packages/core/src/rng.ts
   - packages/core/src/hash.ts
@@ -108,6 +108,11 @@ verification_commands:
   - "grep -rnE 'sample/|setSecret|lastRoll|defaultChoice|sample-game|\\{ settings, actions \\}' packages/*/src packages/*/test packages/sim/fixtures README.md; test $? -eq 1"
   - "grep -q 'rulesHash' README.md"
   - "grep -q 'Mutation proof' .planning/phases/02-combat-core-balance-sim/02-01b-SUMMARY.md"
+  - "grep -q '^## arbitraries exports' .planning/phases/02-combat-core-balance-sim/02-01b-SUMMARY.md"
+  - "grep -q '^## Resolver/ResolverTable signatures' .planning/phases/02-combat-core-balance-sim/02-01b-SUMMARY.md"
+  - "pnpm exec tsx --input-type=module -e 'import \"./packages/core/src/rules.ts\"'"
+  - "pnpm exec tsx --input-type=module -e 'import \"./packages/core/src/serialize.ts\"'"
+  - "pnpm --filter @usurpia/sim exec tsx --input-type=module -e 'import * as c from \"@usurpia/core\"; if (typeof c.deserialize !== \"function\" || typeof c.rulesHash !== \"function\") throw new Error(\"core exports missing\")'"
   - "git log -1 --format=%s | grep -q '^Phase 2 plan 02-01b:'"
   - "git show --name-only --format= HEAD | grep -E '(^|/)(\\.tsbuild|dist|node_modules)/'; test $? -eq 1"
 
@@ -221,7 +226,8 @@ Scope:
 - Write targets: exactly `files_modified`.
 - Forbidden targets: `files_forbidden`.
 Allowed tools/actions:
-- Edit listed files. Run any root script: this plan runs alone in its wave, so the repo-wide pipeline is allowed. Run `pnpm sim replay <file>`, and `git add`/`git commit` on `dev`.
+- Edit listed files. Run any root script: this plan runs alone in its wave, in the main checkout `/home/user/Dokapon-kingdom-2` on `dev`, so the repo-wide pipeline is allowed. Run `pnpm sim replay <file>`, and `git add`/`git commit` on `dev`.
+- `reducer.ts` and `index.ts` (finished by 02-01a) may be edited **only** where the now non-empty W1b action union requires it (e.g. removing 02-01a's `never` workarounds, `ACTION_TYPES` checks, exports of the new decision API); the Phase 1 precedence order and the documented single widening cast stay. Any such edit is listed under Deviations in the SUMMARY.
 - Read `.planning/reference/phase-02/**` (traces) for debugging; never edit it.
 Forbidden actions:
 - Do not modify files outside files_modified.
@@ -229,7 +235,9 @@ Forbidden actions:
 - Do not change public APIs, schemas, migrations, auth, CI, or deployment unless explicitly listed in this plan.
 - Do not self-defer planned work.
 - Do not record goldens from your implementation (`9616698e`, the event list and the rejections come from the spec). On a mismatch, diff per-action `hashState`/events against `traces/kernel-game.trace.json` (step hashes) and emit `BLOCKED` naming the first diverging action if it cannot be reconciled with the spec prose.
-- Do not push. Do not use eslint-disable comments or impure globals in core src.
+- Do not push and do not use GitHub MCP (the orchestrator pushes and proves CI after this plan; 02-CONTEXT *Wave execution protocol*). Do not use eslint-disable comments or impure globals in core src.
+- Mismatch-localisation throwaway scripts live outside the repo in `/tmp/usurpia-scratch/02-01b/`, so `git status --porcelain` stays clean.
+- **Import-cycle guard:** `serialize.ts` now imports `levelForXp`/`masteryRank` from `../rules` and `sheetStats` from `../combat/stats`, while `rules.ts` imports `stableStringify` from `./serialize`. Use those values **only inside function bodies** in `serialize.ts` (never in a module-top-level constant or table), and never add a top-level use of a `serialize` value in `rules.ts`. Verified by fresh-process `tsx` imports (Task 3).
 Implementation sequence:
 1. Read 02-01a-SUMMARY.md and the spec sections. Run `pnpm test` to confirm a green start.
 2. Task 1: decision module, W1 action union/events, handler registration, `decision.test.ts`, `reducer.test.ts`.
@@ -345,7 +353,7 @@ Final result format:
 Emit `BLOCKED` and stop instead of guessing when:
 - A read target listed in `<context>` or `<execution_contract>` is missing or unreadable (a missing 02-01a-SUMMARY.md means W1a is incomplete).
 - Required source evidence contradicts the plan (e.g. the kernel poll replay cannot reach `9616698e` after diffing per step against `traces/kernel-game.trace.json`).
-- Completing the task requires a file not listed in `files_modified` (e.g. a change to `reducer.ts`, `types.ts` or `index.ts`, which 02-01a finished).
+- Completing the task requires a file not listed in `files_modified` (e.g. a change to `types.ts`, `game.ts` or `validation.ts`, which 02-01a finished).
 - Any instruction conflicts with `files_forbidden`, authority boundaries, control mode, or user_setup.
 - An API/type/schema/validation/architecture decision is not specified.
 - A required helper, pattern, or test location is named vaguely or cannot be found.
@@ -365,7 +373,7 @@ After compaction, interruption, or context loss:
 
 <task type="auto">
   <name>Task 1: Decision module (poll, commit, timeout, reveal + resolver dispatch)</name>
-  <files>packages/core/src/handlers/decision.ts, packages/core/src/handlers/index.ts, packages/core/src/handlers/shared.ts, packages/core/src/actions.ts, packages/core/src/events.ts, packages/core/test/decision.test.ts, packages/core/test/reducer.test.ts</files>
+  <files>packages/core/src/handlers/decision.ts, packages/core/src/handlers/index.ts, packages/core/src/handlers/shared.ts, packages/core/src/actions.ts, packages/core/src/events.ts, packages/core/src/reducer.ts, packages/core/src/index.ts, packages/core/test/decision.test.ts, packages/core/test/reducer.test.ts</files>
   <action>
 Read the spec's *Transition semantics — kernel (W1b, 02-01b)* and the three handler-table rows.
 
@@ -387,7 +395,7 @@ Read the spec's *Transition semantics — kernel (W1b, 02-01b)* and the three ha
        6. if `kind === "combat/exchange"`, increment `choiceHistory[p][choice]` (saturating at `MAX_COUNTER`) for non-timed-out players whose choice is one of `COMMANDS`;
        7. call `resolvers[kind]`.
    - All records via `Object.fromEntries`/`ownGet` (PIT-002).
-4. **`handlers/index.ts`:** register as in the execution contract.
+4. **`handlers/index.ts`:** register as in the execution contract. If the non-empty union makes 02-01a's `never` workarounds in `reducer.ts` unnecessary or wrong, adjust `reducer.ts` minimally (precedence unchanged); export the public decision API (`openDecision`, `revealDecision`, `Resolver`, `ResolverTable` types if the spec lists them) from `index.ts` only if the spec's export list requires it.
 5. **`decision.test.ts`** (call `usePurityTraps()`; use `newGame`/`applyAll`/`deepFreeze` from `./fixtures/build`):
    - Full flow: open with p1 `["yes","no"]`/`"no"` and p2 `["red","green","blue"]`/`"red"` → commit p1 → commit p2. Assert:
      - exact event types/order;
@@ -399,6 +407,15 @@ Read the spec's *Transition semantics — kernel (W1b, 02-01b)* and the three ha
    - The second decision id is `d2`.
    - Every edge/error case in the execution contract (the 53/64/65-char token cases included).
    - A 3-seat game with ids `toString`, `valueOf`, `hasOwnProperty` that opens, commits one and times out, then asserts `typeof` of every revealed choice is `"string"` and `stableStringify(state)` does not throw.
+   - **Direct reveal-path unit test (`combat/exchange` choiceHistory counting):** call `revealDecision` directly (not through `reduce`, since W1b `deserialize`/handlers never produce a combat pending):
+     - Hand-build the input: open a poll for p1/p2 via `applyAll`, then make a structural copy whose `public.pending.kind` is `"combat/exchange"` and whose prompts/`hidden.decision.choices` hold the scenario's options/choices (the state is not passed through `deserialize`).
+     - Use a stub `ResolverTable` whose `"combat/exchange"` entry records its arguments and returns the state unchanged, and whose `poll` entry throws; a `Ctx` built from `seedRng("reveal")` whose `int` throws (the stub never draws).
+     - Cases (each asserts `choiceHistory` exactly and that the stub resolver was called once with `choices` in `required` order):
+       1. p1 committed `strike`, p2 timed out (`timedOut: ["p2"]`, own default `guard`): p1 `strike` +1; p2's `guard` **not** counted.
+       2. p1 committed `flee`, p2 committed `counter`: `flee` is not one of the 6 `COMMANDS`, so p1's record is unchanged; p2 `counter` +1.
+       3. p1 committed `item:herb`, p2 committed `ward`: `item:<id>` is not counted; p2 `ward` +1.
+       4. Saturation: p1's `choiceHistory.strike = MAX_COUNTER` in the hand-built copy; p1 commits `strike` → stays `MAX_COUNTER` (no overflow, still a safe integer).
+     - And a `poll` reveal with the same choices leaves `choiceHistory` unchanged.
 6. **`reducer.test.ts`:** add the `WRONG_PHASE`/`WRONG_ACTOR`/state-validation precedence cases from the execution contract. Each asserts the exact code and that the input state is returned (`===`).
 
 > verification: pnpm vitest run packages/core/test/decision.test.ts packages/core/test/reducer.test.ts
@@ -489,7 +506,7 @@ Read the spec's golden block *Golden (W1b, `packages/sim/fixtures/kernel-game.js
 4. **`counter-bounds.test.ts`:**
    - A state with `hidden.decisionSeq = MAX_COUNTER`, built by mutating `serialize(newGame())` and loading it with `deserialize` (this also proves it is a valid save). `decision/open` → `INVALID_PAYLOAD` "decisionSeq would exceed MAX_COUNTER".
    - At `MAX_COUNTER - 1` it opens `d2147483647`.
-   - `choiceHistory` saturation is covered in 02-03, since there is no combat yet.
+   - `choiceHistory` saturation is unit-tested at the reveal path in `decision.test.ts` (Task 1); the reduce-level saturation test follows in 02-03 once combat exists.
 5. **`packages/sim/fixtures/kernel-game.json`:** `{"rulesHash":"7433ea8b","settings":{…the W1b settings…},"actions":[…the 7 spec actions…]}`. Format it with prettier.
 6. **`packages/sim/test/replay-file.test.ts`:**
    - `replayFile(<fixture>, replayRules())` gives the line exactly `hash=9616698e rules=7433ea8b turn=1 events=10 rejections=2`, and is deterministic (twice).
@@ -525,6 +542,7 @@ Read the spec's golden block *Golden (W1b, `packages/sim/fixtures/kernel-game.js
    8. `pnpm sim replay packages/sim/fixtures/kernel-game.json`
    9. the sample/README grep
    10. `grep -q "rulesHash" README.md`
+   11. the import-cycle guard (fresh-process imports of `rules.ts`, `serialize.ts` and `@usurpia/core`; no `ReferenceError`)
 10. **Mutation proofs:** perform them per the execution contract and record them in the SUMMARY under `## Mutation proof`.
 11. **Commit** (last step):
     1. Write `02-01b-SUMMARY.md`. It contains:
@@ -535,12 +553,14 @@ Read the spec's golden block *Golden (W1b, `packages/sim/fixtures/kernel-game.js
        - the deserialize message table;
        - the mutation-proof tables;
        - pipeline tails;
+       - a section headed exactly `## arbitraries exports` (every export name and its type/shape, reused by 02-03/02-04);
+       - a section headed exactly `## Resolver/ResolverTable signatures` (the verbatim `Resolver`/`ResolverTable` type declarations and the `openDecision`/`revealDecision`/`decisionHandlers` signatures);
        - decisions (the comma separator, the resolver types);
-       - deviations.
+       - deviations (including any `reducer.ts`/`index.ts` edit).
     2. `git add packages/core packages/sim packages/client .planning/phases/02-combat-core-balance-sim/02-01b-SUMMARY.md`
     3. Commit on `dev` with message `Phase 2 plan 02-01b: Generic decisions, deserialize v2, views counts, property suite`, ending with the attribution trailer lines provided in the execution prompt.
     4. Confirm there are no `.tsbuild/`, `dist/` or `node_modules/` paths in `git show --name-only --format= HEAD`, and that `git status --porcelain` is empty.
-    5. Do not push.
+    5. Do not push (the orchestrator pushes and proves CI).
 
 > verification: pnpm install --frozen-lockfile
 > verification: pnpm lint
@@ -553,6 +573,11 @@ Read the spec's golden block *Golden (W1b, `packages/sim/fixtures/kernel-game.js
 > verification: grep -c 'numRuns: 200' packages/core/test/replay.test.ts | xargs test 6 -le
 > verification: grep -q 'numRuns: 200' packages/core/test/views.test.ts
 > verification: grep -rnE 'sample/|setSecret|lastRoll|defaultChoice|sample-game|\{ settings, actions \}' packages/*/src packages/*/test packages/sim/fixtures README.md; test $? -eq 1
+> verification: pnpm exec tsx --input-type=module -e 'import "./packages/core/src/rules.ts"'
+> verification: pnpm exec tsx --input-type=module -e 'import "./packages/core/src/serialize.ts"'
+> verification: pnpm --filter @usurpia/sim exec tsx --input-type=module -e 'import * as c from "@usurpia/core"; if (typeof c.deserialize !== "function" || typeof c.rulesHash !== "function") throw new Error("core exports missing")'
+> verification: grep -q '^## arbitraries exports' .planning/phases/02-combat-core-balance-sim/02-01b-SUMMARY.md
+> verification: grep -q '^## Resolver/ResolverTable signatures' .planning/phases/02-combat-core-balance-sim/02-01b-SUMMARY.md
 > verification: git log -1 --format=%s | grep -q '^Phase 2 plan 02-01b:'
 > verification: git show --name-only --format= HEAD | grep -E '(^|/)(\.tsbuild|dist|node_modules)/'; test $? -eq 1
   </action>
@@ -568,6 +593,11 @@ pnpm sim replay packages/sim/fixtures/kernel-game.json | grep -qx 'hash=9616698e
 grep -c 'numRuns: 200' packages/core/test/replay.test.ts | xargs test 6 -le
 grep -q 'numRuns: 200' packages/core/test/views.test.ts
 grep -rnE 'sample/|setSecret|lastRoll|defaultChoice|sample-game|\{ settings, actions \}' packages/*/src packages/*/test packages/sim/fixtures README.md; test $? -eq 1
+pnpm exec tsx --input-type=module -e 'import "./packages/core/src/rules.ts"'
+pnpm exec tsx --input-type=module -e 'import "./packages/core/src/serialize.ts"'
+pnpm --filter @usurpia/sim exec tsx --input-type=module -e 'import * as c from "@usurpia/core"; if (typeof c.deserialize !== "function" || typeof c.rulesHash !== "function") throw new Error("core exports missing")'
+grep -q '^## arbitraries exports' .planning/phases/02-combat-core-balance-sim/02-01b-SUMMARY.md
+grep -q '^## Resolver/ResolverTable signatures' .planning/phases/02-combat-core-balance-sim/02-01b-SUMMARY.md
 git log -1 --format=%s | grep -q '^Phase 2 plan 02-01b:'
 git show --name-only --format= HEAD | grep -E '(^|/)(\.tsbuild|dist|node_modules)/'; test $? -eq 1
   </verify>
@@ -594,5 +624,5 @@ Before declaring plan complete:
 </success_criteria>
 
 <output>
-After completion, create `.planning/phases/02-combat-core-balance-sim/02-01b-SUMMARY.md` with: the API list (`openDecision`, `revealDecision`, `decisionHandlers`, `Resolver`, `ResolverTable`, the arbitraries export names), test counts, property run counts, the deserialize message table, `## Mutation proof`, pipeline tails, decisions, deviations. It is committed in the Task 3 commit.
+After completion, create `.planning/phases/02-combat-core-balance-sim/02-01b-SUMMARY.md` with: the API list (`openDecision`, `revealDecision`, `decisionHandlers`, `Resolver`, `ResolverTable`), a `## arbitraries exports` section, a `## Resolver/ResolverTable signatures` section, test counts, property run counts, the deserialize message table, `## Mutation proof`, pipeline tails, decisions, deviations. It is committed in the Task 3 commit.
 </output>

@@ -142,6 +142,10 @@ verification_commands:
   - "grep -rnE 'sample/|setSecret|lastRoll|defaultChoice|sample-game|\\{ settings, actions \\}' packages/*/src packages/*/test packages/sim/fixtures README.md; test $? -eq 1"
   - "grep -q 'rulesHash' README.md"
   - "grep -q 'allow-rules-mismatch' README.md"
+  - "pnpm exec tsx --input-type=module -e 'import \"./packages/core/src/rules.ts\"'"
+  - "pnpm exec tsx --input-type=module -e 'import \"./packages/core/src/serialize.ts\"'"
+  - "pnpm --filter @usurpia/sim exec tsx --input-type=module -e 'import * as c from \"@usurpia/core\"; if (typeof c.rulesHash !== \"function\") throw new Error(\"rulesHash missing\")'"
+  - "grep -q '^## fixtures/build.ts helpers' .planning/phases/02-combat-core-balance-sim/02-01a-SUMMARY.md"
   - "git log -1 --format=%s | grep -q '^Phase 2 plan 02-01a:'"
   - "git show --name-only --format= HEAD | grep -E '(^|/)(\\.tsbuild|dist|node_modules)/'; test $? -eq 1"
 
@@ -276,7 +280,8 @@ Forbidden actions:
 - Do not change public APIs, schemas, migrations, auth, CI, or deployment unless explicitly listed in this plan.
 - Do not self-defer planned work.
 - Do not "record" goldens from your implementation: `7433ea8b`, `758ef72c`, the canonical JSON and the stats table come from the spec. On a mismatch, follow the spec's *Mismatch localisation protocol* (the `createGame` golden equals `traces/kernel-game.trace.json` `initialHash`).
-- Do not push (02-05 task 3 pushes).
+- Do not push and do not use GitHub MCP. This plan runs in the main checkout `/home/user/Dokapon-kingdom-2` on `dev` and commits on `dev`; the orchestrator pushes and proves CI after this plan (02-CONTEXT *Wave execution protocol*).
+- Mismatch-localisation throwaway scripts live outside the repo in `/tmp/usurpia-scratch/02-01a/` (never inside the checkout), so `git status --porcelain` stays clean.
 - Do not use `eslint-disable` comments (`noInlineConfig` is on in `packages/core/src`), `Math.random`, `Date`, `Intl`, `Reflect`, `.constructor`, `localeCompare` or `import()` in core src.
 Implementation sequence:
 1. Read the spec sections listed above and every context file. Confirm the tool exclusions (see Task 3). Record the pre-change test count (`pnpm test`, expected 263).
@@ -293,6 +298,12 @@ Required interfaces/content structure:
   - Guards `isPlainObject`, `hasExactKeys(raw, keys)`, `isChoiceToken(x)` (`CHOICE_PATTERN`), `isInt(x, min, max)`; `reject(code, message)` (bounded echo: ids clipped to 64 chars); `overflow(n, by)` (`n + by > MAX_COUNTER`); `ownGet(record, key)` re-exported from `validation.ts` if it lives there.
 - `handlers/index.ts`: `export const handlers = {} satisfies HandlerMap;`. The reducer keeps Phase 1's single documented widening cast for the handler lookup.
 - `ACTION_TYPES` is an empty readonly array typed `readonly Action["type"][]`; `Action` is `never`.
+- **`never` typing traps (W1a only; decided here):** with `Action = never`, `ACTION_TYPES` is `readonly never[]` and `Action["type"]` is `never`.
+  - `ACTION_TYPES.includes(type)` with a `string` argument fails typecheck. Use `(ACTION_TYPES as readonly string[]).includes(type)`.
+  - `@typescript-eslint/restrict-template-expressions` rejects interpolating a `never`-typed value (e.g. `` `unknown action ${action.type}` ``). Widen first (`const type: string = raw.type as string;` after the plain-object check, or `String(x)`) and interpolate the `string`.
+  - The handler lookup keeps Phase 1's single documented widening cast (e.g. `(handlers as Readonly<Record<string, Handler<Action> | undefined>>)`), guarded by `Object.hasOwn(handlers, type)`.
+  - No `eslint-disable` is possible in core src (`noInlineConfig`), so these workarounds are mandatory. 02-01b may adjust `reducer.ts`/`index.ts` again once the union is non-empty.
+- **Import-cycle guard:** `rules.ts` imports `stableStringify` from `./serialize` (which, from 02-01b on, imports `levelForXp`/`masteryRank` from `./rules`). `rules.ts` uses `serialize`/`hash` values **only inside function bodies** (`rulesHash`), never at module top level (no top-level constant computed from `stableStringify`/`fnv1a32`); `serialize.ts` likewise never uses `rules.ts` values at top level. Verified by fresh-process `tsx` imports of each entry point (Task 3).
 - `events.ts` (W1a): `Visibility`, frozen `PUBLIC`, `onlyPlayers()`, and the `GameEvent` union declared with the five decision events of the spec's *`events.ts` — GameEvent union v2* table (`DecisionOpened`, `PromptOpened` private, `ChoiceCommitted`, `ChoiceTimedOut`, `ChoicesRevealed`), every event `{v: 2, type, visibility, …}`. They are declared (types only) so views/replay compile and redaction can be unit-tested; nothing emits them until 02-01b.
 - `packages/core/test/fixtures/build.ts` (test helpers, decided here because the spec does not detail them):
   - `FIXTURE_SETTINGS` (`{v:2, seed:"fixture", players:[{id:"p1",classId:"fighter"},{id:"p2",classId:"caster"}]}`)
@@ -356,6 +367,7 @@ Read the spec sections *`rules.ts` — the `Rules` contract*, *`combat/passives.
    - `levelForXp(rules, xp)` = max `L` with `xp >= progression.xpCurve[L-1]`.
    - Loops only, no floats.
    - Core trusts `Rules` (no re-validation).
+   - Import-cycle guard (execution contract): `stableStringify`/`fnv1a32` are used only inside `rulesHash`'s body; no module-top-level value in `rules.ts` depends on `./serialize` or `./hash`.
 2. **`packages/core/src/types.ts` (additive in this task):** add the exports Task 1 needs from the spec's *`types.ts` — GameState v2* block: `MAX_STAT`, `CharacterPublic`, `BattleMods`, `NpcRef`, `CombatSide`. Import `ContentId`/`StatBlock` types from `./rules`. Do **not** remove v1 declarations yet (Task 2 finishes the migration). This keeps core compiling between tasks.
 3. **`packages/core/src/combat/passives.ts`:**
    - `export type HookTotals = Readonly<Record<CombatHook, number>>;`
@@ -540,6 +552,7 @@ Read the spec sections *`@usurpia/sim`* (the replay file v2 bullets for W1), *`@
     7. `pnpm build`
     8. the sample/README grep
     9. `grep -q "rulesHash" README.md`
+    10. the import-cycle guard: `pnpm exec tsx --input-type=module -e 'import "./packages/core/src/rules.ts"'`, `pnpm exec tsx --input-type=module -e 'import "./packages/core/src/serialize.ts"'`, and the `@usurpia/core` package import via `pnpm --filter @usurpia/sim exec tsx --input-type=module -e …` (each a fresh process; none may throw a `ReferenceError`)
 
     Record each command's tail output and the new total test count in the SUMMARY.
 11. **Commit** (last step):
@@ -547,13 +560,13 @@ Read the spec sections *`@usurpia/sim`* (the replay file v2 bullets for W1), *`@
        - the exported API list;
        - test counts (before/after);
        - the golden values observed (`7433ea8b`, `758ef72c`, the W1a replay line);
-       - the `fixtures/build.ts` helper names;
+       - a section headed exactly `## fixtures/build.ts helpers` listing each helper's name and signature (`FIXTURE_SETTINGS`, `newGame`, `applyAll`, `deepFreeze`), reused by name by every later plan;
        - decisions (including the additive `types.ts` step in Task 1);
        - deviations.
     2. `git add packages/core packages/sim packages/content/package.json packages/content/tsconfig.json packages/client pnpm-lock.yaml README.md .planning/phases/02-combat-core-balance-sim/02-01a-SUMMARY.md` (`git add` also stages the deletions under `packages/core` and `packages/sim`).
     3. `git commit` on `dev` with message `Phase 2 plan 02-01a: Kernel v2 data model and Rules threading`, ending with the attribution trailer lines provided in the execution prompt.
     4. Confirm `git show --name-only --format= HEAD` lists no `.tsbuild/`, `dist/` or `node_modules/` path, and that `git status --porcelain` is empty.
-    5. Do **not** push.
+    5. Do **not** push (the orchestrator pushes and proves CI).
 
 > verification: pnpm install --frozen-lockfile
 > verification: pnpm lint
@@ -565,6 +578,10 @@ Read the spec sections *`@usurpia/sim`* (the replay file v2 bullets for W1), *`@
 > verification: grep -q 'hash=758ef72c rules=7433ea8b turn=1 events=0 rejections=0' packages/sim/test/replay-file.test.ts
 > verification: grep -rnE 'sample/|setSecret|lastRoll|defaultChoice|sample-game|\{ settings, actions \}' packages/*/src packages/*/test packages/sim/fixtures README.md; test $? -eq 1
 > verification: grep -q 'rulesHash' README.md
+> verification: pnpm exec tsx --input-type=module -e 'import "./packages/core/src/rules.ts"'
+> verification: pnpm exec tsx --input-type=module -e 'import "./packages/core/src/serialize.ts"'
+> verification: pnpm --filter @usurpia/sim exec tsx --input-type=module -e 'import * as c from "@usurpia/core"; if (typeof c.rulesHash !== "function") throw new Error("rulesHash missing")'
+> verification: grep -q '^## fixtures/build.ts helpers' .planning/phases/02-combat-core-balance-sim/02-01a-SUMMARY.md
 > verification: git log -1 --format=%s | grep -q '^Phase 2 plan 02-01a:'
 > verification: git show --name-only --format= HEAD | grep -E '(^|/)(\.tsbuild|dist|node_modules)/'; test $? -eq 1
   </action>
@@ -579,6 +596,10 @@ pnpm build
 grep -q 'hash=758ef72c rules=7433ea8b turn=1 events=0 rejections=0' packages/sim/test/replay-file.test.ts
 grep -rnE 'sample/|setSecret|lastRoll|defaultChoice|sample-game|\{ settings, actions \}' packages/*/src packages/*/test packages/sim/fixtures README.md; test $? -eq 1
 grep -q 'rulesHash' README.md
+pnpm exec tsx --input-type=module -e 'import "./packages/core/src/rules.ts"'
+pnpm exec tsx --input-type=module -e 'import "./packages/core/src/serialize.ts"'
+pnpm --filter @usurpia/sim exec tsx --input-type=module -e 'import * as c from "@usurpia/core"; if (typeof c.rulesHash !== "function") throw new Error("rulesHash missing")'
+grep -q '^## fixtures/build.ts helpers' .planning/phases/02-combat-core-balance-sim/02-01a-SUMMARY.md
 git log -1 --format=%s | grep -q '^Phase 2 plan 02-01a:'
 git show --name-only --format= HEAD | grep -E '(^|/)(\.tsbuild|dist|node_modules)/'; test $? -eq 1
   </verify>
@@ -605,5 +626,5 @@ Before declaring plan complete:
 </success_criteria>
 
 <output>
-After completion, create `.planning/phases/02-combat-core-balance-sim/02-01a-SUMMARY.md` with: the exported API list, test counts (before 263 / after), the observed goldens, the full-pipeline tail outputs, the `fixtures/build.ts` helper names (reused by later plans), decisions and deviations. It is committed in the Task 3 commit.
+After completion, create `.planning/phases/02-combat-core-balance-sim/02-01a-SUMMARY.md` with: the exported API list, test counts (before 263 / after), the observed goldens, the full-pipeline tail outputs, a `## fixtures/build.ts helpers` section (helper names and signatures, reused by later plans), decisions and deviations. It is committed in the Task 3 commit.
 </output>
