@@ -5,6 +5,39 @@ import tseslint from "typescript-eslint";
 
 const PURITY = "core must stay pure and deterministic; pass values in via state or actions";
 
+const CORE_IMPORT_RESTRICTIONS = {
+  // Bare Node builtins by exact name (`paths`, not `patterns`, so local `./events` stays legal).
+  paths: [
+    "crypto",
+    "os",
+    "child_process",
+    "module",
+    "worker_threads",
+    "perf_hooks",
+    "util",
+    "events",
+    "url",
+    "buffer",
+  ].map((name) => ({ name, message: "core must stay pure and dependency-free" })),
+  patterns: [
+    {
+      group: [
+        "node:*",
+        "fs",
+        "path",
+        "zod",
+        "@usurpia/client",
+        "@usurpia/sim",
+        "@usurpia/content",
+        "**/content/**",
+        "**/sim/**",
+        "**/client/**",
+      ],
+      message: "core must stay pure and dependency-free",
+    },
+  ],
+};
+
 const nodeGlobals = { process: "readonly", console: "readonly", URL: "readonly" };
 
 export default tseslint.config(
@@ -103,40 +136,61 @@ export default tseslint.config(
         "error",
         { object: "Math", property: "random", message: "Use the seeded RNG in state.hidden.rng" },
       ],
+      "no-restricted-imports": ["error", CORE_IMPORT_RESTRICTIONS],
+    },
+  },
+  {
+    // Reducer, handlers and the rest of core must not depend on the CPU AI (it runs outside reduce).
+    files: ["packages/core/src/**/*.ts"],
+    ignores: ["packages/core/src/ai/**"],
+    rules: {
       "no-restricted-imports": [
         "error",
         {
-          // Bare Node builtins by exact name (`paths`, not `patterns`, so local `./events` stays legal).
-          paths: [
-            "crypto",
-            "os",
-            "child_process",
-            "module",
-            "worker_threads",
-            "perf_hooks",
-            "util",
-            "events",
-            "url",
-            "buffer",
-          ].map((name) => ({ name, message: "core must stay pure and dependency-free" })),
+          paths: CORE_IMPORT_RESTRICTIONS.paths,
           patterns: [
+            ...CORE_IMPORT_RESTRICTIONS.patterns,
             {
-              group: [
-                "node:*",
-                "fs",
-                "path",
-                "zod",
-                "@usurpia/client",
-                "@usurpia/sim",
-                "@usurpia/content",
-                "**/content/**",
-                "**/sim/**",
-                "**/client/**",
-              ],
-              message: "core must stay pure and dependency-free",
+              regex: "(^|/)ai(/|$)",
+              message: "reducer/handlers/core must not import the CPU AI (ai/ runs outside reduce)",
             },
           ],
         },
+      ],
+    },
+  },
+  {
+    // The AI reads PlayerView + Rules only and uses engine-independent arithmetic.
+    files: ["packages/core/src/ai/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: CORE_IMPORT_RESTRICTIONS.paths,
+          patterns: [
+            ...CORE_IMPORT_RESTRICTIONS.patterns,
+            {
+              regex: "(^|/)(reducer|handlers|index|serialize|game|replay)(/|$)",
+              message:
+                "the AI reads PlayerView + Rules only (no reducer, handlers, or modules exposing GameState)",
+            },
+            { regex: "^@usurpia/core(/|$)", message: "the AI must use relative imports" },
+            {
+              regex: ".*",
+              importNames: ["GameState", "HiddenState"],
+              message: "the AI reads PlayerView only",
+            },
+          ],
+        },
+      ],
+      "no-restricted-properties": [
+        "error",
+        { object: "Math", property: "random", message: "Use the seeded RNG in state.hidden.rng" },
+        ...["exp", "log", "pow"].map((property) => ({
+          object: "Math",
+          property,
+          message: "AI arithmetic must be engine-independent; use expNeg",
+        })),
       ],
     },
   },

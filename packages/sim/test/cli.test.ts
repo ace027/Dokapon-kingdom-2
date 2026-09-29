@@ -16,11 +16,10 @@ const SETTINGS = {
   v: 2,
   seed: "fixture",
   players: [
-    { id: "p1", classId: "fighter" },
-    { id: "p2", classId: "caster" },
+    { id: "a", classId: "warrior" },
+    { id: "b", classId: "mage" },
   ],
 };
-// Derived from the current rules, so these tests survive the W3 rules switch unchanged.
 const RULES_HASH = rulesHash(replayRules());
 const EMPTY_LINE = `hash=[0-9a-f]{8} rules=${RULES_HASH} turn=1 events=0 rejections=0`;
 
@@ -58,10 +57,11 @@ describe("sim CLI", () => {
     expect(result.stderr).toContain("usage: sim replay <file.json> [--allow-rules-mismatch]");
   });
 
-  it("prints usage and exits 2 with no command at all", () => {
+  it("prints usage for both commands and exits 2 with no command at all", () => {
     const result = runCli();
     expect(result.status).toBe(2);
     expect(result.stderr).toContain("usage: sim replay");
+    expect(result.stderr).toContain("usage: sim duel");
   });
 
   it("exits 2 for an unknown command", () => {
@@ -100,6 +100,12 @@ describe("sim CLI", () => {
     expect(result.stdout).toBe("");
   });
 
+  it("exits 3 for a file recorded with the old kernel rules (7433ea8b)", () => {
+    const result = runCli("replay", writeTemp("kernel.json", goodFile({ rulesHash: "7433ea8b" })));
+    expect(result.status).toBe(3);
+    expect(result.stderr).toBe("error: rules mismatch: file 7433ea8b, current 84a995db\n");
+  });
+
   it("proceeds with --allow-rules-mismatch and prints the mismatch suffix", () => {
     const filePath = writeTemp("mismatch.json", goodFile({ rulesHash: "deadbeef" }));
     const result = runCli("replay", filePath, "--allow-rules-mismatch");
@@ -125,11 +131,69 @@ describe("sim CLI", () => {
     expect(result.stderr).toMatch(/^error: cannot read /);
   });
 
-  it("replays the committed kernel fixture through the CLI", () => {
-    const result = runCli("replay", "packages/sim/fixtures/kernel-game.json");
+  it("replays the committed combat fixture through the CLI", () => {
+    const result = runCli("replay", "packages/sim/fixtures/combat-game.json");
     expect(result.status).toBe(0);
-    expect(result.stdout.trim()).toBe(
-      `hash=9616698e rules=${RULES_HASH} turn=1 events=10 rejections=2`,
+    expect(result.stdout).toBe("hash=0483c0fa rules=84a995db turn=1 events=95 rejections=0\n");
+  });
+});
+
+describe("sim CLI duel usage errors", () => {
+  const BAD: [string, string[]][] = [
+    ["--n 0", ["--n", "0"]],
+    ["--n x", ["--n", "x"]],
+    ["--n -3", ["--n", "-3"]],
+    ["--n 1.5", ["--n", "1.5"]],
+    ["--n 1e3", ["--n", "1e3"]],
+    ["--n 0x10", ["--n", "0x10"]],
+    ["--n without a value", ["--n"]],
+    ["--n followed by a flag", ["--n", "--json"]],
+    ["--level 0", ["--level", "0"]],
+    ["--level 21", ["--level", "21"]],
+    ["--level x", ["--level", "x"]],
+    ["--difficulty insane", ["--difficulty", "insane"]],
+    ["--difficulty hard:", ["--difficulty", "hard:"]],
+    ["--difficulty :easy", ["--difficulty", ":easy"]],
+    ["--difficulty hard:easy:normal", ["--difficulty", "hard:easy:normal"]],
+    ["--matchup wizard:mage", ["--matchup", "wizard:mage"]],
+    ["--matchup warrior:monster/nope", ["--matchup", "warrior:monster/nope"]],
+    ["--matchup without a value", ["--matchup"]],
+    ["--seed without a value", ["--seed"]],
+    ["--seed followed by a flag", ["--seed", "--json"]],
+    ["--matchup with three parts", ["--matchup", "warrior:mage:thief"]],
+    ["--bogus", ["--bogus"]],
+    ["a stray positional", ["extra"]],
+  ];
+  for (const [name, args] of BAD) {
+    it(`exits 2 with a usage line for ${name}`, () => {
+      const result = runCli("duel", ...args);
+      expect(result.status).toBe(2);
+      expect(result.stderr).toMatch(/^usage: /);
+      expect(result.stdout).toBe("");
+    });
+  }
+
+  it("accepts every valid flag together", () => {
+    const result = runCli(
+      "duel",
+      "--n",
+      "3",
+      "--matchup",
+      "warrior:mage",
+      "--difficulty",
+      "easy:hard",
+      "--seed",
+      "s",
+      "--level",
+      "20",
+      "--json",
     );
+    expect(result.status).toBe(0);
+  });
+
+  it("accepts a single difficulty for both sides", () => {
+    const result = runCli("duel", "--n", "2", "--matchup", "mirrors", "--difficulty", "hard");
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("difficulty=hard:hard");
   });
 });
