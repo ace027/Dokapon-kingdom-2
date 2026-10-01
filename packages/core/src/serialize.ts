@@ -1,6 +1,6 @@
 import { attackerOptions, DEFENDER_OPTIONS, exchangeRoles, requiredFor } from "./combat/options";
 import { npcStats, sheetStats } from "./combat/stats";
-import { fnv1a32 } from "./hash";
+import { stableStringify } from "./canonical";
 import { COMMANDS, levelForXp, masteryRank, STAT_KEYS, type GearSlot, type Rules } from "./rules";
 import {
   CHOICE_PATTERN,
@@ -9,68 +9,31 @@ import {
   SCHEMA_VERSION,
   type CharacterPublic,
   type CombatState,
+  type DecisionKind,
   type GameState,
   type NpcRef,
 } from "./types";
-import { clip, isPlainObject, isUnique, ownGet, playersError } from "./validation";
+import {
+  clip,
+  isInt,
+  isPlainObject,
+  isUnique,
+  ownGet,
+  playersError,
+  sameStrings,
+} from "./validation";
+
+// Re-exported so `serialize.ts` stays the public home of these (they live in the leaf `canonical.ts`).
+export { hashState, stableStringify } from "./canonical";
 
 export class SchemaVersionError extends Error {
   override name = "SchemaVersionError";
-}
-
-function compareKeys(a: string, b: string): number {
-  if (a < b) return -1;
-  return a > b ? 1 : 0;
-}
-
-function write(value: unknown, path: string): string {
-  if (value === null || typeof value === "boolean" || typeof value === "string") {
-    return JSON.stringify(value);
-  }
-  if (typeof value === "number") {
-    if (!Number.isFinite(value)) {
-      throw new TypeError(`stableStringify: non-finite number at ${path}`);
-    }
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    const items: unknown[] = value;
-    const parts: string[] = [];
-    for (let i = 0; i < items.length; i++) {
-      parts.push(write(items[i], `${path}[${i}]`));
-    }
-    return `[${parts.join(",")}]`;
-  }
-  if (isPlainObject(value)) {
-    const parts: string[] = [];
-    for (const key of Object.keys(value).sort(compareKeys)) {
-      parts.push(`${JSON.stringify(key)}:${write(value[key], `${path}.${key}`)}`);
-    }
-    return `{${parts.join(",")}}`;
-  }
-  throw new TypeError(`stableStringify: unsupported ${typeof value} value at ${path}`);
-}
-
-/**
- * Canonical JSON: object keys sorted by UTF-16 code units. Throws `TypeError` (naming the
- * offending path, e.g. `$.hidden.rng[2]`) on undefined, functions, symbols, bigints,
- * non-finite numbers and non-plain objects.
- */
-export function stableStringify(value: unknown): string {
-  return write(value, "$");
-}
-
-export function hashState(state: GameState): string {
-  return fnv1a32(stableStringify(state));
 }
 
 export function serialize(state: GameState): string {
   return stableStringify(state);
 }
 
-// Import-cycle guard: `rules.ts` imports `stableStringify` from this module, and this module
-// imports `levelForXp`/`masteryRank`/`sheetStats`/`COMMANDS`. Those values are used only inside
-// function bodies below, never in a module-top-level constant.
 const ROOT_KEYS = ["v", "public", "private", "hidden"] as const;
 const PUBLIC_KEYS = [
   "phase",
@@ -109,7 +72,15 @@ const NPC_SIDE_KEYS = ["kind", "npc", "stats", "hp", "mods"] as const;
 const MODS_KEYS = ["atk", "def", "mag", "spd", "poison", "stun"] as const;
 const MOD_STATS = ["atk", "def", "mag", "spd"] as const;
 const GEAR_SLOTS: readonly GearSlot[] = ["weapon", "shield", "accessory"];
-const DECISION_KINDS: readonly unknown[] = ["poll", "combat/exchange"];
+/** Keyed by the closed `DecisionKind` union, so adding a kind is a compile error until listed here. */
+const DECISION_KINDS: Readonly<Record<DecisionKind, true>> = {
+  poll: true,
+  "combat/exchange": true,
+};
+
+function isDecisionKind(value: unknown): value is DecisionKind {
+  return typeof value === "string" && ownGet(DECISION_KINDS, value) === true;
+}
 const MAX_PROMPT_OPTIONS = 24;
 const U32_MAX = 2 ** 32 - 1;
 
@@ -118,10 +89,6 @@ type Obj = Record<string, unknown>;
 /** Every failure is a `TypeError("deserialize: <message>")`; each check has its own message. */
 function bad(message: string): never {
   throw new TypeError(`deserialize: ${message}`);
-}
-
-function isIntIn(value: unknown, min: number, max: number): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value >= min && value <= max;
 }
 
 function isToken(value: unknown): value is string {
@@ -164,10 +131,10 @@ function checkCharacter(rules: Rules, id: string, value: unknown): void {
   exactKeys(ch, CHARACTER_KEYS, where);
   const cls = typeof ch.classId === "string" ? ownGet(rules.classes, ch.classId) : undefined;
   if (cls === undefined) bad(`${where}.classId is not a known class`);
-  if (!isIntIn(ch.level, 1, rules.progression.maxLevel)) bad(`${where}.level out of range`);
-  if (!isIntIn(ch.xp, 0, MAX_COUNTER)) bad(`${where}.xp out of range`);
+  if (!isInt(ch.level, 1, rules.progression.maxLevel)) bad(`${where}.level out of range`);
+  if (!isInt(ch.xp, 0, MAX_COUNTER)) bad(`${where}.xp out of range`);
   if (ch.level !== levelForXp(rules, ch.xp)) bad(`${where}.level does not match xp`);
-  if (!isIntIn(ch.gold, 0, MAX_COUNTER)) bad(`${where}.gold out of range`);
+  if (!isInt(ch.gold, 0, MAX_COUNTER)) bad(`${where}.gold out of range`);
   const mastery = asObject(ch.mastery, `${where}.mastery`);
   const classIds = Object.keys(rules.classes);
   for (const classId of classIds) {
@@ -177,7 +144,7 @@ function checkCharacter(rules: Rules, id: string, value: unknown): void {
     if (!classIds.includes(key)) bad(`${where}.mastery has unexpected class "${clip(key)}"`);
   }
   for (const classId of classIds) {
-    if (!isIntIn(mastery[classId], 0, MAX_COUNTER)) bad(`${where}.mastery.${classId} out of range`);
+    if (!isInt(mastery[classId], 0, MAX_COUNTER)) bad(`${where}.mastery.${classId} out of range`);
   }
   if (ch.portable !== null) {
     const portable =
@@ -204,7 +171,7 @@ function checkCharacter(rules: Rules, id: string, value: unknown): void {
       typeof ch.wardSpell === "string" ? ownGet(rules.wardSpells, ch.wardSpell) : undefined;
     if (ward === undefined) bad(`${where}.wardSpell is unknown`);
   }
-  if (!isIntIn(ch.hp, 0, MAX_STAT)) bad(`${where}.hp out of range`);
+  if (!isInt(ch.hp, 0, MAX_STAT)) bad(`${where}.hp out of range`);
   // safe: every field the sheet reads was validated above.
   if (ch.hp > sheetStats(rules, ch as unknown as CharacterPublic).hp) {
     bad(`${where}.hp exceeds max hp`);
@@ -219,7 +186,7 @@ function checkChoiceHistory(history: unknown, players: readonly string[]): void 
     const counts = asObject(all[id], where);
     exactKeys(counts, COMMANDS, where);
     for (const command of COMMANDS) {
-      if (!isIntIn(counts[command], 0, MAX_COUNTER)) bad(`${where}.${command} out of range`);
+      if (!isInt(counts[command], 0, MAX_COUNTER)) bad(`${where}.${command} out of range`);
     }
   }
 }
@@ -285,7 +252,7 @@ function checkDecisionPhase(pub: Obj, hidden: Obj, priv: Obj, players: readonly 
   exactKeys(pending, PENDING_KEYS, "pending");
   if (pending.id !== `d${hidden.decisionSeq as number}`)
     bad("pending.id does not match decisionSeq");
-  if (!DECISION_KINDS.includes(pending.kind)) bad("pending.kind is unknown");
+  if (!isDecisionKind(pending.kind)) bad("pending.kind is unknown");
   const required = asArray(pending.required, "pending.required");
   if (required.length === 0) bad("pending.required must not be empty");
   if (!isUnique(required)) bad("pending.required must be unique");
@@ -326,7 +293,7 @@ function checkLastReveal(value: unknown, players: readonly string[]): void {
   const reveal = asObject(value, "lastReveal");
   exactKeys(reveal, LAST_REVEAL_KEYS, "lastReveal");
   if (typeof reveal.decisionId !== "string") bad("lastReveal.decisionId must be a string");
-  if (!DECISION_KINDS.includes(reveal.kind)) bad("lastReveal.kind is unknown");
+  if (!isDecisionKind(reveal.kind)) bad("lastReveal.kind is unknown");
   const choices = asObject(reveal.choices, "lastReveal.choices");
   const keys = Object.keys(choices);
   if (!subsetOf(keys, players)) bad("lastReveal.choices has an unseated player");
@@ -342,7 +309,7 @@ function checkMods(rules: Rules, mods: unknown, where: string): void {
   const m = asObject(mods, `${where}.mods`);
   exactKeys(m, MODS_KEYS, `${where}.mods`);
   for (const stat of MOD_STATS) {
-    if (!isIntIn(m[stat], rules.combat.modMinBp, rules.combat.modMaxBp)) {
+    if (!isInt(m[stat], rules.combat.modMinBp, rules.combat.modMaxBp)) {
       bad(`${where}.mods.${stat} out of range`);
     }
   }
@@ -366,11 +333,11 @@ function checkNpcRef(rules: Rules, value: unknown, where: string): NpcRef {
       if (typeof npc.id !== "string" || ownGet(rules.guardians, npc.id) === undefined) {
         bad(`${where}.npc is an unknown guardian`);
       }
-      if (!isIntIn(npc.townTier, 1, 4)) bad(`${where}.npc.townTier out of range`);
+      if (!isInt(npc.townTier, 1, 4)) bad(`${where}.npc.townTier out of range`);
       break;
     case "enforcer":
       exactKeys(npc, ["kind", "level"], `${where}.npc`);
-      if (!isIntIn(npc.level, 1, rules.progression.maxLevel)) {
+      if (!isInt(npc.level, 1, rules.progression.maxLevel)) {
         bad(`${where}.npc.level out of range`);
       }
       break;
@@ -402,12 +369,8 @@ function checkCombatSide(rules: Rules, value: unknown, index: number, players: r
   if (!STAT_KEYS.every((key) => stats[key] === expected[key])) {
     bad(`${where}.stats does not match the npc snapshot`);
   }
-  if (!isIntIn(side.hp, 1, expected.hp)) bad(`${where}.hp out of range`);
+  if (!isInt(side.hp, 1, expected.hp)) bad(`${where}.hp out of range`);
   checkMods(rules, side.mods, where);
-}
-
-function sameStrings(a: readonly unknown[], b: readonly unknown[]): boolean {
-  return a.length === b.length && a.every((item, i) => item === b[i]);
 }
 
 /** Check 8: the combat state and its consistency with the open `combat/exchange` decision. */
@@ -429,9 +392,17 @@ function checkCombat(
   const combat = asObject(pub.combat, "combat");
   exactKeys(combat, COMBAT_KEYS, "combat");
   if (combat.id !== `c${hidden.combatSeq as number}`) bad("combat.id does not match combatSeq");
-  if (!isIntIn(combat.round, 1, rules.combat.maxRounds)) bad("combat.round out of range");
-  if (!isIntIn(combat.exchange, 1, 2)) bad("combat.exchange must be 1 or 2");
-  if (!isIntIn(combat.first, 0, 1)) bad("combat.first must be 0 or 1");
+  if (!isInt(combat.round, 1, rules.combat.maxRounds)) bad("combat.round out of range");
+  if (!isInt(combat.exchange, 1, 2)) bad("combat.exchange must be 1 or 2");
+  if (!isInt(combat.first, 0, 1)) bad("combat.first must be 0 or 1");
+  // Headroom: `validateStart` guarantees `decisionSeq(at start) + 2 * maxRounds <= MAX_COUNTER`, and
+  // at most one decision opens per exchange slot, so the decisions still to open from here are at
+  // most the slots after this one. A state without that headroom could be produced only by a
+  // forged save, and the engine's `openDecision` has no overflow check mid-combat.
+  const slot = 2 * (combat.round - 1) + combat.exchange;
+  if ((hidden.decisionSeq as number) + 2 * rules.combat.maxRounds - slot > MAX_COUNTER) {
+    bad("hidden.decisionSeq leaves no headroom for the combat");
+  }
   const sides = asArray(combat.sides, "combat.sides");
   if (sides.length !== 2) bad("combat.sides must hold two sides");
   sides.forEach((side, index) => {
@@ -467,11 +438,15 @@ function checkCombat(
 }
 
 /**
- * Parses and fully validates a v2 save against `rules`: `JSON.parse` (a `SyntaxError`
- * propagates), a plain object (`TypeError`), `v === 2` (`SchemaVersionError`), then checks 1-8 in
+ * Parses and fully validates a v2 save against `rules`: `JSON.parse` (a `SyntaxError` propagates),
+ * a plain object (`TypeError`), `v === SCHEMA_VERSION` (`SchemaVersionError`), then checks 1-8 in
  * spec order, each throwing `TypeError("deserialize: <unique message>")`. Exact own keys at every
  * object level; every player- or content-keyed lookup goes through `ownGet`. Check 8 validates
  * the combat state against the open `combat/exchange` decision.
+ *
+ * Versioning: only the current schema version is accepted. Loading a v2 save into a v3 engine
+ * needs an explicit migration step (a function that rewrites the old shape and bumps `v`) run
+ * before this validator, never a relaxed check inside it.
  */
 export function deserialize(json: string, rules: Rules): GameState {
   const root: unknown = JSON.parse(json);
@@ -495,11 +470,11 @@ export function deserialize(json: string, rules: Rules): GameState {
     bad("activePlayer is not a seated player");
   }
   if (pub.phase !== "turn" && pub.phase !== "decision") bad("phase must be turn or decision");
-  if (!isIntIn(pub.turn, 0, MAX_COUNTER)) bad("turn out of range");
-  if (!isIntIn(hidden.decisionSeq, 0, MAX_COUNTER)) bad("decisionSeq out of range");
-  if (!isIntIn(hidden.combatSeq, 0, MAX_COUNTER)) bad("combatSeq out of range");
+  if (!isInt(pub.turn, 0, MAX_COUNTER)) bad("turn out of range");
+  if (!isInt(hidden.decisionSeq, 0, MAX_COUNTER)) bad("decisionSeq out of range");
+  if (!isInt(hidden.combatSeq, 0, MAX_COUNTER)) bad("combatSeq out of range");
   const rng = hidden.rng;
-  if (!Array.isArray(rng) || rng.length !== 4 || !rng.every((n) => isIntIn(n, 0, U32_MAX))) {
+  if (!Array.isArray(rng) || rng.length !== 4 || !rng.every((n) => isInt(n, 0, U32_MAX))) {
     bad("rng must be four u32 values");
   }
 

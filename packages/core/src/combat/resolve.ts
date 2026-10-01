@@ -322,7 +322,10 @@ export function resolveExchange(rules: Rules, input: ExchangeInput, draw: Draw):
     effects.push(`item:${id}`);
     const effect = ownGet(rules.items, id)?.effect;
     if (effect?.kind === "heal") {
-      healA = Math.min(attacker.snap.maxHp - aHp, fl((attacker.snap.maxHp * effect.bp) / BP));
+      healA = Math.max(
+        0,
+        Math.min(attacker.snap.maxHp - aHp, fl((attacker.snap.maxHp * effect.bp) / BP)),
+      );
       aHp += healA;
     } else if (effect?.kind === "cleanse") {
       aMods = cleansed(aMods);
@@ -345,7 +348,8 @@ export function resolveExchange(rules: Rules, input: ExchangeInput, draw: Draw):
     aHp = newA;
     dHp = newD;
     if (aHp > 0) {
-      healA = Math.min(attacker.snap.maxHp - aHp, r.healAttacker);
+      // a negative drain bp must never turn a heal into damage
+      healA = Math.max(0, Math.min(attacker.snap.maxHp - aHp, r.healAttacker));
       aHp += healA;
     }
     if (dHp > 0) {
@@ -366,7 +370,7 @@ export function resolveExchange(rules: Rules, input: ExchangeInput, draw: Draw):
         effects.push(`mod:${effect.stat}:${effect.bp}`);
       } else if (effect.kind === "stealGold") {
         if (defender.isPlayer) {
-          const n = fl((dGold * effect.bp) / BP);
+          const n = Math.min(dGold, fl((dGold * effect.bp) / BP));
           if (n > 0) {
             dGold -= n;
             if (attacker.isPlayer) aGold = Math.min(MAX_COUNTER, aGold + n);
@@ -384,7 +388,7 @@ export function resolveExchange(rules: Rules, input: ExchangeInput, draw: Draw):
         effects.push("poison");
       }
       if (hooks.stealGoldOnHitBp > 0 && defender.isPlayer) {
-        const n = fl((dGold * hooks.stealGoldOnHitBp) / BP);
+        const n = Math.min(dGold, fl((dGold * hooks.stealGoldOnHitBp) / BP));
         if (n > 0) {
           dGold -= n;
           effects.push(`steal-gold:${n}`);

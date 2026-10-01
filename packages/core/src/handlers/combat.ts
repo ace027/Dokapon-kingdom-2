@@ -3,7 +3,16 @@
 // Every draw goes through `ctx.int` in the pinned order (spec: RNG draw order). Records keyed by a
 // player id are read with `ownGet` (PIT-002).
 import type { ActionOf, Ctx, Handler, Resolver } from "./shared";
-import { hasExactKeys, isInt, overflow, ownGet, reject } from "./shared";
+import {
+  bagEvent,
+  hasExactKeys,
+  isEnvelope,
+  isInt,
+  overflow,
+  ownGet,
+  reject,
+  sameStrings,
+} from "./shared";
 import { openDecision, type PromptSpec } from "./decision";
 import { attackerOptions, DEFENDER_OPTIONS, exchangeRoles } from "../combat/options";
 import {
@@ -21,11 +30,11 @@ import {
 } from "../combat/resolve";
 import { npcDef, npcStats } from "../combat/stats";
 import { awardVictory, progressionEvent, victoryReward } from "../progression";
-import { onlyPlayers, PUBLIC, type GameEvent } from "../events";
+import { PUBLIC, type GameEvent } from "../events";
 import type { Opponent } from "../actions";
 import { DEFEND_COMMANDS, type AttackCommand, type DefendCommand, type Rules } from "../rules";
 import {
-  MAX_STAT,
+  SCHEMA_VERSION,
   type BattleMods,
   type CombatSide,
   type CombatState,
@@ -89,9 +98,7 @@ function isOpponent(value: unknown): value is Opponent {
 function isStartAction(raw: Record<string, unknown>): raw is StartAction {
   return (
     hasExactKeys(raw, ["v", "type", "playerId", "attacker", "opponent"]) &&
-    raw.v === 2 &&
-    raw.type === "combat/start" &&
-    typeof raw.playerId === "string" &&
+    isEnvelope(raw, "combat/start") &&
     typeof raw.attacker === "string" &&
     isOpponent(raw.opponent)
   );
@@ -228,14 +235,6 @@ function writeBack(state: GameState, index: 0 | 1, after: FighterAfter): GameSta
   return withSide(written, index, { ...side, mods: after.mods });
 }
 
-function sameBag(a: readonly string[], b: readonly string[]): boolean {
-  return a.length === b.length && a.every((id, i) => id === b[i]);
-}
-
-function bagEvent(playerId: PlayerId, bag: readonly string[]): GameEvent {
-  return { v: 2, type: "BagUpdated", visibility: onlyPlayers([playerId]), playerId, bag: [...bag] };
-}
-
 /**
  * Ends the combat: emits `CombatEnded` (hp read while the sides still exist) and clears `combat`.
  * The phase is already `turn` after the reveal, and pending/prompts are already cleared.
@@ -251,7 +250,7 @@ export function endCombat(
 ): GameState {
   const combat = activeCombat(state);
   events.push({
-    v: 2,
+    v: SCHEMA_VERSION,
     type: "CombatEnded",
     visibility: PUBLIC,
     combatId: combat.id,
@@ -311,7 +310,7 @@ function startRound(
   const first = initiative(state, ctx, rules);
   const next = withCombat(state, { round, exchange: 1, first });
   events.push({
-    v: 2,
+    v: SCHEMA_VERSION,
     type: "RoundStarted",
     visibility: PUBLIC,
     combatId: activeCombat(next).id,
@@ -349,7 +348,7 @@ function roundEnd(state: GameState, rules: Rules, events: GameEvent[]): GameStat
     next = withHp(next, index, hp);
   }
   events.push({
-    v: 2,
+    v: SCHEMA_VERSION,
     type: "RoundEnded",
     visibility: PUBLIC,
     combatId: combat.id,
@@ -442,7 +441,7 @@ function resolveCurrent(
   const bySide = <T>(attacker: T, defender: T): readonly [T, T] =>
     ai === 0 ? [attacker, defender] : [defender, attacker];
   events.push({
-    v: 2,
+    v: SCHEMA_VERSION,
     type: "ExchangeResolved",
     visibility: PUBLIC,
     combatId: combat.id,
@@ -457,10 +456,10 @@ function resolveCurrent(
     effects: [...outcome.effects],
     hp: hpPair(next),
   });
-  if (aSide.kind === "player" && !sameBag(aBefore, outcome.attacker.bag)) {
+  if (aSide.kind === "player" && !sameStrings(aBefore, outcome.attacker.bag)) {
     events.push(bagEvent(aSide.playerId, outcome.attacker.bag));
   }
-  if (dSide.kind === "player" && !sameBag(dBefore, outcome.defender.bag)) {
+  if (dSide.kind === "player" && !sameStrings(dBefore, outcome.defender.bag)) {
     events.push(bagEvent(dSide.playerId, outcome.defender.bag));
   }
   if (outcome.fled) return endCombat(next, "fled", null, ai, rules, events);
@@ -511,7 +510,7 @@ export function openExchange(
     if (aSide.mods.stun) {
       const cleared = withMods(current, attacker, { ...aSide.mods, stun: false });
       events.push({
-        v: 2,
+        v: SCHEMA_VERSION,
         type: "ExchangeSkipped",
         visibility: PUBLIC,
         combatId: combat.id,
@@ -541,7 +540,7 @@ function npcSide(rules: Rules, npc: NpcRef): CombatSide {
     kind: "npc",
     npc: { ...npc },
     stats,
-    hp: Math.min(MAX_STAT, stats.hp),
+    hp: stats.hp,
     mods: { ...ZERO_MODS },
   };
 }
@@ -563,7 +562,13 @@ export const combatStartHandler: Handler<StartAction> = {
       opponentSide,
     ];
     const combat: CombatState = { id: `c${combatSeq}`, round: 1, exchange: 1, first: 0, sides };
-    events.push({ v: 2, type: "CombatStarted", visibility: PUBLIC, combatId: combat.id, sides });
+    events.push({
+      v: SCHEMA_VERSION,
+      type: "CombatStarted",
+      visibility: PUBLIC,
+      combatId: combat.id,
+      sides,
+    });
     const started: GameState = {
       ...state,
       public: { ...state.public, combat },

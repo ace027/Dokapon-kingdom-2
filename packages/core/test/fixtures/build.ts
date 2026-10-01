@@ -1,5 +1,6 @@
 // Shared test helpers. Later plans (02-01b onward) reuse these by name.
 import { createGame } from "../../src/game";
+import { deserialize, serialize } from "../../src/serialize";
 import { reduce } from "../../src/reducer";
 import type { GameEvent } from "../../src/events";
 import type { Rules } from "../../src/rules";
@@ -48,4 +49,34 @@ export function deepFreeze<T>(x: T): T {
     for (const value of Object.values(x)) deepFreeze(value);
   }
   return x;
+}
+
+/** Deep-writable view of a (readonly) data type, for editing a crafted copy. */
+export type Mutable<T> = { -readonly [K in keyof T]: Mutable<T[K]> };
+
+/** Narrows `undefined` away for a fixture lookup, failing loudly when the entry is missing. */
+export function need<T>(value: T | undefined): T {
+  if (value === undefined) throw new Error("missing fixture entry");
+  return value;
+}
+
+/** A deep copy of TEST_RULES edited by `edit`; TEST_RULES is never mutated. */
+export function craft(edit: (rules: Mutable<Rules>) => void): Rules {
+  // JSON data only, so a JSON round trip is a deep copy (the core tsconfig has no structuredClone)
+  const rules = JSON.parse(JSON.stringify(TEST_RULES)) as Mutable<Rules>;
+  edit(rules);
+  return rules;
+}
+
+/** The slice of a serialized save that the tests edit. */
+export interface SaveJson {
+  public: { characters: Record<string, Record<string, unknown>> };
+  private: Record<string, { bag: string[]; scrolls: string[]; prompt: null }>;
+}
+
+/** A valid save built by editing the serialized fixture game (`deserialize` re-validates it). */
+export function make(edit: (json: SaveJson) => void, rules: Rules = TEST_RULES): GameState {
+  const json = JSON.parse(serialize(newGame(undefined, rules))) as SaveJson;
+  edit(json);
+  return deserialize(JSON.stringify(json), rules);
 }

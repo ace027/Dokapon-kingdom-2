@@ -1,8 +1,7 @@
 // The data-only Rules contract (spec: `rules.ts` — the `Rules` contract). Core trusts a `Rules`
 // value (it is validated by content's `buildRules` or is the typed TEST_RULES literal).
-// Import-cycle guard: `serialize`/`hash` values are used only inside `rulesHash`'s body.
 import { fnv1a32 } from "./hash";
-import { stableStringify } from "./serialize";
+import { stableStringify } from "./canonical";
 
 export const RULES_VERSION = 1 as const;
 export type ContentId = string; // CONTENT_ID_PATTERN and not in RESERVED_CONTENT_IDS

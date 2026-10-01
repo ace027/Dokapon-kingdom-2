@@ -1,6 +1,6 @@
 import type { Grant } from "./actions";
 import type { ContentId, DefendCommand } from "./rules";
-import type { CombatSide, DecisionKind, PlayerId } from "./types";
+import type { CombatSide, DecisionKind, PlayerId, SCHEMA_VERSION } from "./types";
 
 export type Visibility = { kind: "public" } | { kind: "players"; ids: readonly PlayerId[] };
 
@@ -13,14 +13,14 @@ export function onlyPlayers(ids: readonly PlayerId[]): Visibility {
 }
 
 /**
- * Every event is `{ v: 2, type, visibility, ... }`. The five decision events are emitted by the
- * decision handlers (02-01b); the combat events and `CharacterSet`/`BagUpdated` come from 02-03;
- * the progression and loadout events come from 02-04. `PromptOpened` is players-only, and
- * `ChoiceCommitted` never carries the choice.
+ * Every event is `{ v: SCHEMA_VERSION, type, visibility, ... }`. Decision events come from the
+ * decision handlers, combat events and `CharacterSet`/`BagUpdated` from the combat and system
+ * handlers, progression and loadout events from the loadout handlers. `PromptOpened` is
+ * players-only, and `ChoiceCommitted` never carries the choice.
  */
 export type GameEvent =
   | {
-      v: 2;
+      v: typeof SCHEMA_VERSION;
       type: "DecisionOpened";
       visibility: Visibility;
       decisionId: string;
@@ -28,7 +28,7 @@ export type GameEvent =
       required: readonly PlayerId[];
     }
   | {
-      v: 2;
+      v: typeof SCHEMA_VERSION;
       type: "PromptOpened";
       visibility: Visibility;
       decisionId: string;
@@ -37,15 +37,21 @@ export type GameEvent =
       default: string;
     }
   | {
-      v: 2;
+      v: typeof SCHEMA_VERSION;
       type: "ChoiceCommitted";
       visibility: Visibility;
       decisionId: string;
       playerId: PlayerId;
     }
-  | { v: 2; type: "ChoiceTimedOut"; visibility: Visibility; decisionId: string; playerId: PlayerId }
   | {
-      v: 2;
+      v: typeof SCHEMA_VERSION;
+      type: "ChoiceTimedOut";
+      visibility: Visibility;
+      decisionId: string;
+      playerId: PlayerId;
+    }
+  | {
+      v: typeof SCHEMA_VERSION;
       type: "ChoicesRevealed";
       visibility: Visibility;
       decisionId: string;
@@ -54,14 +60,14 @@ export type GameEvent =
       timedOut: readonly PlayerId[];
     }
   | {
-      v: 2;
+      v: typeof SCHEMA_VERSION;
       type: "CombatStarted";
       visibility: Visibility;
       combatId: string;
       sides: readonly [CombatSide, CombatSide];
     }
   | {
-      v: 2;
+      v: typeof SCHEMA_VERSION;
       type: "RoundStarted";
       visibility: Visibility;
       combatId: string;
@@ -69,7 +75,7 @@ export type GameEvent =
       first: 0 | 1;
     }
   | {
-      v: 2;
+      v: typeof SCHEMA_VERSION;
       type: "ExchangeSkipped";
       visibility: Visibility;
       combatId: string;
@@ -79,7 +85,7 @@ export type GameEvent =
       reason: "stunned";
     }
   | {
-      v: 2;
+      v: typeof SCHEMA_VERSION;
       type: "ExchangeResolved";
       visibility: Visibility;
       combatId: string;
@@ -96,7 +102,7 @@ export type GameEvent =
       hp: readonly [number, number];
     }
   | {
-      v: 2;
+      v: typeof SCHEMA_VERSION;
       type: "RoundEnded";
       visibility: Visibility;
       combatId: string;
@@ -106,7 +112,7 @@ export type GameEvent =
       hp: readonly [number, number];
     }
   | {
-      v: 2;
+      v: typeof SCHEMA_VERSION;
       type: "CombatEnded";
       visibility: Visibility;
       combatId: string;
@@ -116,7 +122,7 @@ export type GameEvent =
       hp: readonly [number, number];
     }
   | {
-      v: 2;
+      v: typeof SCHEMA_VERSION;
       type: "CharacterSet";
       visibility: Visibility;
       playerId: PlayerId;
@@ -125,23 +131,35 @@ export type GameEvent =
       hp: number;
     }
   | {
-      v: 2;
+      v: typeof SCHEMA_VERSION;
       type: "BagUpdated";
       visibility: Visibility;
       playerId: PlayerId;
       bag: readonly ContentId[];
     }
   | {
-      v: 2;
+      v: typeof SCHEMA_VERSION;
       type: "ScrollsUpdated";
       visibility: Visibility;
       playerId: PlayerId;
       scrolls: readonly ContentId[];
     }
-  | { v: 2; type: "Granted"; visibility: Visibility; playerId: PlayerId; grant: Grant }
-  | { v: 2; type: "LevelUp"; visibility: Visibility; playerId: PlayerId; level: number }
   | {
-      v: 2;
+      v: typeof SCHEMA_VERSION;
+      type: "Granted";
+      visibility: Visibility;
+      playerId: PlayerId;
+      grant: Grant;
+    }
+  | {
+      v: typeof SCHEMA_VERSION;
+      type: "LevelUp";
+      visibility: Visibility;
+      playerId: PlayerId;
+      level: number;
+    }
+  | {
+      v: typeof SCHEMA_VERSION;
       type: "VictoryRewarded";
       visibility: Visibility;
       playerId: PlayerId;
@@ -151,7 +169,7 @@ export type GameEvent =
       masteryWins: number;
     }
   | {
-      v: 2;
+      v: typeof SCHEMA_VERSION;
       type: "MasteryRankUp";
       visibility: Visibility;
       playerId: PlayerId;
@@ -159,14 +177,14 @@ export type GameEvent =
       rank: number;
     }
   | {
-      v: 2;
+      v: typeof SCHEMA_VERSION;
       type: "HybridUnlocked";
       visibility: Visibility;
       playerId: PlayerId;
       classId: ContentId;
     }
   | {
-      v: 2;
+      v: typeof SCHEMA_VERSION;
       type: "ClassSwitched";
       visibility: Visibility;
       playerId: PlayerId;
@@ -176,7 +194,7 @@ export type GameEvent =
       hp: number;
     }
   | {
-      v: 2;
+      v: typeof SCHEMA_VERSION;
       type: "ItemUsed";
       visibility: Visibility;
       playerId: PlayerId;
@@ -185,7 +203,7 @@ export type GameEvent =
       hp: number;
     }
   | {
-      v: 2;
+      v: typeof SCHEMA_VERSION;
       type: "PortableSet";
       visibility: Visibility;
       playerId: PlayerId;

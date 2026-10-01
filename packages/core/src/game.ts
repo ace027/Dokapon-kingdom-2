@@ -1,3 +1,4 @@
+import { stableStringify } from "./canonical";
 import { sheetStats } from "./combat/stats";
 import { seedRng } from "./rng";
 import type { Rules } from "./rules";
@@ -17,7 +18,7 @@ export class SettingsError extends Error {
 }
 
 /** Settings may come from untrusted JSON, so re-check everything the types claim. */
-function validateSettings(input: unknown, rules: Rules): void {
+function validateSettings(input: unknown, rules: Rules): GameSettings {
   if (!isPlainObject(input)) throw new SettingsError("settings must be an object");
   if (input.v !== SCHEMA_VERSION) throw new SettingsError(`settings.v must be ${SCHEMA_VERSION}`);
   if (typeof input.seed !== "string" || input.seed.length === 0) {
@@ -25,14 +26,35 @@ function validateSettings(input: unknown, rules: Rules): void {
   }
   const error = seatsError(input.players, rules);
   if (error !== null) throw new SettingsError(error);
+  // safe: version, seed and every seat were verified above.
+  return input as unknown as GameSettings;
+}
+
+/**
+ * Reads untrusted settings exactly once into a canonical JSON copy (as `reduce` does for actions),
+ * so getters, Proxies and sparse arrays cannot answer differently to validation and to use.
+ */
+function canonicalSettings(settings: unknown, rules: Rules): GameSettings {
+  let copy: unknown;
+  try {
+    copy = JSON.parse(stableStringify(settings));
+  } catch {
+    try {
+      validateSettings(settings, rules); // the most specific message for plainly invalid input
+    } catch (error) {
+      if (error instanceof SettingsError) throw error;
+    }
+    throw new SettingsError("settings are not canonical JSON");
+  }
+  return validateSettings(copy, rules);
 }
 
 /**
  * Builds the v2 initial state. Every record is built with `Object.fromEntries`, so no id can reach
  * a prototype setter (PIT-002), and each class lookup goes through `ownGet`.
  */
-export function createGame(settings: GameSettings, rules: Rules): GameState {
-  validateSettings(settings, rules);
+export function createGame(input: GameSettings, rules: Rules): GameState {
+  const settings = canonicalSettings(input, rules);
   const seats = [...settings.players];
   const first = seats[0];
   if (first === undefined) throw new SettingsError("players must not be empty");

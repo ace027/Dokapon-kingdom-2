@@ -20,6 +20,16 @@ export function ownGet<V>(record: Readonly<Record<string, V>>, key: string): V |
   return Object.hasOwn(record, key) ? record[key] : undefined;
 }
 
+/** An integer in `[min, max]`. */
+export function isInt(value: unknown, min: number, max: number): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= min && value <= max;
+}
+
+/** Same length and element-wise `===` (order matters). */
+export function sameStrings(a: readonly unknown[], b: readonly unknown[]): boolean {
+  return a.length === b.length && a.every((item, i) => item === b[i]);
+}
+
 export function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }

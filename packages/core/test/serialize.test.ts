@@ -850,6 +850,22 @@ describe("deserialize: single-mutation table", () => {
   });
 });
 
+describe("deserialize: decision kinds are closed (PIT-002: no Object.prototype member names)", () => {
+  const NAMES = ["toString", "constructor", "hasOwnProperty", "__proto__"];
+  it.each(NAMES)("rejects pending.kind %s", (kind) => {
+    expectRejected(
+      applyOps(BASES.poll, [set("public.pending.kind", kind)]),
+      "deserialize: pending.kind is unknown",
+    );
+  });
+  it.each(NAMES)("rejects lastReveal.kind %s", (kind) => {
+    expectRejected(
+      applyOps(BASES.reveal, [set("public.lastReveal.kind", kind)]),
+      "deserialize: lastReveal.kind is unknown",
+    );
+  });
+});
+
 describe("deserialize: envelope errors", () => {
   it("throws SyntaxError for invalid JSON", () => {
     expect(() => deserialize("{not json", TEST_RULES)).toThrow(SyntaxError);

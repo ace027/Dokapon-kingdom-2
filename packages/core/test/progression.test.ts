@@ -9,37 +9,11 @@ import { levelForXp, masteryRank, type Rules } from "../src/rules";
 import { deserialize, serialize } from "../src/serialize";
 import { MAX_COUNTER, type CharacterPublic, type CombatSide, type GameState } from "../src/types";
 import { applyXp, awardVictory, hybridsUnlocked, victoryReward } from "../src/progression";
-import { deepFreeze, newGame } from "./fixtures/build";
+import { craft, deepFreeze, make, need, newGame } from "./fixtures/build";
 import { TEST_RULES } from "./fixtures/test-rules";
 import { usePurityTraps } from "./purity-traps";
 
 usePurityTraps();
-
-type Mutable<T> = { -readonly [K in keyof T]: Mutable<T[K]> };
-
-function need<T>(value: T | undefined): T {
-  if (value === undefined) throw new Error("missing fixture entry");
-  return value;
-}
-
-/** A deep copy of TEST_RULES edited by `edit`; TEST_RULES is never mutated. */
-function craft(edit: (rules: Mutable<Rules>) => void): Rules {
-  const rules = JSON.parse(JSON.stringify(TEST_RULES)) as Mutable<Rules>;
-  edit(rules);
-  return rules;
-}
-
-interface SaveJson {
-  public: { characters: Record<string, Record<string, unknown>> };
-  private: Record<string, { bag: string[]; scrolls: string[]; prompt: null }>;
-}
-
-/** A valid save built by editing the serialized fixture game (`deserialize` re-validates it). */
-function make(edit: (json: SaveJson) => void, rules: Rules = TEST_RULES): GameState {
-  const json = JSON.parse(serialize(newGame(undefined, rules))) as SaveJson;
-  edit(json);
-  return deserialize(JSON.stringify(json), rules);
-}
 
 const p1 = need(newGame().public.characters.p1);
 const p2 = need(newGame().public.characters.p2);
