@@ -22,6 +22,7 @@ describe("loadRules", () => {
       }
       expect(thrown).toBeInstanceOf(ContentInvalidError);
       const error = thrown as ContentInvalidError;
+      expect(error.name).toBe("ContentInvalidError");
       expect(error.message).toBe(
         "content invalid: 1 errors\nclasses.json classes.0.starter.weapon: starter weapon must be an existing gear id",
       );

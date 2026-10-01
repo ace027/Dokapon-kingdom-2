@@ -120,7 +120,7 @@
 | Phase | Plans | Completed | Status |
 |-------|-------|-----------|--------|
 | 1. Foundations & Deterministic Engine | 4 | 4 | Complete (reviewed) |
-| 2. Combat Core & Balance Sim | 6 | 6 | Executed (pending review) |
+| 2. Combat Core & Balance Sim | 6 | 6 | Complete (reviewed) |
 | 3. Board, Economy & CPU AI Core | 6 | 0 | Not started |
 | 4. Graybox Client & Hot-Seat Play | 5 | 0 | Not started |
 | 5. Griefing, Cursed Crown & Boss | 5 | 0 | Not started |

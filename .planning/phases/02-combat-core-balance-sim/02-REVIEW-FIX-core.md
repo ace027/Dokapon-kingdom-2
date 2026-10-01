@@ -9,7 +9,7 @@ No golden or hash changed (758ef72c, 9616698e, ec0c3508, 57da3ea4, 0483c0fa, rul
 |----|--------|-------|
 | S1 | fixed | Heals (item, in-combat item, drain, useItem) clamped `max(0, min(missing, ..))`; steal gold `min(dGold, ..)` with `n > 0` guard; victoryReward xp/gold >= 0; sheet/NPC stats `min(MAX_STAT, ..)`. |
 | S2 | fixed, deviation | deserialize rejects an open combat whose decisionSeq has no headroom. Uses the tight slot-based bound `decisionSeq + 2*maxRounds - slot > MAX_COUNTER` (slot = 2*(round-1)+exchange), not the literal `seq + 2*maxRounds <= MAX`, which rejects reachable states (mutation S2-d). |
-| S3 | fixed | `reduceAs(state, action, authenticatedActor, rules)` wrapper; trust-boundary doc on `reduce`. |
+| S3 | fixed | `reduceAs(state, action, rules, actor)` wrapper; trust-boundary doc on `reduce`. |
 | S5 | fixed | `createGame` canonicalizes settings once (`canonicalSettings`); getter and Proxy tests. |
 | S7 | fixed | TSImportType banned core-wide; AI Math ban list (22 members) and `**` / `**=` ban; the AI block restates `no-restricted-syntax`. |
 | A2 | fixed | `DECISION_KINDS` is `Readonly<Record<DecisionKind,true>>` read via ownGet (PIT-002). ACTION_TYPES deleted (no consumer). |

@@ -425,6 +425,12 @@ describe("S5: createGame reads settings once", () => {
     expect(() => createGame(bad, TEST_RULES)).toThrow("settings are not canonical JSON");
   });
 
+  it("non-canonical settings that are also invalid report the specific SettingsError", () => {
+    const bad = { ...FIXTURE_SETTINGS, players: [], extra: () => 1 } as unknown as GameSettings;
+    expect(() => createGame(bad, TEST_RULES)).toThrow(SettingsError);
+    expect(() => createGame(bad, TEST_RULES)).not.toThrow("settings are not canonical JSON");
+  });
+
   it("a getter that throws is a SettingsError", () => {
     const bad = {
       v: 2,

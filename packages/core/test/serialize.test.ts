@@ -852,6 +852,18 @@ describe("deserialize: single-mutation table", () => {
 
 describe("deserialize: decision kinds are closed (PIT-002: no Object.prototype member names)", () => {
   const NAMES = ["toString", "constructor", "hasOwnProperty", "__proto__"];
+  it.each([[["poll"]], [["combat/exchange"]]])("rejects pending.kind as an array %j", (kind) => {
+    expectRejected(
+      applyOps(BASES.poll, [set("public.pending.kind", kind)]),
+      "deserialize: pending.kind is unknown",
+    );
+  });
+  it.each([[["poll"]], [["combat/exchange"]]])("rejects lastReveal.kind as an array %j", (kind) => {
+    expectRejected(
+      applyOps(BASES.reveal, [set("public.lastReveal.kind", kind)]),
+      "deserialize: lastReveal.kind is unknown",
+    );
+  });
   it.each(NAMES)("rejects pending.kind %s", (kind) => {
     expectRejected(
       applyOps(BASES.poll, [set("public.pending.kind", kind)]),
