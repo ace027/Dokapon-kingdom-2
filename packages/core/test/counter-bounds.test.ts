@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { reduce } from "../src/reducer";
 import { deserialize, serialize } from "../src/serialize";
-import type { Rules } from "../src/rules";
 import { MAX_COUNTER, type GameState } from "../src/types";
-import { applyAll, newGame } from "./fixtures/build";
+import { applyAll, craft, newGame } from "./fixtures/build";
 import { TEST_RULES } from "./fixtures/test-rules";
 import { usePurityTraps } from "./purity-traps";
 
@@ -205,11 +204,11 @@ describe("system/grant bounds", () => {
 
 describe("saturating reward counters", () => {
   // every monster has 1 hp, 0 def and 0 spd, so one Attack from p1 ends the combat
-  type Mutable<T> = { -readonly [K in keyof T]: Mutable<T[K]> };
-  const fragile = JSON.parse(JSON.stringify(TEST_RULES)) as Mutable<Rules>;
-  for (const m of Object.values(fragile.monsters)) {
-    m.statBp = { hp: 1, atk: 10000, def: 1, mag: 10000, spd: 1, luck: 10000 };
-  }
+  const fragile = craft((r) => {
+    for (const m of Object.values(r.monsters)) {
+      m.statBp = { hp: 1, atk: 10000, def: 1, mag: 10000, spd: 1, luck: 10000 };
+    }
+  });
 
   /** p1 at the ceiling of xp (level 10), gold and fighter mastery, hp 1 (still below max). */
   function atCeiling(): GameState {

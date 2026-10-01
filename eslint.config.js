@@ -38,6 +38,73 @@ const CORE_IMPORT_RESTRICTIONS = {
   ],
 };
 
+const CORE_SYNTAX_RESTRICTIONS = [
+  {
+    selector: "ImportExpression",
+    message: `No dynamic import() in core. ${PURITY}`,
+  },
+  {
+    // Math may only be used as `Math.<name>` (so no-restricted-properties sees every access);
+    // aliasing (`const M = Math`), passing, destructuring or computed access is banned.
+    selector:
+      "Identifier[name='Math']:not(MemberExpression[computed=false] > Identifier.object):not(MemberExpression[computed=false] > Identifier.property):not(Property > Identifier.key)",
+    message: `Use Math only as Math.<member>; aliasing hides Math.random. ${PURITY}`,
+  },
+  {
+    // `(() => 0).constructor` is Function (likewise generator/async variants): dynamic code.
+    selector: "MemberExpression[property.name='constructor']",
+    message: `No .constructor access in core (reaches Function). ${PURITY}`,
+  },
+  {
+    selector: "MemberExpression[property.value='constructor']",
+    message: `No .constructor access in core (reaches Function). ${PURITY}`,
+  },
+  {
+    selector: "ObjectPattern > Property[key.name='constructor']",
+    message: `No .constructor access in core (reaches Function). ${PURITY}`,
+  },
+  {
+    selector: "MemberExpression[computed=true][property.type='TemplateLiteral']",
+    message: `No template-literal computed member access in core. ${PURITY}`,
+  },
+  {
+    selector: "CallExpression[callee.property.name=/^(localeCompare|toLocale\\w*)$/]",
+    message: `No locale-dependent APIs in core (cross-platform hash drift). ${PURITY}`,
+  },
+  {
+    // A type-level `import("../types").GameState` bypasses every no-restricted-imports rule.
+    selector: "TSImportType",
+    message: `No import("...") types in core; use a top-level import so import bans see it. ${PURITY}`,
+  },
+];
+
+// `x ** y` and these Math members are not specified to the last bit across engines (only
+// + - * / sqrt floor ceil round min max abs are); the AI must stay engine-independent.
+const AI_BANNED_MATH = [
+  "acos",
+  "acosh",
+  "asin",
+  "asinh",
+  "atan",
+  "atan2",
+  "atanh",
+  "cbrt",
+  "cos",
+  "cosh",
+  "exp",
+  "expm1",
+  "hypot",
+  "log",
+  "log1p",
+  "log10",
+  "log2",
+  "pow",
+  "sin",
+  "sinh",
+  "tan",
+  "tanh",
+];
+
 const nodeGlobals = { process: "readonly", console: "readonly", URL: "readonly" };
 
 export default tseslint.config(
@@ -97,41 +164,7 @@ export default tseslint.config(
         { name: "FinalizationRegistry", message: `No GC-observable behaviour in core. ${PURITY}` },
         { name: "require", message: `No module loading in core. ${PURITY}` },
       ],
-      "no-restricted-syntax": [
-        "error",
-        {
-          selector: "ImportExpression",
-          message: `No dynamic import() in core. ${PURITY}`,
-        },
-        {
-          // Math may only be used as `Math.<name>` (so no-restricted-properties sees every access);
-          // aliasing (`const M = Math`), passing, destructuring or computed access is banned.
-          selector:
-            "Identifier[name='Math']:not(MemberExpression[computed=false] > Identifier.object):not(MemberExpression[computed=false] > Identifier.property):not(Property > Identifier.key)",
-          message: `Use Math only as Math.<member>; aliasing hides Math.random. ${PURITY}`,
-        },
-        {
-          // `(() => 0).constructor` is Function (likewise generator/async variants): dynamic code.
-          selector: "MemberExpression[property.name='constructor']",
-          message: `No .constructor access in core (reaches Function). ${PURITY}`,
-        },
-        {
-          selector: "MemberExpression[property.value='constructor']",
-          message: `No .constructor access in core (reaches Function). ${PURITY}`,
-        },
-        {
-          selector: "ObjectPattern > Property[key.name='constructor']",
-          message: `No .constructor access in core (reaches Function). ${PURITY}`,
-        },
-        {
-          selector: "MemberExpression[computed=true][property.type='TemplateLiteral']",
-          message: `No template-literal computed member access in core. ${PURITY}`,
-        },
-        {
-          selector: "CallExpression[callee.property.name=/^(localeCompare|toLocale\\w*)$/]",
-          message: `No locale-dependent APIs in core (cross-platform hash drift). ${PURITY}`,
-        },
-      ],
+      "no-restricted-syntax": ["error", ...CORE_SYNTAX_RESTRICTIONS],
       "no-restricted-properties": [
         "error",
         { object: "Math", property: "random", message: "Use the seeded RNG in state.hidden.rng" },
@@ -186,11 +219,20 @@ export default tseslint.config(
       "no-restricted-properties": [
         "error",
         { object: "Math", property: "random", message: "Use the seeded RNG in state.hidden.rng" },
-        ...["exp", "log", "pow"].map((property) => ({
+        ...AI_BANNED_MATH.map((property) => ({
           object: "Math",
           property,
           message: "AI arithmetic must be engine-independent; use expNeg",
         })),
+      ],
+      "no-restricted-syntax": [
+        "error",
+        ...CORE_SYNTAX_RESTRICTIONS,
+        {
+          selector: "BinaryExpression[operator='**'], AssignmentExpression[operator='**=']",
+          message:
+            "AI arithmetic must be engine-independent; `**` is not bit-exact (like Math.pow)",
+        },
       ],
     },
   },

@@ -9,24 +9,18 @@ import { reduce } from "../src/reducer";
 import type { Rules } from "../src/rules";
 import { deserialize, serialize } from "../src/serialize";
 import type { GameState } from "../src/types";
-import { applyAll, deepFreeze, newGame } from "./fixtures/build";
-import { TEST_RULES } from "./fixtures/test-rules";
+import {
+  applyAll,
+  craft,
+  deepFreeze,
+  make as makeSave,
+  need,
+  newGame,
+  type SaveJson,
+} from "./fixtures/build";
 import { usePurityTraps } from "./purity-traps";
 
 usePurityTraps();
-
-type Mutable<T> = { -readonly [K in keyof T]: Mutable<T[K]> };
-
-function need<T>(value: T | undefined): T {
-  if (value === undefined) throw new Error("missing fixture entry");
-  return value;
-}
-
-function craft(edit: (rules: Mutable<Rules>) => void): Rules {
-  const rules = JSON.parse(JSON.stringify(TEST_RULES)) as Mutable<Rules>;
-  edit(rules);
-  return rules;
-}
 
 const S = (hp: number, atk: number, def: number, mag: number, spd: number, luck: number) => ({
   hp,
@@ -50,14 +44,8 @@ const FRAGILE = craft((r) => {
   r.npcCurve = r.npcCurve.map(() => S(40, 20, 10, 10, 9, 4));
 });
 
-interface SaveJson {
-  public: { characters: Record<string, Record<string, unknown>> };
-}
-
 function make(edit: (json: SaveJson) => void, rules: Rules = FRAGILE): GameState {
-  const json = JSON.parse(serialize(newGame(undefined, rules))) as SaveJson;
-  edit(json);
-  return deserialize(JSON.stringify(json), rules);
+  return makeSave(edit, rules);
 }
 
 const wins = (fighter: number, caster: number) => ({ battlemage: 0, caster, fighter });

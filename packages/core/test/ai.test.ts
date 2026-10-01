@@ -7,7 +7,9 @@ import { reduce } from "../src/reducer";
 import { deserialize, serialize } from "../src/serialize";
 import type { GameSettings, GameState } from "../src/types";
 import { viewFor, type PlayerView } from "../src/views";
-import { applyAll, deepFreeze } from "./fixtures/build";
+import { computeCell, critChanceBp, isCritEligible, snapshotPlayer } from "../src/combat/resolve";
+import type { AttackCommand, Rules } from "../src/rules";
+import { applyAll, craft, deepFreeze } from "./fixtures/build";
 import { TEST_RULES } from "./fixtures/test-rules";
 import { usePurityTraps } from "./purity-traps";
 
@@ -418,5 +420,172 @@ describe("heal rule", () => {
   it("the healing commit is accepted by reduce", () => {
     const result = decideCombat(viewFor(LOW, "p1"), TEST_RULES, createAi("heal-0", "p1", "hard"));
     expect(reduce(LOW, result.action, TEST_RULES).ok).toBe(true);
+  });
+});
+
+// ---- T4: AI branches --------------------------------------------------------------------------
+
+/** The slice of a saved combat state the tests below edit. */
+interface RawCombat {
+  public: {
+    characters: Record<string, { hp: number }>;
+    combat: { sides: { mods: { stun: boolean } }[] };
+    pending: { required: string[] };
+  };
+  private: Record<string, { bag: string[]; prompt: unknown }>;
+}
+
+function rawEdit(state: GameState, rules: Rules, edit: (json: RawCombat) => void): GameState {
+  const json = JSON.parse(serialize(state)) as RawCombat;
+  edit(json);
+  return deserialize(JSON.stringify(json), rules);
+}
+
+/** Heal items of known sizes. At maxHp 48: herb 14, big 28, exact 32, super 38, elixir 48. */
+const HEAL_RULES = craft((r) => {
+  const heal = (id: string, bp: number) => ({
+    id,
+    kind: "consumable" as const,
+    price: 1,
+    use: "both" as const,
+    effect: { kind: "heal" as const, bp },
+  });
+  for (const [id, bp] of [
+    ["herb-b", 3000],
+    ["big", 6000],
+    ["big-b", 6000],
+    ["exact", 6667],
+    ["super", 8000],
+    ["elixir", 10000],
+    ["elixir-b", 10000],
+  ] as const) {
+    r.items[id] = heal(id, bp);
+  }
+});
+
+function healPick(rules: Rules, hp: number, bag: string[]): string {
+  const base = applyAll(createGame(SETTINGS, rules), [START], rules).state;
+  const state = rawEdit(base, rules, (json) => {
+    need(json.public.characters.p1).hp = hp;
+    need(json.private.p1).bag = bag;
+    // the open prompt lists the bag's items, so keep it in step with the new bag
+    const prompt = need(json.private.p1).prompt as { options: string[] };
+    prompt.options = [
+      ...prompt.options.filter((o) => !o.startsWith("item:")),
+      ...[...new Set(bag)].map((id) => `item:${id}`),
+    ];
+  });
+  const result = decideCombat(viewFor(state, "p1"), rules, createAi("heal-pick", "p1", "hard"));
+  if (result.action?.type !== "decision/commit") throw new Error("no commit");
+  return result.action.choice;
+}
+
+describe("heal rule: which heal item (step 2), maxHp 48 and hp 16 so 32 hp are missing", () => {
+  it("picks the smallest heal that covers the missing hp (not the first or the largest)", () => {
+    // elixir 48, super 38 and herb 14: super is the smallest that covers 32
+    expect(healPick(HEAL_RULES, 16, ["elixir", "super", "herb"])).toBe("item:super");
+  });
+
+  it("a heal of exactly the missing hp covers it (amount >= missing)", () => {
+    // exact heals floor(48 x 6667 / 10000) = 32 = missing; elixir 48 also covers
+    expect(healPick(HEAL_RULES, 16, ["elixir", "exact", "herb"])).toBe("item:exact");
+  });
+
+  it("when none covers, picks the largest heal", () => {
+    // herb 14 and big 28 both fall short of 32
+    expect(healPick(HEAL_RULES, 16, ["herb", "big"])).toBe("item:big");
+  });
+
+  it("ties between covering heals go to the earlier option", () => {
+    expect(healPick(HEAL_RULES, 16, ["elixir", "elixir-b"])).toBe("item:elixir");
+  });
+
+  it("ties between non-covering heals go to the earlier option", () => {
+    expect(healPick(HEAL_RULES, 16, ["big", "big-b"])).toBe("item:big");
+  });
+
+  it("ignores a non-heal item in the bag", () => {
+    expect(healPick(HEAL_RULES, 16, ["bomb", "herb"])).toBe("item:herb");
+  });
+});
+
+describe("heal rule threshold at maxHp 100 (hp x 10000 <= maxHp x healThresholdBp)", () => {
+  // baseStats.hp 100 and neutral class/gear hp multipliers make the fighter's max hp exactly 100
+  const HUNDRED = craft((r) => {
+    r.progression.baseStats = { ...r.progression.baseStats, hp: 100 };
+    r.progression.growth = { ...r.progression.growth, hp: 0 };
+    for (const cls of Object.values(r.classes)) cls.statBp = { ...cls.statBp, hp: 10000 };
+  });
+  const maxHp = (): number => {
+    const p1 = need(createGame(SETTINGS, HUNDRED).public.characters.p1);
+    return snapshotPlayer(HUNDRED, p1, {
+      atk: 0,
+      def: 0,
+      mag: 0,
+      spd: 0,
+      poison: false,
+      stun: false,
+    }).maxHp;
+  };
+
+  it("the fixture really has maxHp 100 and threshold 35%", () => {
+    expect(maxHp()).toBe(100);
+    expect(AI_TUNING.healThresholdBp).toBe(3500);
+  });
+
+  it.each([
+    [34, true],
+    [35, true], // 35 x 10000 = 100 x 3500: equality fires
+    [36, false],
+  ])("hp %i heals: %s", (hp, heals) => {
+    const choice = healPick(HUNDRED, hp, ["herb"]);
+    expect(choice === "item:herb").toBe(heals);
+  });
+});
+
+describe("a stunned opponent defender is modelled as the single defence 'open' (step 5)", () => {
+  const stunned = rawEdit(ALL_ZERO, TEST_RULES, (json) => {
+    need(json.public.combat.sides[1]).mods.stun = true;
+    json.public.pending.required = ["p1"]; // a stunned defender is not asked
+    need(json.private.p2).prompt = null;
+  });
+
+  /** Spec step 6 `val(a, open)` for the viewer p1 attacking, written out independently. */
+  function expected(command: AttackCommand): number {
+    const view = viewFor(stunned, "p1");
+    const [side0, side1] = need(view.public.combat).sides;
+    const att = snapshotPlayer(TEST_RULES, need(view.public.characters.p1), side0.mods);
+    const def = snapshotPlayer(TEST_RULES, need(view.public.characters.p2), side1.mods);
+    const p = isCritEligible(command, "open") ? critChanceBp(TEST_RULES, att) / 10000 : 0;
+    const r0 = computeCell(TEST_RULES.combat, att, def, command, "open", false);
+    const r1 = p > 0 ? computeCell(TEST_RULES.combat, att, def, command, "open", true) : r0;
+    const mix = (a: number, b: number): number => (1 - p) * a + p * b;
+    const toDef = mix(r0.toDefender, r1.toDefender);
+    const toAtt = mix(r0.toAttacker, r1.toAttacker);
+    const healAtt = mix(r0.healAttacker, r1.healAttacker);
+    const healDef = mix(r0.healDefender, r1.healDefender);
+    return (
+      (Math.min(toDef, def.hp) - healDef) / def.maxHp -
+      (Math.min(toAtt, att.hp) - healAtt) / att.maxHp +
+      (toDef >= def.hp ? AI_TUNING.koBonus : 0) -
+      (toAtt >= att.hp ? AI_TUNING.koBonus : 0)
+    );
+  }
+
+  it.each(["normal", "hard"] as const)(
+    "%s: ev is val(command, open) for each attack",
+    (difficulty) => {
+      const policy = combatPolicy(viewFor(stunned, "p1"), TEST_RULES, difficulty);
+      expect(policy.commands).toEqual(["attack", "strike", "spell"]);
+      policy.commands.forEach((command, i) => {
+        expect(policy.ev?.[i]).toBeCloseTo(expected(command as AttackCommand), 9);
+      });
+    },
+  );
+
+  it("differs from the unstunned model (non-vacuous)", () => {
+    const open = combatPolicy(viewFor(stunned, "p1"), TEST_RULES, "hard").ev;
+    const normal = combatPolicy(viewFor(ALL_ZERO, "p1"), TEST_RULES, "hard").ev;
+    expect(open).not.toEqual(normal);
   });
 });

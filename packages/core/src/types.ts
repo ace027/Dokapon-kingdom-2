@@ -43,7 +43,7 @@ export interface SeatSettings {
 
 /** 1-4 seats with unique ids, each a base class. */
 export interface GameSettings {
-  readonly v: 2;
+  readonly v: typeof SCHEMA_VERSION;
   readonly seed: string;
   readonly players: readonly SeatSettings[];
 }

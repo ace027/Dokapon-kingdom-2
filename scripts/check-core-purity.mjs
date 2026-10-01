@@ -13,6 +13,31 @@ function probeUrl(relative) {
   return fileURLToPath(new URL(`../${relative}`, import.meta.url));
 }
 
+const AI_BANNED_MATH = [
+  "acos",
+  "acosh",
+  "asin",
+  "asinh",
+  "atan",
+  "atan2",
+  "atanh",
+  "cbrt",
+  "cos",
+  "cosh",
+  "exp",
+  "expm1",
+  "hypot",
+  "log",
+  "log1p",
+  "log10",
+  "log2",
+  "pow",
+  "sin",
+  "sinh",
+  "tan",
+  "tanh",
+];
+
 /**
  * Each case's lines are linted in place; `rule` must report on one of them. `path` (default
  * {@link DEFAULT_PROBE}) selects which probe file the case is written to.
@@ -105,11 +130,77 @@ const CASES = [
     lines: ['import { deserialize } from "../serialize";', "void deserialize;"],
   },
   {
-    name: "ai uses Math.exp",
+    name: "ai uses Math.random",
     rule: "no-restricted-properties",
     path: AI_PROBE,
-    lines: ["export const e = Math.exp(1);"],
+    lines: ["export const r = Math.random();"],
   },
+  {
+    name: "ai imports HiddenState from ../types (name ban)",
+    rule: "no-restricted-imports",
+    path: AI_PROBE,
+    lines: ['import type { HiddenState } from "../types";', "export type H = HiddenState;"],
+  },
+  {
+    name: "ai imports a handler (../handlers/combat)",
+    rule: "no-restricted-imports",
+    path: AI_PROBE,
+    lines: ['import { combatStartHandler } from "../handlers/combat";', "void combatStartHandler;"],
+  },
+  {
+    name: "ai imports ../game",
+    rule: "no-restricted-imports",
+    path: AI_PROBE,
+    lines: ['import { createGame } from "../game";', "void createGame;"],
+  },
+  {
+    name: "ai imports ../replay",
+    rule: "no-restricted-imports",
+    path: AI_PROBE,
+    lines: ['import { replay } from "../replay";', "void replay;"],
+  },
+  {
+    name: "ai imports @usurpia/core",
+    rule: "no-restricted-imports",
+    path: AI_PROBE,
+    lines: ['import { createGame } from "@usurpia/core";', "void createGame;"],
+  },
+  {
+    name: "ai namespace-imports ../types (import * as T)",
+    rule: "no-restricted-imports",
+    path: AI_PROBE,
+    lines: ['import * as T from "../types";', "export type G = T.GameState;"],
+  },
+  {
+    name: 'ai type-level import("../types") (TSImportType)',
+    rule: "no-restricted-syntax",
+    path: AI_PROBE,
+    lines: ['export type G = import("../types").GameState;'],
+  },
+  {
+    name: 'core type-level import("./ai/index") (TSImportType)',
+    rule: "no-restricted-syntax",
+    lines: ['export type A = typeof import("./ai/index");'],
+  },
+  {
+    name: "ai uses the ** operator",
+    rule: "no-restricted-syntax",
+    path: AI_PROBE,
+    lines: ["export const p = 2 ** 0.5;"],
+  },
+  {
+    name: "ai uses the **= operator",
+    rule: "no-restricted-syntax",
+    path: AI_PROBE,
+    lines: ["let q = 2;", "q **= 0.5;", "export { q };"],
+  },
+  // One case per banned Math member (kept in sync with AI_BANNED_MATH in eslint.config.js).
+  ...AI_BANNED_MATH.map((member) => ({
+    name: `ai uses Math.${member}`,
+    rule: "no-restricted-properties",
+    path: AI_PROBE,
+    lines: [`export const m_${member} = Math.${member}(1);`],
+  })),
 ];
 
 /** Groups the cases by probe file and renders each file's source with per-case line ranges. */

@@ -1,14 +1,23 @@
 // The generic multi-player decision module: `decision/open` (kind `poll`), `decision/commit`,
-// `timeout`, and the shared `openDecision` / `revealDecision` steps that combat reuses (02-03).
+// `timeout`, and the shared `openDecision` / `revealDecision` steps that the combat handlers reuse.
 // Every record keyed by a player id is built with `Object.fromEntries` and read with `ownGet`
 // (PIT-002), so ids such as `toString` never touch `Object.prototype`.
 import type { ActionOf, Ctx, Handler, HandlerMap, Resolver, ResolverTable } from "./shared";
-import { hasExactKeys, isChoiceToken, isTokenArray, ownGet, overflow, reject } from "./shared";
+import {
+  hasExactKeys,
+  isChoiceToken,
+  isEnvelope,
+  isTokenArray,
+  ownGet,
+  overflow,
+  reject,
+} from "./shared";
 import { clip, isPlainObject, isUnique } from "../validation";
 import { onlyPlayers, PUBLIC, type GameEvent } from "../events";
 import { COMMANDS, type Command, type Rules } from "../rules";
 import {
   MAX_COUNTER,
+  SCHEMA_VERSION,
   type CommandCounts,
   type DecisionKind,
   type GameState,
@@ -69,10 +78,17 @@ export function openDecision(
       { decisionId: id, options: [...p.options], default: p.default },
     ]),
   );
-  events.push({ v: 2, type: "DecisionOpened", visibility: PUBLIC, decisionId: id, kind, required });
+  events.push({
+    v: SCHEMA_VERSION,
+    type: "DecisionOpened",
+    visibility: PUBLIC,
+    decisionId: id,
+    kind,
+    required,
+  });
   for (const p of prompts) {
     events.push({
-      v: 2,
+      v: SCHEMA_VERSION,
       type: "PromptOpened",
       visibility: onlyPlayers([p.playerId]),
       decisionId: id,
@@ -148,7 +164,7 @@ export function revealDecision(
       ? pending.required.filter((id) => !timedOut.includes(id))
       : [];
   events.push({
-    v: 2,
+    v: SCHEMA_VERSION,
     type: "ChoicesRevealed",
     visibility: PUBLIC,
     decisionId: pending.id,
@@ -182,15 +198,9 @@ export function revealDecision(
 /** The `poll` resolver: a poll only records its reveal, so the state is returned unchanged. */
 export const resolvePoll: Resolver = (state) => state;
 
-/**
- * Placeholder for kinds whose engine is not built yet (`combat/exchange` until 02-03). Unreachable
- * in 02-01b, because `deserialize` rejects combat decisions and nothing opens one.
- */
-export const resolveUnsupported: Resolver = (state) => state;
-
 function isOpenAction(raw: Record<string, unknown>): raw is OpenAction {
   if (!hasExactKeys(raw, ["v", "type", "playerId", "prompts"])) return false;
-  if (raw.v !== 2 || raw.type !== "decision/open" || typeof raw.playerId !== "string") return false;
+  if (!isEnvelope(raw, "decision/open")) return false;
   const prompts: unknown = raw.prompts;
   if (!Array.isArray(prompts) || prompts.length < 1 || prompts.length > MAX_PROMPTS) return false;
   return prompts.every(
@@ -206,9 +216,7 @@ function isOpenAction(raw: Record<string, unknown>): raw is OpenAction {
 function isCommitAction(raw: Record<string, unknown>): raw is CommitAction {
   return (
     hasExactKeys(raw, ["v", "type", "playerId", "decisionId", "choice"]) &&
-    raw.v === 2 &&
-    raw.type === "decision/commit" &&
-    typeof raw.playerId === "string" &&
+    isEnvelope(raw, "decision/commit") &&
     typeof raw.decisionId === "string" &&
     isChoiceToken(raw.choice)
   );
@@ -217,9 +225,7 @@ function isCommitAction(raw: Record<string, unknown>): raw is CommitAction {
 function isTimeoutAction(raw: Record<string, unknown>): raw is TimeoutAction {
   return (
     hasExactKeys(raw, ["v", "type", "playerId", "decisionId"]) &&
-    raw.v === 2 &&
-    raw.type === "timeout" &&
-    typeof raw.playerId === "string" &&
+    isEnvelope(raw, "timeout") &&
     typeof raw.decisionId === "string"
   );
 }
@@ -286,7 +292,7 @@ export function decisionHandlers(
       if (pending === null || open === null) return { state, events: [] };
       const events: GameEvent[] = [
         {
-          v: 2,
+          v: SCHEMA_VERSION,
           type: "ChoiceCommitted",
           visibility: PUBLIC,
           decisionId: pending.id,
@@ -315,7 +321,7 @@ export function decisionHandlers(
       if (pending === null) return { state, events: [] };
       const missing = pending.required.filter((id) => !pending.committed.includes(id));
       const events: GameEvent[] = missing.map((id): GameEvent => ({
-        v: 2,
+        v: SCHEMA_VERSION,
         type: "ChoiceTimedOut",
         visibility: PUBLIC,
         decisionId: pending.id,

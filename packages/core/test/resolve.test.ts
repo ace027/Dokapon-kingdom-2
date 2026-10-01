@@ -19,6 +19,7 @@ import {
 } from "../src/combat/resolve";
 import type { AttackCommand, Hook, Rules, StatBlock } from "../src/rules";
 import { MAX_COUNTER } from "../src/types";
+import { craft, need, type Mutable } from "./fixtures/build";
 import { TEST_RULES } from "./fixtures/test-rules";
 import { usePurityTraps } from "./purity-traps";
 
@@ -82,6 +83,22 @@ describe("golden matrix fixture", () => {
     expect(physBase(T, attacker(), defender())).toBe(28);
     expect(spellBase(T, attacker(), defender())).toBe(18);
     expect(critChanceBp(TEST_RULES, attacker())).toBe(500);
+  });
+});
+
+describe("critChanceBp rows (one change each from the luck-8 fixture)", () => {
+  it("is critBaseBp + luck x critPerLuckBp below the cap", () => {
+    // luck 20: 300 + 20 x 25 = 800 (so a wrong per-luck factor also fails, not only the cap)
+    expect(critChanceBp(TEST_RULES, attacker({ stats: { ...attacker().stats, luck: 20 } }))).toBe(
+      800,
+    );
+  });
+  it("luck 80 would be 2300 and is capped at critCapBp 2000", () => {
+    const luck80 = attacker({ stats: { ...attacker().stats, luck: 80 } });
+    expect(critChanceBp(TEST_RULES, luck80)).toBe(T.critCapBp);
+  });
+  it("a +500 critBp hook adds to the base: 500 + 500 = 1000", () => {
+    expect(critChanceBp(TEST_RULES, attacker({ hooks: hooks(H("critBp", 500)) }))).toBe(1000);
   });
 });
 
@@ -630,6 +647,108 @@ describe("resolveExchange", () => {
     const noItem = exchange(TEST_RULES, fighter(gull), emptyBag, "attack", "guard", [10000]);
     expect(noItem.calls).toEqual([[1, 10000]]);
     expect(noItem.out.effects).toEqual(["steal-gold:10"]);
+  });
+
+  describe("extreme but schema-legal bp values never make hp, heals or gold leave their ranges", () => {
+    const crafted = (edit: (r: Mutable<Rules>) => void) => craft(edit);
+
+    it("a negative heal-item bp heals 0 (it never turns the item into damage)", () => {
+      const rules = crafted((r) => {
+        need(r.items.herb).effect = { kind: "heal", bp: -5000 };
+      });
+      const a = fighter(attacker({ hp: 50 }), { bag: ["herb"] });
+      const { out } = exchange(rules, a, def(), "item:herb", null, []);
+      expect(out.heal.attacker).toBe(0);
+      expect(out.attacker.hp).toBe(50);
+    });
+
+    it("an oversized heal-item bp heals only the missing hp", () => {
+      const rules = crafted((r) => {
+        need(r.items.herb).effect = { kind: "heal", bp: 9_000_000 };
+      });
+      const a = fighter(attacker({ hp: 50 }), { bag: ["herb"] });
+      const { out } = exchange(rules, a, def(), "item:herb", null, []);
+      expect(out.heal.attacker).toBe(50);
+      expect(out.attacker.hp).toBe(100);
+    });
+
+    it("a negative drain bp heals 0 instead of damaging the attacker", () => {
+      const leech = { ...spell("leech"), effect: { kind: "drain", bp: -50_000 } } as const;
+      const a = fighter(attacker({ spell: leech, hp: 90 }));
+      const { out } = exchange(TEST_RULES, a, def(), "spell", "counter", []);
+      expect(out.heal.attacker).toBe(0);
+      expect(out.attacker.hp).toBe(90);
+      expect(out.effects).toEqual([]);
+    });
+
+    it("an oversized drain bp heals only the missing hp", () => {
+      const leech = { ...spell("leech"), effect: { kind: "drain", bp: 5_000_000 } } as const;
+      const a = fighter(attacker({ spell: leech, hp: 90 }));
+      const { out } = exchange(TEST_RULES, a, def(), "spell", "counter", []);
+      expect(out.heal.attacker).toBe(10);
+      expect(out.attacker.hp).toBe(100);
+    });
+
+    it("an oversized stealGold bp takes all the gold, never more", () => {
+      const pilfer = { ...spell("pilfer"), effect: { kind: "stealGold", bp: 50_000 } } as const;
+      const a = fighter(attacker({ spell: pilfer }), { gold: 50 });
+      const { out } = exchange(TEST_RULES, a, def(), "spell", "guard", []);
+      expect(out.defender.gold).toBe(0);
+      expect(out.attacker.gold).toBe(150);
+      expect(out.effects).toEqual(["steal-gold:100"]);
+    });
+
+    it("a negative stealGold bp steals nothing (gold is never added to the victim)", () => {
+      const pilfer = { ...spell("pilfer"), effect: { kind: "stealGold", bp: -5000 } } as const;
+      const a = fighter(attacker({ spell: pilfer }), { gold: 50 });
+      const { out } = exchange(TEST_RULES, a, def(), "spell", "guard", []);
+      expect(out.defender.gold).toBe(100);
+      expect(out.attacker.gold).toBe(50);
+      expect(out.effects).toEqual([]);
+    });
+
+    it("a steal that rounds down to 0 gold leaves no steal-gold:0 tag (spell and on-hit)", () => {
+      // floor(9 x 1000 / 10000) = 0
+      const a = fighter(attacker({ spell: spell("pilfer") }), { gold: 50 });
+      const spellSteal = exchange(
+        TEST_RULES,
+        a,
+        fighter(defender(), { gold: 9 }),
+        "spell",
+        "guard",
+        [],
+      );
+      expect(spellSteal.out.effects).toEqual([]);
+      const gull = attacker({ hooks: hooks(H("stealGoldOnHitBp", 1000)) });
+      const hit = exchange(
+        TEST_RULES,
+        fighter(gull),
+        fighter(defender(), { gold: 9 }),
+        "attack",
+        "guard",
+        [10000],
+      );
+      expect(hit.out.effects).toEqual([]);
+      expect(hit.out.defender.gold).toBe(9);
+    });
+
+    it("an oversized on-hit steal-gold bp takes all the gold, never more", () => {
+      const gull = attacker({ hooks: hooks(H("stealGoldOnHitBp", 50_000)) });
+      const victim = fighter(defender(), { gold: 100 });
+      const { out } = exchange(TEST_RULES, fighter(gull), victim, "attack", "guard", [10000]);
+      expect(out.defender.gold).toBe(0);
+      expect(out.effects).toEqual(["steal-gold:100"]);
+    });
+
+    it("a negative on-hit steal-gold bp steals nothing", () => {
+      const gull = attacker({
+        hooks: hooks(H("stealGoldOnHitBp", 1000), H("stealGoldOnHitBp", -5000)),
+      });
+      const victim = fighter(defender(), { gold: 100 });
+      const { out } = exchange(TEST_RULES, fighter(gull), victim, "attack", "guard", [10000]);
+      expect(out.defender.gold).toBe(100);
+      expect(out.effects).toEqual([]);
+    });
   });
 
   it("KO and reflect clamp hp at 0 and report actual damage", () => {

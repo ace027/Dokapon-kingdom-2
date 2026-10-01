@@ -9,7 +9,7 @@ import {
   type StatBlock,
   type StatKey,
 } from "../rules";
-import type { BattleMods, CharacterPublic, NpcRef } from "../types";
+import { MAX_STAT, type BattleMods, type CharacterPublic, type NpcRef } from "../types";
 import { ownGet } from "../validation";
 import { applyPassives } from "./passives";
 
@@ -32,7 +32,9 @@ function need<V>(value: V | undefined, kind: string, id: string): V {
 function buildBlock(compute: (key: StatKey) => number): StatBlock {
   const entries = STAT_KEYS.map((key): [StatKey, number] => {
     const raw = compute(key);
-    return [key, key === "hp" ? Math.max(1, raw) : Math.max(0, raw)];
+    // Clamped to [floor, MAX_STAT] so a legal-but-extreme rules value cannot make `deserialize` of
+    // the resulting state fail (hp and NPC snapshots are bounded by MAX_STAT there).
+    return [key, Math.min(MAX_STAT, key === "hp" ? Math.max(1, raw) : Math.max(0, raw))];
   });
   return Object.fromEntries(entries) as StatBlock;
 }

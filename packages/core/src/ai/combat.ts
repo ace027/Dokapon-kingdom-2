@@ -18,7 +18,7 @@ import {
   type ContentId,
   type Rules,
 } from "../rules";
-import type { CombatSide, PlayerId, Prompt } from "../types";
+import { SCHEMA_VERSION, type CombatSide, type PlayerId, type Prompt } from "../types";
 import { ownGet } from "../validation";
 import type { PlayerView } from "../views";
 import { expNeg } from "./exp";
@@ -173,7 +173,7 @@ function drawWeighted<T>(
 function commit(view: PlayerView, prompt: Prompt, choice: string, ai: AiState): AiDecision {
   return {
     action: {
-      v: 2,
+      v: SCHEMA_VERSION,
       type: "decision/commit",
       playerId: view.viewer,
       decisionId: prompt.decisionId,

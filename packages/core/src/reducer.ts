@@ -4,7 +4,7 @@ import { handlers } from "./handlers/index";
 import type { Ctx, Handler } from "./handlers/shared";
 import { nextInt, type RngState } from "./rng";
 import type { Rules } from "./rules";
-import { stableStringify } from "./serialize";
+import { stableStringify } from "./canonical";
 import { SCHEMA_VERSION, SYSTEM_ACTOR, type GameState, type PlayerId } from "./types";
 import { clip, isPlainObject } from "./validation";
 
@@ -116,6 +116,12 @@ export function isAction(value: unknown): value is Action {
  * Pure transition. Accepts untrusted input, never throws on bad actions and never mutates
  * `state`. `action` is first canonicalized (read once), then checked, first failure wins:
  * version → type → shape → phase → actor → state validation.
+ *
+ * Trust boundary: `reduce` TRUSTS the `playerId` inside the action. It has no notion of who sent
+ * it, so a host or server must never pass a client-supplied action straight to it (a client could
+ * claim `playerId: "system"` or another player's id). Host/server-internal code (the sim, replay,
+ * tests, the server's own system actions) uses `reduce`; anything that arrives from a client goes
+ * through {@link reduceAs} with the authenticated actor.
  */
 export function reduce(state: GameState, action: unknown, rules: Rules): ReduceResult {
   const shape = checkShape(action);
@@ -137,4 +143,26 @@ export function reduce(state: GameState, action: unknown, rules: Rules): ReduceR
     state: { ...applied.state, hidden: { ...applied.state.hidden, rng: ctx.rng } },
     events: applied.events,
   };
+}
+
+/**
+ * `reduce` for actions submitted by an authenticated actor (a connected client, or the host acting
+ * as `"system"`). `actor` must come from the transport's authentication, never from the action.
+ * The action is canonicalized and shape-checked exactly as in `reduce` (so malformed input gets the
+ * same version/type/shape rejects), then rejected with `WRONG_ACTOR` unless `action.playerId ===
+ * actor`. That also means a `system` action (`playerId: "system"`) is accepted only when `actor` is
+ * `"system"`. Everything else is delegated to `reduce`.
+ */
+export function reduceAs(
+  state: GameState,
+  action: unknown,
+  rules: Rules,
+  actor: PlayerId,
+): ReduceResult {
+  const shape = checkShape(action);
+  if (!shape.ok) return shape;
+  if (shape.action.playerId !== actor) {
+    return fail("WRONG_ACTOR", "action playerId does not match the authenticated actor");
+  }
+  return reduce(state, shape.action, rules);
 }

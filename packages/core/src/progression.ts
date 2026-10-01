@@ -4,7 +4,13 @@
 import { adjustHp, sheetStats } from "./combat/stats";
 import { PUBLIC, type GameEvent } from "./events";
 import { levelForXp, masteryRank, type ContentId, type Rules } from "./rules";
-import { MAX_COUNTER, type CharacterPublic, type CombatSide, type PlayerId } from "./types";
+import {
+  MAX_COUNTER,
+  SCHEMA_VERSION,
+  type CharacterPublic,
+  type CombatSide,
+  type PlayerId,
+} from "./types";
 import { ownGet } from "./validation";
 
 const BP = 10_000;
@@ -18,7 +24,7 @@ export type ProgressionEvent =
 
 /** Stamps a progression event for `playerId` (all four are public). */
 export function progressionEvent(playerId: PlayerId, event: ProgressionEvent): GameEvent {
-  return { v: 2, visibility: PUBLIC, playerId, ...event };
+  return { v: SCHEMA_VERSION, visibility: PUBLIC, playerId, ...event };
 }
 
 function saturatingAdd(a: number, b: number): number {
@@ -67,6 +73,16 @@ export function applyXp(
 
 /** The reward for beating `loser` (the reward only applies to a KO won by a player). */
 export function victoryReward(
+  rules: Rules,
+  loser: CombatSide,
+  loserLevel: number,
+): { xp: number; gold: number } {
+  const raw = rawReward(rules, loser, loserLevel);
+  // Content values are schema-bounded, but the engine never pays a negative amount.
+  return { xp: Math.max(0, raw.xp), gold: Math.max(0, raw.gold) };
+}
+
+function rawReward(
   rules: Rules,
   loser: CombatSide,
   loserLevel: number,

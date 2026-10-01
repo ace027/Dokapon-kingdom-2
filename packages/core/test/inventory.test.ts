@@ -12,26 +12,12 @@ import {
   removeItem,
   setSpell,
 } from "../src/inventory";
-import type { Rules } from "../src/rules";
 import type { CharacterPublic } from "../src/types";
-import { deepFreeze, newGame } from "./fixtures/build";
+import { craft, deepFreeze, need, newGame } from "./fixtures/build";
 import { TEST_RULES } from "./fixtures/test-rules";
 import { usePurityTraps } from "./purity-traps";
 
 usePurityTraps();
-
-type Mutable<T> = { -readonly [K in keyof T]: Mutable<T[K]> };
-
-function need<T>(value: T | undefined): T {
-  if (value === undefined) throw new Error("missing fixture entry");
-  return value;
-}
-
-function craft(edit: (rules: Mutable<Rules>) => void): Rules {
-  const rules = JSON.parse(JSON.stringify(TEST_RULES)) as Mutable<Rules>;
-  edit(rules);
-  return rules;
-}
 
 const rej = (message: string) => ({ code: "INVALID_PAYLOAD", message });
 const fighter: CharacterPublic = deepFreeze(need(newGame().public.characters.p1));

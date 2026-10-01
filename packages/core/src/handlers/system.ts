@@ -1,11 +1,11 @@
 // `system/setCharacter`: scenario/debug setup for sims and tests (system actor only). It bypasses
 // hybrid unlock and starter rules on purpose. Records keyed by ids are read with `ownGet` (PIT-002).
 import type { ActionOf, Handler } from "./shared";
-import { hasExactKeys, isInt, ownGet, reject } from "./shared";
+import { hasExactKeys, isEnvelope, isInt, ownGet, reject } from "./shared";
 import { sheetStats } from "../combat/stats";
 import { onlyPlayers, PUBLIC, type GameEvent } from "../events";
 import type { GearSlot, Rules } from "../rules";
-import type { CharacterPublic, GameState } from "../types";
+import { SCHEMA_VERSION, type CharacterPublic, type GameState } from "../types";
 
 type SetAction = ActionOf<"system/setCharacter">;
 
@@ -32,9 +32,7 @@ function isSetAction(raw: Record<string, unknown>): raw is SetAction {
       "wardSpell",
       "bag",
     ]) &&
-    raw.v === 2 &&
-    raw.type === "system/setCharacter" &&
-    typeof raw.playerId === "string" &&
+    isEnvelope(raw, "system/setCharacter") &&
     typeof raw.target === "string" &&
     typeof raw.classId === "string" &&
     isInt(raw.level, 1, MAX_LEVEL) &&
@@ -101,7 +99,7 @@ export const setCharacterHandler: Handler<SetAction> = {
     const character: CharacterPublic = { ...set, hp: sheetStats(rules, set).hp };
     const events: GameEvent[] = [
       {
-        v: 2,
+        v: SCHEMA_VERSION,
         type: "CharacterSet",
         visibility: PUBLIC,
         playerId: a.target,
@@ -110,7 +108,7 @@ export const setCharacterHandler: Handler<SetAction> = {
         hp: character.hp,
       },
       {
-        v: 2,
+        v: SCHEMA_VERSION,
         type: "BagUpdated",
         visibility: onlyPlayers([a.target]),
         playerId: a.target,

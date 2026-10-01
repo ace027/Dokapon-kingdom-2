@@ -1,19 +1,20 @@
 import type { Action } from "../actions";
-import type { GameEvent } from "../events";
+import { onlyPlayers, type GameEvent } from "../events";
 import type { Reject, RejectCode } from "../reducer";
 import type { RngState } from "../rng";
 import type { Rules } from "../rules";
 import {
   CHOICE_PATTERN,
   MAX_COUNTER,
+  SCHEMA_VERSION,
   type DecisionKind,
   type GameState,
   type Phase,
   type PlayerId,
 } from "../types";
-import { clip, isPlainObject, ownGet } from "../validation";
+import { clip, isInt, isPlainObject, ownGet, sameStrings } from "../validation";
 
-export { clip, isPlainObject, ownGet };
+export { clip, isInt, isPlainObject, ownGet, sameStrings };
 
 /** Handler-local randomness. `int` draws via `nextInt` and advances `rng`. */
 export interface Ctx {
@@ -72,9 +73,20 @@ export function isTokenArray(value: unknown, min: number, max: number): value is
   );
 }
 
-/** An integer in `[min, max]`. */
-export function isInt(value: unknown, min: number, max: number): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value >= min && value <= max;
+/** The envelope every action guard checks: current `v`, the expected `type`, string `playerId`. */
+export function isEnvelope(raw: Record<string, unknown>, type: string): boolean {
+  return raw.v === SCHEMA_VERSION && raw.type === type && typeof raw.playerId === "string";
+}
+
+/** The players-only `BagUpdated` event for `playerId`'s new bag. */
+export function bagEvent(playerId: PlayerId, bag: readonly string[]): GameEvent {
+  return {
+    v: SCHEMA_VERSION,
+    type: "BagUpdated",
+    visibility: onlyPlayers([playerId]),
+    playerId,
+    bag: [...bag],
+  };
 }
 
 /** Builds a rejection. Callers clip attacker-supplied ids to 64 chars (`clip`) before echoing. */

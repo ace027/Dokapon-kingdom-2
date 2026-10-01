@@ -10,7 +10,7 @@ import {
   exchangeRoles,
   requiredFor,
 } from "../src/combat/options";
-import { npcStats } from "../src/combat/stats";
+import { npcStats, sheetStats } from "../src/combat/stats";
 import { combatStartHandler } from "../src/handlers/combat";
 import { setCharacterHandler } from "../src/handlers/system";
 import { reduce } from "../src/reducer";
@@ -19,28 +19,13 @@ import type { Rules } from "../src/rules";
 import { deserialize, serialize } from "../src/serialize";
 import { MAX_COUNTER, type CharacterPublic, type GameSettings, type GameState } from "../src/types";
 import { COMBAT_GOLDEN_ACTIONS, COMBAT_GOLDEN_SETTINGS } from "./arbitraries";
-import { applyAll, deepFreeze, FIXTURE_SETTINGS, newGame } from "./fixtures/build";
+import { applyAll, craft, deepFreeze, FIXTURE_SETTINGS, need, newGame } from "./fixtures/build";
 import { TEST_RULES } from "./fixtures/test-rules";
 import { usePurityTraps } from "./purity-traps";
 
 usePurityTraps();
 
 // ---- helpers ---------------------------------------------------------------------------------
-
-type Mutable<T> = { -readonly [K in keyof T]: Mutable<T[K]> };
-
-function need<T>(value: T | undefined): T {
-  if (value === undefined) throw new Error("missing fixture entry");
-  return value;
-}
-
-/** A deep copy of TEST_RULES (like `structuredClone`) edited by `edit`; TEST_RULES is never mutated. */
-function craft(edit: (rules: Mutable<Rules>) => void): Rules {
-  // JSON data only, so a JSON round trip is a deep copy (the core tsconfig has no structuredClone)
-  const rules = JSON.parse(JSON.stringify(TEST_RULES)) as Mutable<Rules>;
-  edit(rules);
-  return rules;
-}
 
 const start = (attacker: string, opponent: unknown) => ({
   v: 2,
@@ -872,6 +857,28 @@ describe("round end: poison then regen", () => {
     expect(ended?.regen[0]).toBe(4);
     expect(ended?.hp[0]).toBe(48 - 1 - 3 + 4);
   });
+  it.each([
+    // [hp before the round, regen actually applied, hp after]: the slime's atk-0 hit deals 1,
+    // so regen is capped by the missing hp (1 and 3), not by floor(48 x 1000 / 10000) = 4
+    [48, 1, 48],
+    [46, 3, 48],
+  ])(
+    "regen is capped by the missing hp: hp %i heals %i to %i, never above max",
+    (from, gain, to) => {
+      const game = edit(opened(), { "public.characters.p1.hp": from }, rules);
+      const { events, state } = run(
+        game,
+        [commit("p1", "d1", "attack"), commit("p1", "d2", "guard")],
+        rules,
+      );
+      expect(ofType(events, "ExchangeResolved")[1]).toMatchObject({ attacker: 1, damage: [1, 0] });
+      const ended = ofType(events, "RoundEnded")[0];
+      expect(ended?.regen[0]).toBe(gain);
+      expect(ended?.hp[0]).toBe(to);
+      expect(state.public.characters.p1?.hp).toBe(to);
+      expect(to).toBeLessThanOrEqual(sheetStats(rules, need(state.public.characters.p1)).hp);
+    },
+  );
 });
 
 // ---- opponent model: choiceHistory -----------------------------------------------------------

@@ -2,7 +2,7 @@
 // action, so the checks that reject are exactly the checks apply relies on. Records keyed by a
 // player or content id are read with `ownGet` (PIT-002).
 import type { ActionOf, Handler } from "./shared";
-import { hasExactKeys, isInt, overflow, ownGet, reject } from "./shared";
+import { bagEvent, hasExactKeys, isEnvelope, isInt, overflow, ownGet, reject } from "./shared";
 import { sheetStats } from "../combat/stats";
 import { onlyPlayers, PUBLIC, type GameEvent } from "../events";
 import type { Grant } from "../actions";
@@ -17,8 +17,14 @@ import {
 } from "../inventory";
 import { applyXp, progressionEvent, withAdjustedHp } from "../progression";
 import type { Reject } from "../reducer";
-import { masteryRank, type ContentId, type Rules } from "../rules";
-import type { CharacterPublic, GameState, PlayerId, PrivateState } from "../types";
+import { masteryRank, type Rules } from "../rules";
+import {
+  SCHEMA_VERSION,
+  type CharacterPublic,
+  type GameState,
+  type PlayerId,
+  type PrivateState,
+} from "../types";
 import { isPlainObject } from "../validation";
 
 type GrantAction = ActionOf<"system/grant">;
@@ -57,14 +63,6 @@ function writeSeat(
     public: { ...state.public, characters: { ...state.public.characters, [id]: character } },
     private: { ...state.private, [id]: priv },
   };
-}
-
-function bagEvent(playerId: PlayerId, bag: readonly ContentId[]): GameEvent {
-  return { v: 2, type: "BagUpdated", visibility: onlyPlayers([playerId]), playerId, bag: [...bag] };
-}
-
-function isEnvelope(raw: Record<string, unknown>, type: string): boolean {
-  return raw.v === 2 && raw.type === type && typeof raw.playerId === "string";
 }
 
 function isStringList(value: unknown, max: number): value is string[] {
@@ -107,7 +105,7 @@ function planGrant(state: GameState, a: GrantAction, rules: Rules): Reject | Gra
   const { grant } = a;
   const events: GameEvent[] = [
     {
-      v: 2,
+      v: SCHEMA_VERSION,
       type: "Granted",
       visibility:
         grant.kind === "item" || grant.kind === "scroll" ? onlyPlayers([a.target]) : PUBLIC,
@@ -126,7 +124,7 @@ function planGrant(state: GameState, a: GrantAction, rules: Rules): Reject | Gra
       const scrolls = addScroll(rules, priv.scrolls, grant.id);
       if (isReject(scrolls)) return scrolls;
       events.push({
-        v: 2,
+        v: SCHEMA_VERSION,
         type: "ScrollsUpdated",
         visibility: onlyPlayers([a.target]),
         playerId: a.target,
@@ -210,7 +208,7 @@ export const switchClassHandler: Handler<SwitchAction> = {
     const fee = character.gold - plan.character.gold;
     const events: GameEvent[] = [
       {
-        v: 2,
+        v: SCHEMA_VERSION,
         type: "ClassSwitched",
         visibility: PUBLIC,
         playerId: a.playerId,
@@ -281,13 +279,16 @@ export const useItemHandler: Handler<UseItemAction> = {
     const bag = removeItem(priv.bag, a.itemId);
     if (def?.effect.kind !== "heal" || isReject(bag)) return { state, events: [] };
     const max = sheetStats(rules, character).hp;
-    const healed = Math.min(max - character.hp, Math.floor((max * def.effect.bp) / BP));
+    const healed = Math.max(
+      0,
+      Math.min(max - character.hp, Math.floor((max * def.effect.bp) / BP)),
+    );
     const next: CharacterPublic = { ...character, hp: character.hp + healed };
     return {
       state: writeSeat(state, a.playerId, next, { ...priv, bag }),
       events: [
         {
-          v: 2,
+          v: SCHEMA_VERSION,
           type: "ItemUsed",
           visibility: PUBLIC,
           playerId: a.playerId,
@@ -333,7 +334,7 @@ export const setPortableHandler: Handler<PortableAction> = {
       state: writeSeat(state, a.playerId, next, priv),
       events: [
         {
-          v: 2,
+          v: SCHEMA_VERSION,
           type: "PortableSet",
           visibility: PUBLIC,
           playerId: a.playerId,

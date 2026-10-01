@@ -72,16 +72,18 @@ export {
 } from "./inventory";
 export { nextInt, nextU32, seedRng, type RngState } from "./rng";
 export { fnv1a32 } from "./hash";
-export {
-  deserialize,
-  hashState,
-  SchemaVersionError,
-  serialize,
-  stableStringify,
-} from "./serialize";
-export { ACTION_TYPES, type Action, type ActionType, type Grant, type Opponent } from "./actions";
+export { hashState, stableStringify } from "./canonical";
+export { deserialize, SchemaVersionError, serialize } from "./serialize";
+export { type Action, type ActionType, type Grant, type Opponent } from "./actions";
 export type { GameEvent, Visibility } from "./events";
-export { isAction, reduce, type ReduceResult, type Reject, type RejectCode } from "./reducer";
+export {
+  isAction,
+  reduce,
+  reduceAs,
+  type ReduceResult,
+  type Reject,
+  type RejectCode,
+} from "./reducer";
 export { createGame, SettingsError } from "./game";
 export { replay, type ReplayResult } from "./replay";
 export { viewFor, redactEvent, eventsFor } from "./views";
