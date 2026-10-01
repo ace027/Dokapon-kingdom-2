@@ -50,6 +50,50 @@ function runCli(...args: string[]) {
   });
 }
 
+/** A copy of the shipped data dir whose first base class starts with an unknown weapon id. */
+function badContentDir(): string {
+  const dir = path.join(tempDir, "bad-content");
+  fs.cpSync(fileURLToPath(new URL("../../content/data/", import.meta.url)), dir, {
+    recursive: true,
+  });
+  const file = path.join(dir, "classes.json");
+  const root = JSON.parse(fs.readFileSync(file, "utf8")) as {
+    classes: { starter: { weapon: string | null } }[];
+  };
+  const [first] = root.classes;
+  if (first === undefined) throw new Error("no classes");
+  first.starter.weapon = "no-such-id";
+  fs.writeFileSync(file, JSON.stringify(root));
+  return dir;
+}
+
+function runCliWithContent(dir: string, ...args: string[]) {
+  return spawnSync(process.execPath, [tsxCli, cliPath, ...args], {
+    encoding: "utf8",
+    cwd: repoRoot,
+    env: { ...process.env, USURPIA_CONTENT_DIR: dir },
+  });
+}
+
+const BAD_CONTENT_STDERR =
+  "content invalid: 1 errors\nclasses.json classes.0.starter.weapon: starter weapon must be an existing gear id\n";
+
+describe("sim CLI with invalid content (exit 1, error lines on stderr)", () => {
+  it("replay exits 1 and prints every content error line", () => {
+    const result = runCliWithContent(badContentDir(), "replay", writeTemp("ok.json", goodFile()));
+    expect(result.status).toBe(1);
+    expect(result.stderr).toBe(BAD_CONTENT_STDERR);
+    expect(result.stdout).toBe("");
+  });
+
+  it("duel exits 1 and prints every content error line", () => {
+    const result = runCliWithContent(badContentDir(), "duel", "--n", "1");
+    expect(result.status).toBe(1);
+    expect(result.stderr).toBe(BAD_CONTENT_STDERR);
+    expect(result.stdout).toBe("");
+  });
+});
+
 describe("sim CLI", () => {
   it("prints usage and exits 2 without a file", () => {
     const result = runCli("replay");

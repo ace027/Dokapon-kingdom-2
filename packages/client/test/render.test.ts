@@ -15,8 +15,8 @@ const SETTINGS = {
   v: 2 as const,
   seed: "demo",
   players: [
-    { id: "p1", classId: "fighter" },
-    { id: "p2", classId: "caster" },
+    { id: "p1", classId: "warrior" },
+    { id: "p2", classId: "mage" },
   ],
 };
 const initial = createGame(SETTINGS, DEMO_RULES);
@@ -47,8 +47,8 @@ function demo(): { state: GameState; events: GameEvent[] } {
 }
 
 describe("DEMO_RULES", () => {
-  it("is a verbatim TEST_RULES copy", () => {
-    expect(rulesHash(DEMO_RULES)).toBe("7433ea8b");
+  it("is the shipped content rules (built by buildRules, not a copy)", () => {
+    expect(rulesHash(DEMO_RULES)).toBe("84a995db");
   });
 });
 
@@ -58,8 +58,8 @@ describe("renderView before any decision", () => {
       [
         "Usurpia — viewer: p2",
         "turn 1 · active p1 · phase turn",
-        "p1 fighter L1 hp 48 gold 100 bag 1",
-        "p2 caster L1 hp 36 gold 100 bag 2",
+        "p1 warrior L1 hp 46 gold 100 bag 1",
+        "p2 mage L1 hp 34 gold 100 bag 1",
         "pending: —",
         "events:",
       ].join("\n"),
@@ -69,8 +69,8 @@ describe("renderView before any decision", () => {
   it("renders a spectator with the same player lines", () => {
     const text = renderView(viewFor(initial, "spectator"), []);
     expect(text).toContain("viewer: spectator");
-    expect(text).toContain("p1 fighter L1 hp 48 gold 100 bag 1");
-    expect(text).toContain("p2 caster L1 hp 36 gold 100 bag 2");
+    expect(text).toContain("p1 warrior L1 hp 46 gold 100 bag 1");
+    expect(text).toContain("p2 mage L1 hp 34 gold 100 bag 1");
     expect(text).toContain("pending: —");
   });
 });
@@ -80,8 +80,8 @@ describe("renderView during the demo decision", () => {
   const p2 = renderView(viewFor(state, "p2"), eventsFor(events, "p2"));
 
   it("shows the player lines with bag counts", () => {
-    expect(p2).toContain("p1 fighter L1 hp 48 gold 100 bag 1");
-    expect(p2).toContain("p2 caster L1 hp 36 gold 100 bag 2");
+    expect(p2).toContain("p1 warrior L1 hp 46 gold 100 bag 1");
+    expect(p2).toContain("p2 mage L1 hp 34 gold 100 bag 1");
   });
 
   it("shows the pending decision and p2's own options", () => {

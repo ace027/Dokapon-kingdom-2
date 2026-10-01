@@ -1,10 +1,13 @@
 import path from "node:path";
+import { ContentInvalidError } from "@usurpia/content/node";
+import type { Rules } from "@usurpia/core";
 import type { Difficulty } from "@usurpia/core/ai";
 import { UsageError } from "./duel";
 import { ReplayFileError, replayFile, RulesMismatchError } from "./replay-file";
 import { runReport } from "./report";
 import { replayRules } from "./rules";
 
+const EXIT_INVALID_CONTENT = 1;
 const REPLAY_USAGE = "usage: sim replay <file.json> [--allow-rules-mismatch]";
 const DUEL_USAGE =
   "usage: sim duel [--n <int>] [--matchup <spec>] [--difficulty <d>|<dA>:<dB>] [--seed <s>] [--level <int>] [--json]";
@@ -14,6 +17,19 @@ const VALUE_FLAGS = ["--n", "--matchup", "--difficulty", "--seed", "--level"] as
 
 function isDifficulty(value: string): value is Difficulty {
   return DIFFICULTIES.includes(value);
+}
+
+/** Loads the shipped (or `USURPIA_CONTENT_DIR`) rules; invalid content prints its error lines. */
+function loadRulesOrReport(): Rules | number {
+  try {
+    return replayRules();
+  } catch (error) {
+    if (error instanceof ContentInvalidError) {
+      console.error(error.message);
+      return EXIT_INVALID_CONTENT;
+    }
+    throw error;
+  }
 }
 
 function parseDifficulty(text: string): [Difficulty, Difficulty] {
@@ -43,8 +59,10 @@ function runReplay(args: readonly string[]): number {
     console.error(REPLAY_USAGE);
     return 2;
   }
+  const rules = loadRulesOrReport();
+  if (typeof rules === "number") return rules;
   try {
-    const { line } = replayFile(path.resolve(process.cwd(), file), replayRules(), {
+    const { line } = replayFile(path.resolve(process.cwd(), file), rules, {
       allowRulesMismatch,
     });
     console.log(line);
@@ -87,7 +105,8 @@ function parseDuelArgs(args: readonly string[]): {
 }
 
 function runDuelCommand(args: readonly string[]): number {
-  const rules = replayRules();
+  const rules = loadRulesOrReport();
+  if (typeof rules === "number") return rules;
   try {
     const { values, json } = parseDuelArgs(args);
     const n = parseInteger("--n", values.get("--n") ?? "1000", 1, Number.MAX_SAFE_INTEGER);

@@ -8,6 +8,7 @@
     "dev": "vite"
   },
   "dependencies": {
+    "@usurpia/content": "workspace:*",
     "@usurpia/core": "workspace:*"
   },
   "devDependencies": {

@@ -130,16 +130,17 @@ describe("sim duel stdout goldens", () => {
     expect(result.stdout).not.toContain("warrior:warrior");
   });
 
-  it("prints n/a when no duel of a matchup was decisive", () => {
-    const result = runCli(
-      "duel",
-      "--n",
-      "1",
-      "--matchup",
-      "warrior:monster/seagull-debt-collector",
-    );
+  it("prints aRate=n/a exactly when a matchup had no decisive duel (draw only)", () => {
+    // Seed "na5" makes the single mage:mage duel a draw (a=0, b=0, draw=1).
+    const result = runCli("duel", "--n", "1", "--matchup", "mage:mage", "--seed", "na5");
     expect(result.status).toBe(0);
-    expect(result.stdout).toMatch(/aRate=(n\/a|\d\.\d{3})\n/);
+    expect(result.stdout.split("\n")).toContain("mage:mage n=1 a=0 b=0 draw=1 fled=0 aRate=n/a");
+  });
+
+  it("prints a numeric aRate when a duel was decisive", () => {
+    const result = runCli("duel", "--n", "1", "--matchup", "mage:mage", "--seed", "usurpia");
+    expect(result.status).toBe(0);
+    expect(result.stdout).toMatch(/^mage:mage n=1 a=[01] b=[01] draw=0 fled=0 aRate=[01]\.000$/m);
   });
 });
 
