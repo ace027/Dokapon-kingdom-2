@@ -358,56 +358,48 @@ const refCases: RefCase[] = [
     entries: setPath(base, MONSTERS, "monsters.0.battleSpell", BAD),
     error: err(
       MONSTERS,
-      "monsters.monsters.0.battleSpell",
+      "monsters.0.battleSpell",
       "npc battleSpell must be an existing battle spell",
     ),
   },
   {
     rule: "npc wardSpell unknown",
     entries: setPath(base, MONSTERS, "monsters.0.wardSpell", BAD),
-    error: err(
-      MONSTERS,
-      "monsters.monsters.0.wardSpell",
-      "npc wardSpell must be an existing ward spell",
-    ),
+    error: err(MONSTERS, "monsters.0.wardSpell", "npc wardSpell must be an existing ward spell"),
   },
   {
     rule: "attackTable.spell > 0 without a battleSpell",
     entries: setPath(base, MONSTERS, "monsters.0.battleSpell", null),
     error: err(
       MONSTERS,
-      "monsters.monsters.0.attackTable.spell",
+      "monsters.0.attackTable.spell",
       "attackTable.spell must be 0 when battleSpell is null",
     ),
   },
   {
     rule: "attack table sums to 0",
     entries: setPath(base, MONSTERS, "monsters.0.attackTable", attackless),
-    error: err(MONSTERS, "monsters.monsters.0.attackTable", "attackTable must sum to more than 0"),
+    error: err(MONSTERS, "monsters.0.attackTable", "attackTable must sum to more than 0"),
   },
   {
     rule: "defend table sums to 0",
     entries: setPath(base, MONSTERS, "monsters.0.defendTable", defendless),
-    error: err(MONSTERS, "monsters.monsters.0.defendTable", "defendTable must sum to more than 0"),
+    error: err(MONSTERS, "monsters.0.defendTable", "defendTable must sum to more than 0"),
   },
   {
     rule: "npc sheet-stat hook (monster)",
     entries: setPath(base, MONSTERS, "monsters.15.hooks", [{ hook: "atkBp", value: 1000 }]),
-    error: err(
-      MONSTERS,
-      "monsters.monsters.15.hooks.0.hook",
-      "npc sheet-stat hooks are not applied",
-    ),
+    error: err(MONSTERS, "monsters.15.hooks.0.hook", "npc sheet-stat hooks are not applied"),
   },
   {
     rule: "monster zone",
     entries: setPath(base, MONSTERS, "monsters.0.zone", "nowhere"),
-    error: err(MONSTERS, "monsters.monsters.0.zone", "monster zone must be one of the four zones"),
+    error: err(MONSTERS, "monsters.0.zone", "monster zone must be one of the four zones"),
   },
   {
     rule: "enforcer id",
     entries: setPath(base, MONSTERS, "enforcer.id", "not-the-enforcer"),
-    error: err(MONSTERS, "monsters.enforcer.id", "enforcer id must be crown-enforcer"),
+    error: err(MONSTERS, "enforcer.id", "enforcer id must be crown-enforcer"),
   },
   {
     rule: "curve length",
@@ -466,6 +458,20 @@ describe("buildRules: cross-reference rules (single mutation, exactly one error)
     expect(errorsOf(c.entries)).toEqual([c.error]);
   });
 
+  it("reports every path from the file root: it resolves inside the mutated file's JSON", () => {
+    const resolves = (entries: readonly ContentEntry[], file: string, dotted: string): boolean => {
+      let node: unknown = entries.find((entry) => entry.file === file)?.data;
+      for (const key of dotted === "" ? [] : dotted.split(".")) {
+        if (typeof node !== "object" || node === null || !Object.hasOwn(node, key)) return false;
+        node = (node as Record<string, unknown>)[key];
+      }
+      return true;
+    };
+    for (const c of refCases) {
+      expect(resolves(c.entries, c.error.file, c.error.path), c.rule).toBe(true);
+    }
+  });
+
   it("every rule has its own message (the two hybridUnlockRank bounds share one rule)", () => {
     const messages = refCases.map((c) => c.error.message);
     const distinctRules = refCases.length - 1;
@@ -476,25 +482,25 @@ describe("buildRules: cross-reference rules (single mutation, exactly one error)
     [
       "guardian battleSpell",
       "guardians.0.battleSpell",
-      "monsters.guardians.0.battleSpell",
+      "guardians.0.battleSpell",
       "npc battleSpell must be an existing battle spell",
     ],
     [
       "enforcer battleSpell",
       "enforcer.battleSpell",
-      "monsters.enforcer.battleSpell",
+      "enforcer.battleSpell",
       "npc battleSpell must be an existing battle spell",
     ],
     [
       "guardian wardSpell",
       "guardians.0.wardSpell",
-      "monsters.guardians.0.wardSpell",
+      "guardians.0.wardSpell",
       "npc wardSpell must be an existing ward spell",
     ],
     [
       "enforcer wardSpell",
       "enforcer.wardSpell",
-      "monsters.enforcer.wardSpell",
+      "enforcer.wardSpell",
       "npc wardSpell must be an existing ward spell",
     ],
   ];
@@ -507,8 +513,8 @@ describe("buildRules: cross-reference rules (single mutation, exactly one error)
   );
 
   it.each([
-    ["guardian", "guardians.0.hooks", "monsters.guardians.0.hooks.0.hook"],
-    ["enforcer", "enforcer.hooks", "monsters.enforcer.hooks.0.hook"],
+    ["guardian", "guardians.0.hooks", "guardians.0.hooks.0.hook"],
+    ["enforcer", "enforcer.hooks", "enforcer.hooks.0.hook"],
   ])("rejects a sheet-stat hook on a %s", (_label, edit, path) => {
     expect(errorsOf(setPath(base, MONSTERS, edit, [{ hook: "hpBp", value: 100 }]))).toEqual([
       err(MONSTERS, path, "npc sheet-stat hooks are not applied"),

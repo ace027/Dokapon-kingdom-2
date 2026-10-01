@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   BpSchema,
+  FractionBpSchema,
   DescriptionSchema,
   IdSchema,
   IntSchema,
@@ -11,7 +12,7 @@ import {
 const ModStatSchema = z.enum(["atk", "def", "mag", "spd"]);
 
 export const ItemEffectSchema = z.discriminatedUnion("kind", [
-  z.strictObject({ kind: z.literal("heal"), bp: BpSchema }),
+  z.strictObject({ kind: z.literal("heal"), bp: FractionBpSchema }),
   z.strictObject({ kind: z.literal("cleanse") }),
   z.strictObject({ kind: z.literal("flee") }),
   z.strictObject({ kind: z.literal("mod"), stat: ModStatSchema, bp: BpSchema }),

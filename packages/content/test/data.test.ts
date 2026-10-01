@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { rulesHash, stableStringify } from "@usurpia/core";
+import { hybridsUnlocked, rulesHash, stableStringify } from "@usurpia/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { loadRules } from "../src/node";
 import { cleanupTemp, copyDataToTemp } from "./helpers";
@@ -69,6 +69,21 @@ describe("shipped content", () => {
       expect(rules.classes[id]?.parents).toBeNull();
       expect(rules.classes[id]?.starter).not.toBeNull();
     }
+  });
+
+  it("unlocks the shipped hybrids at mastery rank 3 (7 wins) in both parents", () => {
+    expect(rules.progression.hybridUnlockRank).toBe(3);
+    expect(rules.progression.masteryWins).toEqual([0, 3, 7, 12, 18]);
+    expect(hybridsUnlocked(rules, { warrior: 7, mage: 7 })).toEqual(["spellblade"]);
+    expect(hybridsUnlocked(rules, { warrior: 6, mage: 7 })).toEqual([]);
+    expect(hybridsUnlocked(rules, { warrior: 7, mage: 6 })).toEqual([]);
+    expect(hybridsUnlocked(rules, { thief: 7, cleric: 7 })).toEqual(["shadowpriest"]);
+    expect(hybridsUnlocked(rules, { thief: 6, cleric: 7 })).toEqual([]);
+    expect(hybridsUnlocked(rules, { thief: 7, cleric: 6 })).toEqual([]);
+    expect(hybridsUnlocked(rules, { warrior: 7, mage: 7, thief: 7, cleric: 7 })).toEqual([
+      "shadowpriest",
+      "spellblade",
+    ]);
   });
 
   it("pins every class passive (R5) in rank order", () => {

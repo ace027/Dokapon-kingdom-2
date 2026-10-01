@@ -1,5 +1,13 @@
 import type { z } from "zod";
-import { MAX_COUNTER, type Rules } from "@usurpia/core";
+import {
+  MAX_COUNTER,
+  MAX_STAT,
+  RULES_VERSION,
+  STAT_KEYS,
+  type ContentId,
+  type Rules,
+  type StatKey,
+} from "@usurpia/core";
 import { CONTENT_REGISTRY, REQUIRED_FILES } from "./registry";
 import { ClassesFileSchema, type ClassEntry, type ClassesFile } from "./schemas/classes";
 import { GearFileSchema, type GearFile } from "./schemas/gear";
@@ -29,7 +37,16 @@ const ZONES: readonly string[] = [
   "goblin-mines",
   "bureaucrat-bog",
 ];
-const SHEET_STAT_HOOKS: readonly string[] = ["hpBp", "atkBp", "defBp", "magBp", "spdBp", "luckBp"];
+const BP = 10_000;
+const SHEET_HOOK_OF: Readonly<Record<StatKey, string>> = {
+  hp: "hpBp",
+  atk: "atkBp",
+  def: "defBp",
+  mag: "magBp",
+  spd: "spdBp",
+  luck: "luckBp",
+};
+const SHEET_STAT_HOOKS: readonly string[] = Object.values(SHEET_HOOK_OF);
 const DISPLAY_KEYS: ReadonlySet<string> = new Set(["name", "description", "tagline"]);
 const CURVE_TIERS = 5;
 const MASTERY_RANKS = 5;
@@ -78,6 +95,9 @@ const MSG = {
   masteryIncreasing: "masteryWins must be strictly increasing",
   hybridUnlockRank: "hybridUnlockRank must be between 1 and 5",
 } as const;
+
+const ceiling = (what: string, worst: number): string =>
+  `${what} can exceed MAX_STAT in the worst case (${String(worst)} > ${String(MAX_STAT)})`;
 
 function compareErrors(a: ContentError, b: ContentError): number {
   if (a.file !== b.file) return a.file < b.file ? -1 : 1;
@@ -128,7 +148,10 @@ function parseFile<T>(
   return undefined;
 }
 
-/** Stage 3: duplicate ids per collection, reported at the later occurrence. */
+/**
+ * Stage 3: duplicate ids per collection, reported at the later occurrence. `collection` is the
+ * path of the array from the file root (e.g. `battle` in spells.json), like every other error path.
+ */
 function duplicateIdErrors(
   file: string,
   collection: string,
@@ -183,6 +206,7 @@ function crossRefErrors(f: ContentFiles): ContentError[] {
   checkClasses(f.classes.classes, { classes, gear, items, battle, ward }, add);
   checkNpcs(f.monsters, { battle, ward }, add);
   checkTables(f, add);
+  checkStatCeilings(f, add);
   return errors;
 }
 
@@ -306,16 +330,112 @@ function checkNpc(npc: Npc, at: string, lookups: Pick<Lookups, "battle" | "ward"
 
 function checkNpcs(m: MonstersFile, lookups: Pick<Lookups, "battle" | "ward">, add: Add): void {
   m.monsters.forEach((monster, i) => {
-    const at = `monsters.monsters.${String(i)}`;
+    const at = `monsters.${String(i)}`;
     checkNpc(monster, at, lookups, add);
     if (!ZONES.includes(monster.zone)) add("monsters.json", `${at}.zone`, MSG.monsterZone);
   });
   m.guardians.forEach((guardian, i) => {
-    checkNpc(guardian, `monsters.guardians.${String(i)}`, lookups, add);
+    checkNpc(guardian, `guardians.${String(i)}`, lookups, add);
   });
-  checkNpc(m.enforcer, "monsters.enforcer", lookups, add);
-  if (m.enforcer.id !== ENFORCER_ID) add("monsters.json", "monsters.enforcer.id", MSG.enforcerId);
+  checkNpc(m.enforcer, "enforcer", lookups, add);
+  if (m.enforcer.id !== ENFORCER_ID) add("monsters.json", "enforcer.id", MSG.enforcerId);
   if (m.curve.length !== CURVE_TIERS) add("monsters.json", "curve", MSG.curveLength);
+}
+
+interface HookLike {
+  readonly hook: string;
+  readonly value: number;
+}
+
+/** Sum of the positive values of `name` hooks: the most a hook list can add in bp. */
+function positiveBp(hooks: readonly HookLike[], name: string): number {
+  return hooks.reduce((sum, h) => (h.hook === name && h.value > 0 ? sum + h.value : sum), 0);
+}
+
+/**
+ * Per stat key: the largest bonus a character can stack from gear (flat stat per slot, plus the
+ * hook bp of the best piece per slot) and the best portable rank-5 passive of any class.
+ */
+function gearCeilings(f: ContentFiles, key: StatKey): { flat: number; bp: number } {
+  let flat = 0;
+  let bp = 0;
+  for (const slot of ["weapon", "shield", "accessory"]) {
+    const pieces = f.gear.gear.filter((g) => g.slot === slot);
+    flat += Math.max(0, ...pieces.map((g) => g.stats[key]));
+    bp += Math.max(0, ...pieces.map((g) => positiveBp(g.hooks, SHEET_HOOK_OF[key])));
+  }
+  return { flat, bp };
+}
+
+/**
+ * Worst-case stat ceilings: a level-`maxLevel` character of each class (all five passives, best
+ * portable passive, best gear), each monster and guardian on its highest curve tier and the
+ * enforcer at `maxLevel` must stay within MAX_STAT (stat blocks and hp are bounded by it).
+ */
+function checkStatCeilings(f: ContentFiles, add: Add): void {
+  const { baseStats, growth, maxLevel } = f.tuning.progression;
+  const atMax = (key: StatKey): number => baseStats[key] + growth[key] * (maxLevel - 1);
+  f.classes.classes.forEach((cls, i) => {
+    for (const key of STAT_KEYS) {
+      const gear = gearCeilings(f, key);
+      const name = SHEET_HOOK_OF[key];
+      const portable = Math.max(
+        0,
+        ...f.classes.classes
+          .filter((other) => other !== cls)
+          .map((other) => positiveBp(other.passives.slice(4), name)),
+      );
+      const hookBp = positiveBp(cls.passives, name) + portable + gear.bp;
+      const flat = Math.floor((atMax(key) * cls.statBp[key]) / BP) + gear.flat;
+      const worst = Math.floor((flat * (BP + hookBp)) / BP);
+      if (worst > MAX_STAT) {
+        add(
+          "classes.json",
+          `classes.${String(i)}.statBp.${key}`,
+          ceiling("class sheet stat", worst),
+        );
+      }
+    }
+  });
+  const curve = f.monsters.curve;
+  const npcWorst = (npc: { readonly statBp: Record<StatKey, number> }, rows: readonly number[]) => {
+    for (const key of STAT_KEYS) {
+      const top = Math.max(0, ...rows.map((r) => curve[r]?.[key] ?? 0));
+      const worst = Math.floor((top * npc.statBp[key]) / BP);
+      if (worst > MAX_STAT) return { key, worst };
+    }
+    return undefined;
+  };
+  f.monsters.monsters.forEach((monster, i) => {
+    const hit = npcWorst(monster, [monster.tier - 1, monster.tier]);
+    if (hit !== undefined) {
+      add(
+        "monsters.json",
+        `monsters.${String(i)}.statBp.${hit.key}`,
+        ceiling("monster stat", hit.worst),
+      );
+    }
+  });
+  f.monsters.guardians.forEach((guardian, i) => {
+    const hit = npcWorst(guardian, [1, 2, 3, 4]);
+    if (hit !== undefined) {
+      add(
+        "monsters.json",
+        `guardians.${String(i)}.statBp.${hit.key}`,
+        ceiling("guardian stat", hit.worst),
+      );
+    }
+  });
+  for (const key of STAT_KEYS) {
+    const worst = atMax(key);
+    if (worst > MAX_STAT) {
+      add(
+        "monsters.json",
+        "enforcer",
+        ceiling(`enforcer ${key} (baseStats + growth * (maxLevel - 1))`, worst),
+      );
+    }
+  }
 }
 
 function strictlyIncreasingAt(values: readonly number[]): number[] {
@@ -351,28 +471,47 @@ function checkTables(f: ContentFiles, add: Add): void {
   }
 }
 
+type DisplayKey = "name" | "description" | "tagline";
+
+/** `T` without display text at every level (mirrors {@link stripDisplayText}). */
+type Stripped<T> = T extends readonly unknown[]
+  ? { [K in keyof T]: Stripped<T[K]> }
+  : T extends object
+    ? { [K in keyof T as Exclude<K, DisplayKey>]: Stripped<T[K]> }
+    : T;
+
 /** Removes display text (`name`, `description`, `tagline`) at every level. */
-function stripDisplayText(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(stripDisplayText);
+function stripDisplayText<T>(value: T): Stripped<T> {
+  // The one cast: the runtime strip is dynamic, `Stripped` is its exact type-level counterpart.
+  return stripValue(value) as Stripped<T>;
+}
+
+function stripValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripValue);
   if (typeof value === "object" && value !== null) {
     return Object.fromEntries(
       Object.entries(value)
         .filter(([key]) => !DISPLAY_KEYS.has(key))
-        .map(([key, child]) => [key, stripDisplayText(child)]),
+        .map(([key, child]) => [key, stripValue(child)]),
     );
   }
   return value;
 }
 
-function keyed(items: readonly { readonly id: string }[]): unknown {
+function keyed<T extends { readonly id: string }>(
+  items: readonly T[],
+): Record<ContentId, Stripped<T>> {
   return Object.fromEntries(items.map((item) => [item.id, stripDisplayText(item)]));
 }
 
+/**
+ * Typed assembly: every field is checked against `Rules` (no blanket cast), so a new `Rules`
+ * field fails typecheck here until it is built. The only cast lives inside
+ * `stripDisplayText`, which maps a parsed entry to its display-free form.
+ */
 function assemble(f: ContentFiles): Rules {
-  // One documented cast: zod's output types are structurally equal to Rules except for the
-  // literal-union numbers (tier, rank), which are range-checked by the schemas.
-  return {
-    v: 1,
+  const rules: Rules = {
+    v: RULES_VERSION,
     classes: keyed(f.classes.classes),
     gear: keyed(f.gear.gear),
     items: keyed(f.items.items),
@@ -386,7 +525,8 @@ function assemble(f: ContentFiles): Rules {
     combat: f.tuning.combat,
     progression: f.tuning.progression,
     economy: f.tuning.economy,
-  } as Rules;
+  };
+  return rules;
 }
 
 /**

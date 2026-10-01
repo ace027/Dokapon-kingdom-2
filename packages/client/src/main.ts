@@ -27,8 +27,8 @@ let state: GameState = createGame(
     v: 2,
     seed: "demo",
     players: [
-      { id: "p1", classId: "fighter" },
-      { id: "p2", classId: "caster" },
+      { id: "p1", classId: "warrior" },
+      { id: "p2", classId: "mage" },
     ],
   },
   DEMO_RULES,

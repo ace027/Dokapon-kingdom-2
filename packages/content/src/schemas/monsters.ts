@@ -12,7 +12,7 @@ import {
   PriceSchema,
   StatBlockSchema,
   TaglineSchema,
-  TierSchema,
+  MonsterTierSchema,
   statShape,
 } from "./common";
 
@@ -33,7 +33,7 @@ const npcBase = {
 export const MonsterEntrySchema = z.strictObject({
   ...npcBase,
   tagline: TaglineSchema,
-  tier: TierSchema(4),
+  tier: MonsterTierSchema,
   zone: IdSchema,
   xp: PriceSchema,
   gold: PriceSchema,

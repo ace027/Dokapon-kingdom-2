@@ -14,7 +14,7 @@ export const GearEntrySchema = z.strictObject({
   name: NameSchema,
   description: DescriptionSchema,
   slot: z.enum(["weapon", "shield", "accessory"]),
-  tier: TierSchema(5),
+  tier: TierSchema,
   price: PriceSchema,
   stats: StatBlockSchema(-999, 999),
   hooks: z.array(HookSchema),

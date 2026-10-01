@@ -41,6 +41,9 @@ importers:
 
   packages/client:
     dependencies:
+      '@usurpia/content':
+        specifier: workspace:*
+        version: link:../content
       '@usurpia/core':
         specifier: workspace:*
         version: link:../core

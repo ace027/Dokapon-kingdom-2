@@ -1,10 +1,12 @@
 import { z } from "zod";
 import {
+  checkHookRange,
   CommandWeightsSchema,
   DescriptionSchema,
-  HookSchema,
+  hookShape,
   IdSchema,
   IntSchema,
+  RankSchema,
   LoadoutSchema,
   MAX_BP,
   NameSchema,
@@ -12,13 +14,15 @@ import {
   StatBlockSchema,
 } from "./common";
 
-export const PassiveEntrySchema = z.strictObject({
-  ...HookSchema.shape,
-  rank: IntSchema(1, 5),
-  id: IdSchema,
-  name: NameSchema,
-  description: DescriptionSchema,
-});
+export const PassiveEntrySchema = z
+  .strictObject({
+    ...hookShape,
+    rank: RankSchema,
+    id: IdSchema,
+    name: NameSchema,
+    description: DescriptionSchema,
+  })
+  .superRefine(checkHookRange);
 
 export const ClassEntrySchema = z.strictObject({
   id: IdSchema,

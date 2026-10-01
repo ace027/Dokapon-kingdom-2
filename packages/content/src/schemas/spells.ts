@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   BpSchema,
+  FractionBpSchema,
   DescriptionSchema,
   IdSchema,
   IntSchema,
@@ -18,15 +19,15 @@ const SpellEffectSchema = z.discriminatedUnion("kind", [
     stat: z.enum(["atk", "def", "mag", "spd"]),
     bp: BpSchema,
   }),
-  z.strictObject({ kind: z.literal("drain"), bp: BpSchema }),
-  z.strictObject({ kind: z.literal("stealGold"), bp: BpSchema }),
+  z.strictObject({ kind: z.literal("drain"), bp: FractionBpSchema }),
+  z.strictObject({ kind: z.literal("stealGold"), bp: FractionBpSchema }),
 ]);
 
 const common = {
   id: IdSchema,
   name: NameSchema,
   description: DescriptionSchema,
-  tier: TierSchema(5),
+  tier: TierSchema,
   price: PriceSchema,
 };
 
@@ -36,11 +37,22 @@ export const BattleSpellEntrySchema = z.strictObject({
   effect: SpellEffectSchema,
 });
 
-export const WardSpellEntrySchema = z.strictObject({
-  ...common,
-  mode: z.enum(["barrier", "reflect", "absorb", "counterspell"]),
-  valueBp: BpSchema,
-});
+/** `valueBp` is a multiplier (counterspell) or the reflected fraction (reflect: at most 100%). */
+export const WardSpellEntrySchema = z
+  .strictObject({
+    ...common,
+    mode: z.enum(["barrier", "reflect", "absorb", "counterspell"]),
+    valueBp: IntSchema(0, MAX_BP),
+  })
+  .superRefine((ward, ctx) => {
+    if (ward.mode === "reflect" && ward.valueBp > 10_000) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["valueBp"],
+        message: "reflect valueBp must be at most 10000",
+      });
+    }
+  });
 
 export const FieldSpellEntrySchema = z.strictObject({
   ...common,

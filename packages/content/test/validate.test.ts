@@ -193,13 +193,17 @@ describe("content build script (the real `pnpm build` gate)", () => {
     tempDir = undefined;
   });
 
-  it("wires scripts.build to scripts/validate.ts and exports ./node", () => {
+  it("wires scripts.build to scripts/validate.ts and exports ./node and ./shipped", () => {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
       scripts?: Record<string, string>;
       exports?: Record<string, string>;
     };
     expect(manifest.scripts?.build).toMatch(/(^|\s)tsx scripts\/validate\.ts(\s|$)/);
-    expect(manifest.exports).toEqual({ ".": "./src/index.ts", "./node": "./src/node.ts" });
+    expect(manifest.exports).toEqual({
+      ".": "./src/index.ts",
+      "./node": "./src/node.ts",
+      "./shipped": "./src/shipped.ts",
+    });
   });
 
   function runBuild(env: NodeJS.ProcessEnv) {
