@@ -1,8 +1,8 @@
 # Phase 3 Spec: Board, Economy & CPU AI Core
 
-Status: DRAFT-FINAL (critique folded in; see Revision History)
+Status: DRAFT-FINAL (r3: plan critique folded in, 9 plans; see Revision History)
 Inputs: ROADMAP Phase 3 (6 success criteria), PROJECT R10-R14, `2026-09-26-dokapon-spiritual-sequel-design.md`, Phase 2 spec + 02-REVIEW deferrals.
-Architecture: Pragmatic (user-selected). Reference scratch: `.planning/reference/phase-03/gen-map.mjs` (frozen after 03-01).
+Architecture: Pragmatic (user-selected). Reference scratch: `.planning/reference/phase-03/gen-map.mjs` (frozen after 03-01a).
 
 ## 1. Overview
 
@@ -35,7 +35,7 @@ Files (core): `board/{graph,towns,effects,decks,victory,settle}.ts`, `handlers/{
 
 Decisions (rationale in brackets):
 
-- D1 Tiled authored, flattened in content. [Designer-editable; core stays free of Tiled/zod.] Map committed in 03-01 from the frozen generator and is then the sole source of truth; invariants are ported to TS tests (`map-invariants.test.ts`) and run in `buildRules`.
+- D1 Tiled authored, flattened in content. [Designer-editable; core stays free of Tiled/zod.] Map committed in 03-01a from the frozen generator and is then the sole source of truth; invariants are ported to TS tests (`map-invariants.test.ts`) and run in `buildRules`.
 - D2 SCHEMA_VERSION 3, all `v` fields 3, RULES_VERSION 2. v2 saves and v2 replay files are rejected with `SchemaVersionError` (message includes found version). [No persisted v2 saves exist; v2 lacks board data that cannot be reconstructed deterministically; fixtures regenerated.] No migrator.
 - D3 `aiRng` is AI-driver state (`AiState`), NOT in GameState. [Matches Phase 2 OQ5d; AI is a client of PlayerView. Flagged to user in OQ1.] CPU RNG seed: `seed\0cpu\0<playerId>\0<persona>\0<difficulty>`.
 - D4 Time structure: `turnsPerWeek` = 6 rounds. Pre-game `week 0, step "weekBreak"`; first system `week/advance` starts week 1. `turn/end` by last player of the last round runs week end and sets `step "weekBreak"`; `week/advance` does week start, or, when `week === weeksTotal`, ends the game.
@@ -43,10 +43,10 @@ Decisions (rationale in brackets):
 - D6 `public.step` in `spin | move | act | weekBreak`. Loadout handlers become active-player only, steps `spin|act`; `switchClass` only on the Castle node.
 - D7 One effect interpreter (`board/effects.ts`) executes data-tagged effects for decrees, errands, gazette. Every effect returns an `EffectResult` listed in the owning event. No code paths per card.
 - D8 Hidden decks: `hidden.decks = {gazette:{draw,discard}, decree:[], errand: Record<PlayerId,{draw,discard}>}`. Shuffles use `ctx` RNG (sfc32 in `hidden.rng`).
-- D9 Weekly tax is paid at week start; Tax Season decree is redefined to "own a town of value >= X" with `X = 500*ceil((maxPlayerTownValue+300)/500)` evaluated at week end.
-- D10 Warp: design "Warp pairs 2" = 4 spaces; Empty reduced 6 -> 4 so total stays 75 (flagged OQ2).
+- D9 Weekly tax is paid at week start; Tax Season decree is redefined to "own a town of value >= X" with `X = 500*ceil((maxPlayerTownValue+300)/500)`, where `maxPlayerTownValue` is the value of the single most valuable owned town over all players at the moment the decree is REVEALED (0 with none; stored in `DecreeView.params.x`); completion (own a town of value >= X) is checked at week end.
+- D10 Warp: design "Warp pairs 2" = 4 spaces; Empty reduced 6 -> 4 so total stays 75 (flagged OQ2; one warp pair, 2 spaces, would also satisfy the design count).
 - D11 Boss shape `boss:{enabled,hp,unlocked}`; settings gain `weeks:3|4|5`, `boss:boolean`. Settings exact keys `v,seed,players,weeks,boss`.
-- D12 `viewFor` and event payloads are deep-cloned (`cloneJson` in canonical.ts). Fallback: if the 03-06 perf gate fails, add an internal shared-view variant for sim/AI only; the public `viewFor` stays cloning.
+- D12 `viewFor` and event payloads are deep-cloned (`cloneJson` in canonical.ts). Fallback: if the 03-06 perf gate fails, the sim driver builds the seat views from `state.public` and the seat's own `state.private` once per step (never `hidden`); the public `viewFor` stays cloning.
 - D13 `steal-item` tag is bare (no itemId); victim learns via private BagUpdated. Re-pin the three goldens (resolve.test.ts:634, combat-golden row, sim/test/replay-file.test.ts:154).
 - D14 Battle context `public.battle {kind:'monster'|'guardian'|'pvp', ...}` settled by leaf module `board/settle.ts` called from `endCombat`, avoiding import cycles. `beginCombat` is extracted from `combat/start` apply; `combat/start` with no battle context behaves as in Phase 2 (duel sim unchanged).
 - D15 Interceptions/PvP: ends-on-rival triggers PvP (lowest seat first); pass-through allowed; co-occupation allowed; no pushback; KO'd players cannot be attacked.
@@ -54,9 +54,11 @@ Decisions (rationale in brackets):
 - D17 Assets = gold + items at `sellBp` (5000) of price (bag + scrolls + equipped gear; spells excluded) + town values + `bonus[p]`. Winner tie-break: assets, gold, town value, lowest seat.
 - D18 Board hook clamps in two layers: per-hook `HOOK_RANGES` tightened, and clamps on the SUM across gear/items/passives (section 6.9).
 - D19 AI: depth-limited lookahead is a distance-discounted 3-hop BFS potential over static node values (cheap), not a full game-tree search. Noise via softmax temperature, error via epsilon-random legal move.
-- D20 Gate failure is never silently weakened: tuning procedure (section 9.5), max 6 iterations, then stop and ask.
-- D21 `serialize.ts` is split per partition (`serialize/{public,private,hidden,settings}.ts` + index) as part of 03-01 since the state bump touches it.
-- D22 Goldens: pure-function goldens computed in-spec; composite goldens pinned at each plan's closing step from the TS engine (PRF-004). Phase 2 oracle stays frozen.
+- D20 Gate failure is never silently weakened: tuning procedure (section 7), max 6 iterations; bounded fallback (r3): if a gate is still red after 6 iterations the driver, the suite and the best data are committed with the gate reported red and a follow-up plan is opened, never a loosened bound.
+- D21 `serialize.ts` is split per partition (`serialize/{public,private,hidden,settings}.ts` + index) as part of 03-01b since the state bump touches it.
+- D22 Goldens: pure-function goldens computed in-spec; composite goldens pinned at each plan's closing step from the TS engine (PRF-004). Phase 2 oracle stays frozen. Single-pin policy (r3): tests derive `rulesHash(loadRules())` and the `rules=` replay tokens; the only literal pins are `rulesHash(TEST_RULES)` and the `rulesHash` field of `packages/sim/fixtures/combat-game.json`.
+- D23 Reducer order (r3, H2): `reduce` runs apply, then commits `ctx.rng` into `hidden.rng`, then `applySignals(prev, next, events, rules)`; `endGame(state, ctx, rules, events)` takes the handler `ctx` and draws only through `ctx.int`, so the RNG it consumes is committed. Owned by 03-01b with a reduce-level test.
+- D24 Boss attempts (r3): one `boss/enter` per turn through public `bossAttempted` (reset by `startTurn`); the sim reports an informational `bossKillBp`.
 
 ## 4. State, Action, Event Contracts
 
@@ -64,7 +66,7 @@ Decisions (rationale in brackets):
 
 ```ts
 type Step = 'spin'|'move'|'act'|'weekBreak';
-type Phase = 'turn'|'combat'|'decision'|'over';   // + existing
+type Phase = 'turn'|'decision'|'over';   // + existing; no 'combat' member (combat is phase 'decision' with a pending exchange)
 
 PublicState += {
   week: number;                 // 0 before first advance
@@ -83,6 +85,7 @@ PublicState += {
   totals: Record<PlayerId, Counters>;
   bonus: Record<PlayerId, number>;           // awards + boss bonus
   boss: { enabled: boolean; hp: number; unlocked: boolean };
+  bossAttempted: boolean;       // one boss attempt per turn: reset by startTurn, set by boss/enter
   spoils: null | { winner: PlayerId; loser: PlayerId };
   battle: null | BattleCtx;
   result: null | { winner: PlayerId; tally: Tally; awards: Award[] };
@@ -111,7 +114,7 @@ All id-keyed records (`towns`, `positions`, `decks.errand`, decree/errand/gazett
 | `turn/end` | active | turn / act | `{}` |
 | `week/advance` | system | turn / weekBreak | `{}` |
 
-Spin: `item` must be owned and matches modifier: swift-boots +3 (max 9 steps), lead-boots fixed 1, pathfinder requires `pick` 1-6 (else `pick` must be null). Base roll `nextInt(1,6)` uniform from `hidden.rng`; spin modifiers from buffs (`spinMod`) added, clamp to [1, `tuning.board.maxSteps`=9]. Rolled value is public (`Spun{playerId, roll, steps, item}`). `homing-stone` (spin step) teleports to nearest unliberated town node and consumes the turn's move (step -> act); `coin-purse-lock` sets a protection flag consumed by the next steal against this player.
+Spin: `item` must be owned and matches modifier: swift-boots +3 (max 9 steps), lead-boots fixed 1, pathfinder requires `pick` 1-6 (else `pick` must be null). Base roll `nextInt(1,6)` uniform from `hidden.rng`; spin modifiers from buffs (`spinMod`) added, clamp to [1, `tuning.board.maxSteps`=9]. Rolled value is public (`Spun{playerId, roll, steps, item}`). `homing-stone` (spin step) teleports to the Castle node (the design's "warp to the Castle", OQ5; content tag `warpCastle`), is rejected when the player is already at the Castle, and consumes the turn's move (step -> act); `lead-boots` description reads "Your next spin is fixed at 1."; `coin-purse-lock` sets a protection flag consumed by the next steal against this player.
 
 ### 4.3 Move validation
 
@@ -130,12 +133,12 @@ Battle: compulsory; monster from node zone table (weights from `tuning.board.zon
 - Item: weighted draw from `tuning.board.itemTable[tier]`; if bag full, converted to gold at sell value.
 - Loot: gear/spell drawn from tier table; auto-equipped only if tier higher than current, else gold at sellBp; `lootLuckBp` shifts weights toward higher entries.
 - Event: draws top eligible gazette card.
-- Temple: full heal. Shrine: +1 mastery progress (a fixed `masteryWin`). Empty: nothing. Warp: teleport to partner (arrival does not re-warp).
+- Temple: full heal. Shrine: grants `tuning.board.shrineMasteryWins` mastery wins (int 0..2, shipped 0: flavor only until the Phase 5 Summon feature; a documented tuning knob, default OFF). Empty: nothing. Warp: teleport to partner (arrival does not re-warp).
 - Castle: enables switchClass, errand reroll, entry for shop-like loadout actions.
 
 ### 4.5 PvP and spoils
 
-Move ending on a rival (not safe, not KO'd) opens `combat/start` with `battle.kind='pvp'`. Attacker win: spoils window `{winner, loser}`; `town/seize` allowed while open; `turn/end` with an open window auto-steals 10% of loser's gold (cap `tuning.board.stealCapBp`; honors coin-purse-lock). Defender win: immediate default gold steal for the defender. Attacker KO or draw: no spoils. Monster/guardian KO: move to nearest temple (BFS, lowest index tie-break), lose `koGoldLossBp` (1000) of gold to the bank. TurnStarted revives a KO'd player (hp = 50% max) and applies turnRegen.
+Move ending on a rival (not safe, not KO'd) opens `combat/start` with `battle.kind='pvp'`. Attacker win: spoils window `{winner, loser}`; `town/seize` allowed while open; `turn/end` with an open window auto-steals 10% of loser's gold (absolute cap `tuning.board.stealCapGold` = 400 gold per steal, replacing the undefined `stealCapBp`; honors coin-purse-lock). Defender win: immediate default gold steal for the defender. Attacker KO or draw: no spoils. Monster/guardian KO: move to nearest temple (BFS, lowest index tie-break), lose `koGoldLossBp` (1000) of gold to the bank. TurnStarted revives a KO'd player (hp = 50% max) and applies turnRegen.
 
 ### 4.6 Towns
 
@@ -154,7 +157,7 @@ Final advance: `week === weeksTotal` => `GameEnded`.
 
 ### 4.8 Decrees, errands, gazette
 
-Decree pool (10): liberate-town, wanted-poster, royal-delivery, tax-season, monster-census, crown-hunt, treasure-survey, invest-in-usurpia, duel-of-honor, royal-portrait. `crown-hunt` eligible=false in Phase 3 (needs Crown) => 9 usable. royal-portrait evaluates only at week end. One decree per week, no repeat until pool exhausted. Reward 1500 G + rare item table; bag full => gold at sell value.
+Decree pool (10): liberate-town, wanted-poster, royal-delivery, tax-season, monster-census, crown-hunt, treasure-survey, invest-in-usurpia, duel-of-honor, royal-portrait. `crown-hunt` eligible=false in Phase 3 (needs Crown) => 9 usable. royal-portrait evaluates only at week end. `DecreeDef.minWeek` (int 1..5): `invest-in-usurpia` and `royal-portrait` are `minWeek 2` (a 600 G investment or an 800 G hoard is not a fair week-1 race); the decree draw skips decrees whose `minWeek` exceeds the current week (local skip-and-reshuffle in `handlers/week.ts`). One decree per week, no repeat until pool exhausted. Reward 1500 G + rare item table; bag full => gold at sell value.
 
 Errand pool (12, ~10 eligible): kill N monsters in a zone, earn G, invest, liberate, win PvP, visit shop/temple/shrine, walk N steps, hold gold, etc. Two ("cast a field spell on a rival", "humiliate a rival") ineligible until Phase 5. Reward via effects: ~500 G, a consumable/scroll, or +1 mastery win. Per-player `errand` deck; one reroll per week at Castle for a fee (`tuning.board.rerollFee`=100); reroll resets progress. Progress is an event-derived fold (`signalsFromEvents`), never ad-hoc counters.
 
@@ -170,7 +173,7 @@ Per-hook `HOOK_RANGES` (tightened): pvpExtraSteal [0,3], passPickpocketBp [0,200
 
 ### 4.10 Victory, boss, awards
 
-- Boss: unlocked in the final week if `boss.enabled`. `boss/enter` at the Lair: damage = `ctx.int(0.8x,1.2x)` of `atk*3 + mag`; recoil 50% of max hp to the player; KO => temple. Boss hp 600 persists across attempts. Disabled boss: Lair acts as Empty.
+- Boss: unlocked in the final week if `boss.enabled`. `boss/enter` at the Lair: damage = `ctx.int(0.8x,1.2x)` of `atk*3 + mag`; recoil 50% of max hp to the player; KO => temple. Boss hp 600 persists across attempts, one attempt per turn (`public.bossAttempted`, validation `already attempted the boss this turn`). A killing blow adds `max(3000, 25% of leader assets)` to `bonus`; the game ends at that turn's `turn/end`. Disabled boss: Lair acts as Empty. The sim reports an informational `bossKillBp` (not gated, not tuned).
 - Killing blow: `bonus[p] += max(3000, 25% of leader assets)`; game ends at that turn's `turn/end` when `boss.hp === 0`.
 - Deadline: after final week's turns, `week/advance` ends the game.
 - Awards: pool 6 (Most Monsters Slain, Most Humiliated [Phase 5], Best Investor, Biggest Thief, Crown Survivor [Phase 5], Most Steps Walked); only those with max counter > 0 are eligible; draw 3 distinct via ctx; each winner +1000 to `bonus`; ties to lowest assets then seat.
@@ -191,7 +194,7 @@ Invariants (each a separate build error message): 60-90 nodes; no duplicates/sel
 
 Towns (base): thistledown 500, mudwick 600, brinewick 700, gullhaven 800, soggyton 900, slagpit 1000, gildhollow 1100, pickaxe-rest 1200, ledgerfen 1300, fogbottom 1500. Guardians cycle [landlord-lich, tollbridge-troll, knight-of-foreclosure]. Warp pairs: forest-mines, coast-bog.
 
-TEST_MAP: a 12-node fixture in TEST_RULES with reachable-set goldens (computed with `npx tsx` at 03-01 close) and a shuffle golden for the deck module.
+TEST_MAP: a 12-node fixture in TEST_RULES with reachable-set goldens (computed with `npx tsx` at 03-01a close) and a shuffle golden for the deck module.
 
 ## 6. AI
 
@@ -206,11 +209,11 @@ Budget: ~100-150 ms per game; CI perf test n=50 under 30 s (wall-clock bound doc
 
 `pnpm sim game [--n N --seed S --players P --weeks W --mix SPEC --suite health --json --boss --max-actions M --replay-out F --game I]`. `--n` capped at 100000. Mix grammar `persona[:difficulty],...` or presets; seat assignment rotates by game index. Report via `stableStringify`.
 
-Health suite: personas at Normal (G1 decree rate, G3), personas at Easy and Hard (G3), Hard vs Normal (hard,hard,normal,normal) with independent persona/difficulty rotation (G2).
+Health suite: personas at Normal (G1 decree rate, G3), personas at Easy and Hard (G3), Hard vs Normal (hard,hard,normal,normal) with independent persona/difficulty rotation (G2): seat `s` of game `g` plays persona `P[(s+g)%4]` and difficulty `D[(s+floor(g/4))%4]`, `D = hard,hard,normal,normal`, so every persona plays Hard in half of the games. G1 is measured on the personas at Normal only. The full-N gate runs through the CLI (`pnpm sim game --suite health`), never in the default `pnpm test`; the default run keeps only an n=20 invariant smoke. `--weeks` accepts 3, 4 or 5.
 Gates: G1 decree completion rate in [0.70,0.85]; G2 Hard seats win >= 60% of games; G3 no persona > 35% wins at each difficulty. Asserted invariants: all games terminate, 0 rejected AI actions, deserialize round-trip on sampled games. Informational: game length, asset variance, comeback rate, pvpPerPlayerWeek (target 2-3, not gated).
 Exit codes: 0 ok, 1 invalid content, 2 usage, 3 replay rules mismatch, 4 gate failure, 5 engine invariant/non-termination.
 
-Tuning procedure (D20): ordered knobs (decree reward/requirements, gold tables, persona weights, difficulty tau/error, tax rate), max 6 iterations, each recorded in Revision History; if a gate cannot be met, stop and ask. If Phase 2 content tuning is needed, re-pin Phase 2 goldens (frozen oracle not re-run).
+Tuning procedure (D20): ordered knobs (decree reward/requirements, gold tables, persona weights, `DIFFICULTY_BOARD` tau/error, tax rate `board.taxBaseBp`), max 6 iterations, each recorded in the 03-06 SUMMARY; the only AI-side knobs are the `DIFFICULTY_BOARD` constants (hard tauMilli 20..100 with errorBp 0, normal tauMilli 250..600 with errorBp 500..1500; depths are fixed, a depth change needs a 03-05b fix plan) and the integer persona weights. 03-05b retires the G2 risk early: a pre-check of 100 games on shipped rules must show a Hard share >= 55% (up to 3 recorded adjustments). If a gate is still red after 6 iterations, the best data is committed with the gate reported red and a follow-up plan is opened (bounded fallback). If Phase 2 content tuning is needed, re-pin Phase 2 goldens (frozen oracle not re-run).
 
 ## 8. Compatibility
 
@@ -235,7 +238,7 @@ Tuning procedure (D20): ordered knobs (decree reward/requirements, gold tables, 
 
 1. `pnpm -r build lint test` green.
 2. Map invariants pass in build and tests; mutate-one-invariant negative tests each fail with their own unique message.
-3. `board/spin` determinism: same seed same roll sequence (golden computed in-spec at 03-03).
+3. `board/spin` determinism: same seed same roll sequence (golden computed in-spec at 03-03a).
 4. Move validity: one negative test per M1-M5, each killable by exactly one check (PIT-001).
 5. Tax golden G-T1; invest cap negative test.
 6. Week loop order test using event sequence assertions.
@@ -243,23 +246,30 @@ Tuning procedure (D20): ordered knobs (decree reward/requirements, gold tables, 
 8. Effect interpreter: one test per tag; unknown tag rejected at build.
 9. Awards: tie-breaks, ineligible zeros.
 10. ai-hidden fuzz test extended; Hard decisions identical across hidden mutations.
-11. `pnpm sim game --suite health` meets G1-G3, exit 0.
+11. `pnpm sim game --suite health` meets G1-G3, exit 0 (a documented `Partial` with the gate reported red is the bounded fallback).
 12. Serialize round-trip with exact-key deserialize (extra/missing key negative tests per partition).
 13. viewFor deep clone: mutating a view never mutates state.
 14. Prototype-key pool test (`toString`, `valueOf`, `hasOwnProperty`) for every id-keyed record.
+15. Reducer order: a reduce-level test proves the RNG consumed by `endGame` and by `applySignals` is committed (D23).
+16. ROADMAP criterion 5: `pnpm sim game --n 1000 --players 4 --seed roadmap --json` exits 0 with `terminated` 1000 and `actions` and `assetVarianceMilli` present.
+17. G2 pre-check (03-05b): Hard share >= 55% over 100 games on shipped rules, or the plan ends `Partial` with the table.
+18. One boss attempt per turn: a second `boss/enter` in the same turn is rejected and the next turn allows it again.
 
-## 11. Deliverables and Plans (6 plans, <= 3 tasks each)
+## 11. Deliverables and Plans (9 plans, <= 3 tasks each, 6 waves)
 
-| Wave | Plan | Scope |
-|---|---|---|
-| W1 | 03-01 | Map content + Tiled loader + graph.ts + invariants + state/serialize v3 split + RULES_VERSION/SCHEMA bump + deep clone + WRONG_STEP |
-| W1 | 03-02 | effects.ts interpreter + decks.ts + effect schemas |
-| W2 | 03-03 | spin/move/landing + towns economy + assets/hooks clamps + steal-item re-pin |
-| W2 | 03-04 | decrees/errands/gazette content + week handlers |
-| W3 | 03-05 | victory/boss/awards/tally + persona AI (persona.ts, board.ts, plan.ts, difficulty.ts) |
-| W4 | 03-06 | sim game + health suite + tuning to gates + CLI nits + perf test |
+| Wave | Plan | Agent | Scope |
+|---|---|---|---|
+| W1 | 03-01a | engineering-senior-developer | Map content + Tiled schema/flatten + graph.ts + map invariants + tuning tables + TEST_MAP + RULES_VERSION 2 + single-pin hash policy |
+| W1 | 03-02 | engineering-senior-developer | effects.ts interpreter + decks.ts + effect schemas |
+| W2 | 03-01b | engineering-senior-developer | v3 state types + serialize split + SCHEMA bump + deep clone + WRONG_STEP + reducer RNG commit order + lettered stubs + test/sim/client/fixture migration + golden re-pin |
+| W3 | 03-03a | engineering-senior-developer | hooks/clamps + towns helpers/tax + turn start + spin/move/useItem + stealGold + beginCombat extraction |
+| W3 | 03-04 | engineering-senior-developer | decrees/errands/gazette content + effect adapter + signals + week handlers |
+| W4 | 03-03b | engineering-senior-developer | landing + shops + settle/PvP + town handlers + turn/end + steal-item re-pin |
+| W5 | 03-05a | engineering-senior-developer | victory/boss/awards/tally + root exports + effect-tag parity test |
+| W5 | 03-05b | engineering-ai-engineer | persona AI (persona.ts, board.ts, plan.ts, difficulty.ts) + smoke games + scoring decision + G2 pre-check |
+| W6 | 03-06 | data-analytics-engineer | sim game + health suite + tuning to gates + CLI nits + perf test |
 
-Parallel waves run in separate git worktrees (PRF-005); all agents on Sonnet (PRF-006). W2 plans touch disjoint files except `handlers/index.ts` and `rules.ts` (merge-order: 03-03 then 03-04).
+Parallel waves run in separate git worktrees (PRF-005); W2, W4 and W6 run alone on `dev`; all agents on Sonnet (PRF-006). Merge orders: W1 03-01a then 03-02; W3 03-03a then 03-04 (then the week-loop and signals tests once more); W5 03-05a then 03-05b. Same-wave plans touch disjoint files; `sim/test/replay-file.test.ts` and `sim/fixtures/combat-game.json` are edited additively in different waves only.
 
 ## 12. Review Deferrals Resolved
 
@@ -274,15 +284,37 @@ All new files under existing package roots; `.planning/reference/phase-03/gen-ma
 Blocking: none.
 Non-blocking:
 1. OQ1 aiRng as AI-driver state, not GameState (default: driver state, per Phase 2 OQ5d).
-2. OQ2 Empty 6 -> 4 to fit warp pairs (default: as specified).
+2. OQ2 Empty 6 -> 4 to fit warp pairs (default: as specified). Note: one warp pair (2 spaces) would also satisfy the design count ("Warp gates (pairs) 2" with Empty 6 already sums to 75).
 3. OQ3 LUCK spinner reroll (default: omitted).
 4. OQ4 PvP spoils is a minimal placeholder: 10% gold steal or town seize; richer spoils in Phase 5 (default: as specified).
+5. OQ5 `homing-stone`: the design says "Warp to the Castle", the r2 spec said nearest unliberated town. Default (r3): keep the design's Castle warp (class switching and the errand reroll need the Castle; a town warp is dead late in the game), tag stays `warpCastle`, rejected when already at the Castle.
+6. OQ6 Shrine mastery: default OFF (`shrineMasteryWins` 0), a tuning knob 0..2 until the Phase 5 Summon feature.
 
 ## 15. Complexity Assessment
 
-Complex. ~45 new/changed core files, 4 waves, 6 plans, 2 cross-cutting version bumps, new reducer step precedence, and a statistical balance gate that may need iteration. Risk: HIGH on gate tuning (G2 Hard>=60% depends on the lookahead producing a real edge) and on state-size/perf after deep-cloning; MEDIUM on determinism across the new hidden decks; LOW on map (generator verified: invariants pass, output deterministic, md5 stable). Competing proposals recommended at 03-05 (AI scoring) and 03-06 (tuning knob order).
+Complex. ~45 new/changed core files, 6 waves, 9 plans, 2 cross-cutting version bumps, new reducer step precedence, and a statistical balance gate that may need iteration. Risk: HIGH on gate tuning (G2 Hard>=60% depends on the lookahead producing a real edge) and on state-size/perf after deep-cloning; MEDIUM on determinism across the new hidden decks; LOW on map (generator verified: invariants pass, output deterministic, md5 stable). Competing proposals recommended at 03-05b (AI scoring) and 03-06 (tuning knob order). G2 is pre-checked in 03-05b and tuned in 03-06 through the `DIFFICULTY_BOARD` constants only.
 
-## 16. Revision History
+## 16. Design Deviations (r3)
+
+Where the authored Phase 3 content differs from the design document. Phase 7's "all MVP design content" check reads this table.
+
+| Item | Design document | Phase 3 (plan) | Reason |
+|---|---|---|---|
+| Market Crash (g23) | all gold -15% | `goldBpAll -1500` (-15%, matches the design) | r2 plan had -1000; corrected |
+| Royal Portrait decree | gold >= Y at the Castle at week end | `gold >= 800` at week end, no Castle condition; `minWeek 2` | no event-derived "at Castle at week end" metric in Phase 3; deviation kept |
+| Royal Delivery decree | bring an item to the Castle | `castleVisits 2` | no item-delivery signal in Phase 3 |
+| Treasure Survey decree | visit a far space | `itemsFound 3` | no far-space metric in Phase 3 |
+| Monster Census decree | slay 3 monsters | slay 4 | pacing against the 6-round week |
+| Errands | design list (use consumables, sell items, strikes-only, warp gate, pass 3 towns, land on Gold, ...) | 12 plan errands (forest/coast/mines cull, prospector, patron, liberator, brawler, shopper, pilgrim, marathon, field-prankster and humiliator ineligible): 8 of 12 differ from the design list | signals available from the Phase 3 event fold |
+| `homing-stone` | warp to the Castle | warp to the Castle (r2 spec change reverted, OQ5) | matches the design |
+| `stealCapBp` | none | `stealCapGold` 400 absolute | snowball brake; the bp cap never bound |
+| Shrine | flavor (Summon hotspot) | `shrineMasteryWins` knob, default 0 | OQ6 |
+| Boss | placeholder boss | one attempt per turn, `bossKillBp` informational | uncalibrated boss, bounded exposure |
+| Warp pairs | 2 pairs | 4 warp spaces, Empty 4 | OQ2 |
+| Decree timing | n/a | `invest-in-usurpia` and `royal-portrait` `minWeek 2` | week-1 feasibility |
+
+## 17. Revision History
 
 - r1: initial draft.
 - r2: critique folded: added WRONG_STEP precedence, Tax Season redefinition, summed hook clamps, effect vocabulary closure, gate-failure policy, duplicate-key tests, generator mix rebalanced (battle [3,4,7,8]) and lair distance invariant relaxed to >= 7 to match the 5-ring layout.
+- r3: plan critique folded (REWORK verdict): 6 plans split into 9 (03-01a/b, 03-03a/b, 03-05a/b) in 6 waves; single-pin hash policy; reducer RNG commit order and `endGame(state, ctx, rules, events)`; exit codes per section 7 with `--weeks` 3|4|5; G2 pre-check in 03-05b, `DIFFICULTY_BOARD` bounds and bounded fallback in 03-06, independent persona/difficulty rotation, G1 on Normal only, health gate CLI-only; boss one attempt per turn plus informational `bossKillBp`; `DecreeDef.minWeek`; Tax Season X timing text (D9); `stealCapGold`, `shrineMasteryWins` knob, homing-stone Castle warp (OQ5, OQ6), OQ2 note; Design Deviations table (section 16).

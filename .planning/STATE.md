@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 2 of 8 (complete)
-- **Status**: Phase 2 complete — review passed (2 cycles)
-- **Last Activity**: Phase 2 review passed (2026-10-01)
+- **Phase**: 3 of 8 (planned)
+- **Status**: Phase 3 planned — 9 plans across 6 waves
+- **Last Activity**: Phase 3 planning (2026-10-03)
 
 ## Progress
 ```
-[#########·····························] 27% — 10/37 plans complete
+[#########·····························] 25% — 10/40 plans complete
 ```
 
 ## Recent Decisions
@@ -29,12 +29,15 @@
 - Golden policy after Phase 2: reference oracle frozen after 02-05 closing step; later phases re-pin from the TS engine; balance gates become thresholds
 - Phase 2 executed: 6/6 plans on Sonnet 5.5 (02-01a 6a5e79f, 02-01b 6fb651c, 02-02 5cbfba2, 02-03 fba59f4, 02-04 13c0ef6, 02-05 2791724 + closing 9c4f5e0); 1187 tests; rulesHash 84a995db; goldens matched first run; CI green on 6a5e79f (run 21), 6fb651c (22), 2dd9397 (23), 6f114e3 (25); reference oracle now frozen
 - Phase 2 review: 2 cycles, 0 blockers, 17 warnings fixed (clamps, decisionSeq bound, reduceAs, canonical.ts, typed Rules assembly, client builds rules from content); 1465 tests; see 02-REVIEW.md. Open decision: public `steal-item` tag names the stolen item
+- Phase 3 architecture: Pragmatic (data-tagged effect interpreter shared by decrees/errands/gazette; seeded hidden decks; Tiled flattened in content; schema v3, v2 saves rejected, no migrator). Spec: `.planning/specs/03-board-economy-cpu-ai-core-spec.md` (r3)
+- Phase 3 plan critique: REWORK (both critics) → 9 plans in 6 waves (01a/02 → 01b → 03a/04 → 03b → 05a/05b → 06); W1/W3/W5 parallel in worktrees; defects fixed (exit codes 3/4/5, RNG write-back order, independent persona/difficulty rotation, G2 knobs, bounded tuning fallback). Open: homing-stone keeps Castle warp (OQ5)
 - 01-04 deviation accepted: seated player with no note renders `your note: (none)` (plan-internal conflict; render contract wins)
 
 ## Next Action
-Run `/legion:plan 3` to plan Phase 3: Board, Economy & CPU AI Core
+Run `/legion:build` to execute Phase 3: Board, Economy & CPU AI Core
 
 ## GitHub
 - Phase 1 issue: #1 — https://github.com/ace027/Dokapon-kingdom-2/issues/1 (label: legion) — closed after review
 - Phase 2 issue: #2 — https://github.com/ace027/Dokapon-kingdom-2/issues/2 (label: legion) — closed after review
+- Phase 3 issue: #3 — https://github.com/ace027/Dokapon-kingdom-2/issues/3 (label: legion)
 - GitHub access: via GitHub MCP tools (no `gh` CLI in this environment)

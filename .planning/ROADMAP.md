@@ -4,7 +4,7 @@
 
 - [x] Phase 1: Foundations & Deterministic Engine (4 plans)
 - [x] Phase 2: Combat Core & Balance Sim (6 plans)
-- [ ] Phase 3: Board, Economy & CPU AI Core (6 plans)
+- [ ] Phase 3: Board, Economy & CPU AI Core (9 plans)
 - [ ] Phase 4: Graybox Client & Hot-Seat Play (5 plans)
 - [ ] Phase 5: Griefing, Cursed Crown & Boss (5 plans)
 - [ ] Phase 6: Vertical Slice — Art, Audio, Onboarding & Accessibility (5 plans)
@@ -52,7 +52,7 @@
 - [ ] Deadline victory, the boss lair unlock, persistent boss HP, Royal Bonus Awards and the tally are tested (the boss fight uses a placeholder until Phase 5).
 - [ ] `pnpm sim game --n 1000` runs all-CPU 4-player games to completion and reports length, asset variance and decree completion rate (target 70–85%).
 - [ ] Sim health: Hard ≥ 60% vs Normal; no persona > 35% win rate at equal difficulty.
-**Plans**: 6
+**Plans**: 9
 
 ### Phase 4: Graybox Client & Hot-Seat Play
 **Goal**: A complete game playable end-to-end in the browser with placeholder art. This is the first human playtest.
@@ -121,7 +121,7 @@
 |-------|-------|-----------|--------|
 | 1. Foundations & Deterministic Engine | 4 | 4 | Complete (reviewed) |
 | 2. Combat Core & Balance Sim | 6 | 6 | Complete (reviewed) |
-| 3. Board, Economy & CPU AI Core | 6 | 0 | Not started |
+| 3. Board, Economy & CPU AI Core | 9 | 0 | Planned |
 | 4. Graybox Client & Hot-Seat Play | 5 | 0 | Not started |
 | 5. Griefing, Cursed Crown & Boss | 5 | 0 | Not started |
 | 6. Vertical Slice | 5 | 0 | Not started |
